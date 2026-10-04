@@ -71,7 +71,7 @@ export interface Prototyp {
   nazwyRol: Record<Rola, string>;
   imiona: string[];
   nazwiska: string[];
-  ui: { lotMinSek: number; lotMaxSek: number; lotSekNaDobe: number };
+  ui: { lotMinSek: number; lotMaxSek: number; lotSekNaDobe: number; skrotTestowy: number; progBilansu: number };
   bot: {
     liczbaZiaren: number;
     pierwszeZiarno: number;
@@ -81,6 +81,7 @@ export interface Prototyp {
     eksplorujDoDoby: number;
     eksplorujMaxSkokow: number;
     topN: number;
+    krokiIlosci: number;
   };
 }
 

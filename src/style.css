@@ -1,0 +1,98 @@
+:root {
+  --tlo: #f6f6f2;
+  --papier: #ffffff;
+  --tekst: #1d1d1b;
+  --szary: #6b6b66;
+  --linia: #d7d7d0;
+  --akcent: #1f5fa8;
+  --zysk: #1d7a3a;
+  --strata: #b3261e;
+  --cyw-agraria: #3c9a4a;
+  --cyw-kuznia: #c7731a;
+  --cyw-cisi: #7a4fb3;
+  --nieznana: #9a9a94;
+  --tankowanie: #2c8c99;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--tlo); color: var(--tekst); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button { font: inherit; padding: 2px 8px; border: 1px solid #8a8a84; border-radius: 3px; background: #fafaf7; cursor: pointer; }
+button:hover:not(:disabled) { background: #e8eef7; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.glowny { background: var(--akcent); color: #fff; border-color: var(--akcent); font-weight: 600; padding: 6px 14px; }
+button.glowny:hover:not(:disabled) { background: #174a85; }
+input[type="number"], input[type="text"] { font: inherit; width: 5.5em; padding: 2px 4px; border: 1px solid #8a8a84; border-radius: 3px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 3px 6px; border-bottom: 1px solid var(--linia); text-align: right; white-space: nowrap; }
+th { font-weight: 600; color: var(--szary); font-size: 12px; }
+td:first-child, th:first-child { text-align: left; }
+.lewo { text-align: left !important; }
+.szary { color: var(--szary); }
+.maly { font-size: 12px; }
+.zysk { color: var(--zysk); }
+.strata { color: var(--strata); }
+.pogrubienie { font-weight: 600; }
+
+#app { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
+header { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding: 8px 14px; background: #24323f; color: #fff; }
+header h1 { font-size: 16px; margin: 0 12px 0 0; }
+header .miara { display: flex; flex-direction: column; line-height: 1.1; }
+header .miara .et { font-size: 11px; opacity: 0.75; }
+header .miara .w { font-size: 15px; font-weight: 600; }
+header .ziarno { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+header .ziarno input { width: 9em; }
+header .cel-pasek { width: 160px; height: 8px; background: #46586a; border-radius: 4px; overflow: hidden; }
+header .cel-pasek > div { height: 100%; background: #7cc67f; }
+
+.pomoc { margin: 8px 14px 0; background: var(--papier); border: 1px solid var(--linia); border-radius: 4px; padding: 6px 10px; }
+.pomoc summary { cursor: pointer; font-weight: 600; }
+.pomoc ol { margin: 6px 0 2px; padding-left: 22px; }
+
+main { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(640px, 1.8fr); gap: 10px; padding: 10px 14px; align-items: start; }
+.panel { background: var(--papier); border: 1px solid var(--linia); border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; }
+.panel h2 { font-size: 14px; margin: 0 0 6px 0; display: flex; justify-content: space-between; align-items: baseline; }
+.panel h2 .szary { font-weight: 400; }
+.kolumna-szeroka { grid-column: 1 / -1; }
+
+svg.mapa { width: 100%; height: auto; max-height: 80vh; background: #0e1420; border-radius: 4px; display: block; }
+svg.mapa .krawedz { stroke: #3a4658; }
+svg.mapa .wezel { cursor: pointer; }
+svg.mapa .wezel.poza-zasiegiem { opacity: 0.45; }
+svg.mapa .wezel text { fill: #e8e8e0; pointer-events: none; }
+svg.mapa .wezel.nieznana circle { stroke-dasharray: 1.5 1; }
+svg.mapa .trasa { stroke: #ffd166; fill: none; stroke-linejoin: round; }
+svg.mapa .zasieg-pierscien { fill: none; stroke: #7cc67f; }
+svg.mapa .statek { fill: #ffd166; stroke: #1d1d1b; }
+svg.mapa .tu-pierscien { fill: none; stroke: #fff; }
+
+.trasa-panel .skoki { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.trasa-panel .skok { background: #eef2f7; border: 1px solid #c9d4e3; border-radius: 3px; padding: 1px 6px; }
+.blad { color: var(--strata); }
+
+.rynek { overflow-x: auto; }
+.rynek td:first-child, .rynek td:nth-child(4) { white-space: normal; }
+.rynek td:first-child { min-width: 150px; }
+.rynek td.ilosc input { width: 4.5em; }
+.rynek .akcje { text-align: left; }
+.rynek .akcje div { white-space: nowrap; margin: 1px 0; }
+.rynek .akcje button { margin-right: 3px; font-size: 12px; padding: 1px 6px; }
+.wycena-wiersz td { background: #f7f9fc; }
+.wycena { color: var(--szary); font-size: 12px; }
+
+.zaloga .efekty { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; margin: 6px 0; font-size: 13px; }
+.zaloga .efekty div span { color: var(--szary); font-size: 12px; display: block; }
+
+.cywilizacje .cyw { border-left: 4px solid var(--linia); padding-left: 8px; margin-bottom: 8px; }
+.kropka { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+.modal-tlo { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: 30px 10px; overflow: auto; z-index: 10; }
+.modal { background: var(--papier); border-radius: 6px; max-width: 900px; width: 100%; padding: 14px 18px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3); }
+.modal h2 { margin: 0 0 4px 0; font-size: 18px; }
+.modal h3 { margin: 14px 0 4px 0; font-size: 14px; }
+.modal .suma td { border-top: 2px solid var(--tekst); font-weight: 600; }
+.modal .stopka { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.wniosek { background: #f1f5fb; border-left: 4px solid var(--akcent); padding: 6px 10px; margin: 8px 0; }
+
+.lot-info { position: absolute; left: 12px; top: 12px; background: rgba(14, 20, 32, 0.8); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 13px; }
+.mapa-kontener { position: relative; }
+.przycisk-wiersz { cursor: pointer; }
+.przycisk-wiersz:hover td { background: #f1f5fb; }

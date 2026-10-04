@@ -256,7 +256,9 @@
   "ui": {
     "lotMinSek": 3,
     "lotMaxSek": 5,
-    "lotSekNaDobe": 0.6
+    "lotSekNaDobe": 0.6,
+    "skrotTestowy": 0.05,
+    "progBilansu": 1.05
   },
   "bot": {
     "liczbaZiaren": 200,
@@ -266,6 +268,7 @@
     "tankujGdyCenaPonizejBazyRazy": 1.0,
     "eksplorujDoDoby": 80,
     "eksplorujMaxSkokow": 3,
-    "topN": 5
+    "topN": 5,
+    "krokiIlosci": 8
   }
 }

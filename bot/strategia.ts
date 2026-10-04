@@ -27,8 +27,6 @@ export interface OpcjaZalogi {
   zwolnij: string[];
 }
 
-const KROKI_ILOSCI = 8;
-
 function maxKupnoPrzy(gra: Gra, towar: Towar, gotowka: number, objetosc: number, masa: number, tu: string, udzial: number): number {
   const poz = gra.stan.rynki[tu][towar];
   let hi = Math.max(0, Math.min(poz.zapas, objetosc, masa / K.towary[towar].gestosc));
@@ -57,8 +55,8 @@ function dobierzLadunek(gra: Gra, cel: string, doby: number, gotowka: number, ud
       if (uzyte.has(t)) continue;
       const max = maxKupnoPrzy(gra, t, gotowka, objetosc, masa, tu, udzial);
       if (max <= 0) continue;
-      for (let k = 1; k <= KROKI_ILOSCI; k++) {
-        const m3 = Math.floor((max * k) / KROKI_ILOSCI);
+      for (let k = 1; k <= P.bot.krokiIlosci; k++) {
+        const m3 = Math.floor((max * k) / P.bot.krokiIlosci);
         if (m3 <= 0) continue;
         const koszt = gra.wycenaKupna(t, m3, tu, udzial).kwotaKr;
         const przychod = gra.wycenaSprzedazyZa(t, m3, cel, doby, udzial).kwotaKr;
