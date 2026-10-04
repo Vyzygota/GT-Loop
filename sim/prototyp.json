@@ -1,6 +1,115 @@
 {
   "_opis": "Założenia prototypu spoza kanonu. Każdy wpis opisany w DECYZJE.md.",
-  "dobyGry": 120,
+  "skala": "M",
+  "informacja": "pelna",
+  "skale": {
+    "S": {
+      "limitDob": 120,
+      "opis": "dotychczasowy świat: hub + dwa ramiona, 12 planet, regresja"
+    },
+    "M": {
+      "limitDob": 240,
+      "sektory": [
+        0
+      ],
+      "ukladyZamieszkiwalne": 75,
+      "cywilizacje": [
+        {
+          "id": "ludzie",
+          "sektor": 0,
+          "start": true,
+          "znanaNaStarcie": true
+        },
+        {
+          "id": "corrath",
+          "sektor": 0,
+          "start": false,
+          "znanaNaStarcie": true
+        },
+        {
+          "id": "vreth",
+          "sektor": 0,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "orak",
+          "sektor": 0,
+          "start": false,
+          "znanaNaStarcie": false
+        }
+      ]
+    },
+    "L": {
+      "limitDob": 480,
+      "sektory": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "ukladyZamieszkiwalne": 464,
+      "cywilizacje": [
+        {
+          "id": "ludzie",
+          "sektor": 0,
+          "start": true,
+          "znanaNaStarcie": true
+        },
+        {
+          "id": "vreth",
+          "sektor": 0,
+          "start": false,
+          "znanaNaStarcie": true
+        },
+        {
+          "id": "corrath",
+          "sektor": 1,
+          "start": false,
+          "znanaNaStarcie": true
+        },
+        {
+          "id": "szkarni",
+          "sektor": 2,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "orak",
+          "sektor": 2,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "ai",
+          "sektor": 3,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "planta",
+          "sektor": 4,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "duhari",
+          "sektor": 5,
+          "start": false,
+          "znanaNaStarcie": false
+        },
+        {
+          "id": "velhari",
+          "sektor": 6,
+          "start": false,
+          "znanaNaStarcie": false
+        }
+      ]
+    }
+  },
   "celMnoznikWartosci": 2,
   "nawigatorMaxRedukcjaPaliwa": 0.15,
   "synergiaRedukcjaPaliwa": 0.1,
@@ -8,200 +117,516 @@
   "liczbaKandydatow": 3,
   "umiejetnoscMiejscaDziesietne": 2,
   "maxZapasWNormach": 6,
-  "dobyRozruchuRynku": 40,
-  "zapasStartowyUlamekNormy": 1.0,
-  "zapasStartowyJitter": 0.2,
   "kontaktZapasElektronikiUlamekNormy": 0.05,
-  "uklad": {
-    "promienGalaktykiPc": 100,
-    "promienHubaPc": 11,
-    "odlegloscTankowaniaPc": 28,
-    "krokRamieniaPc": 16,
-    "jitterPc": 2.5,
-    "jitterKatStopnie": 10,
-    "katMiedzyRamionamiStopnie": [
-      150,
-      210
-    ],
-    "minOdstepPc": 8,
-    "maxProb": 200
+  "galaktyka": {
+    "minOdstepZamieszkiwalnychPc": 14,
+    "maxProbLosowania": 200000,
+    "maxDlugoscSzlakuDodatkowegoPc": 160,
+    "krokPrzelotuPc": 19,
+    "jitterPrzelotuPc": 1.5,
+    "rozrzutTerytorium": 1.5,
+    "wykladnikWagiUkladu": 0.5,
+    "specjalizacjaMnoznik": 2.0,
+    "specjalizacjaReszta": 0.8,
+    "portNaUkladM3NaDobe": {
+      "Food": 8.0,
+      "Minerals": 3.0,
+      "Solvents": 1.0,
+      "Explosives": 0.15,
+      "Electronics": 0.03,
+      "Fuel": 3.0
+    },
+    "tempoWymianyNPC": 0.03,
+    "mnoznikSufituNPC": 1.0,
+    "glebokoscPortuMin": 0.15,
+    "glebokoscPortuMax": 1.0,
+    "zapasStartowyUlamekNormy": 1.0,
+    "zapasStartowyJitter": 0.2,
+    "dobyRozruchuRynku": 60,
+    "maxProbUkladu": 20
   },
-  "cywilizacje": [
-    {
-      "id": "agraria",
-      "nazwa": "Agraria",
-      "rola": "ramie",
-      "znanaNaStarcie": true,
-      "start": true,
-      "planety": [
-        {
-          "nazwa": "Zielna",
-          "populacjaMln": 12,
-          "specjalizacja": {
-            "Food": 1.6,
-            "Minerals": 0.4
-          }
-        },
-        {
-          "nazwa": "Kamieniec",
-          "populacjaMln": 8,
-          "specjalizacja": {
-            "Food": 0.5,
-            "Minerals": 2.2
-          }
-        },
-        {
-          "nazwa": "Łęg",
-          "populacjaMln": 5,
-          "specjalizacja": {
-            "Food": 1.3
-          }
-        },
-        {
-          "nazwa": "Przysiek",
-          "populacjaMln": 3,
-          "specjalizacja": {
-            "Minerals": 1.5
-          }
-        }
+  "cywilizacjeKanonu": {
+    "ludzie": {
+      "kolor": "#3c9a4a",
+      "populacjaMln": 15000000,
+      "sylaby": [
+        "no",
+        "va",
+        "ter",
+        "ra",
+        "lun",
+        "dor",
+        "ka",
+        "mi",
+        "sel",
+        "ven"
       ],
-      "potrzebyM3NaMlnNaDobe": {
-        "Food": 0.8,
-        "Minerals": 0.24,
-        "Solvents": 0.08,
-        "Explosives": 0.012,
-        "Electronics": 0.0024,
-        "Fuel": 0.3
+      "potrzeby": {
+        "Food": 1.0,
+        "Minerals": 0.8,
+        "Solvents": 1.2,
+        "Explosives": 0.6,
+        "Electronics": 1.0,
+        "Fuel": 1.0
       },
-      "produkcjaM3NaMlnNaDobe": {
-        "Food": 1.04,
-        "Minerals": 0.36,
-        "Solvents": 0.048,
-        "Explosives": 0.008,
-        "Electronics": 0.0016,
-        "Fuel": 0.36
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.6,
+        "Solvents": 0.4,
+        "Explosives": 0.7,
+        "Electronics": 1.6,
+        "Fuel": 1.1
       }
     },
-    {
-      "id": "kuznia",
-      "nazwa": "Kuźnia",
-      "rola": "hub",
-      "znanaNaStarcie": true,
-      "start": false,
-      "planety": [
-        {
-          "nazwa": "Młot",
-          "populacjaMln": 15,
-          "specjalizacja": {
-            "Solvents": 1.4,
-            "Electronics": 0.6
-          }
-        },
-        {
-          "nazwa": "Tygiel",
-          "populacjaMln": 10,
-          "specjalizacja": {
-            "Explosives": 1.8,
-            "Solvents": 0.7
-          }
-        },
-        {
-          "nazwa": "Iskra",
-          "populacjaMln": 7,
-          "specjalizacja": {
-            "Electronics": 2.2,
-            "Solvents": 0.6
-          }
-        },
-        {
-          "nazwa": "Żużel",
-          "populacjaMln": 4,
-          "specjalizacja": {
-            "Solvents": 1.2,
-            "Explosives": 1.2
-          }
-        }
+    "vreth": {
+      "kolor": "#8a6d3b",
+      "populacjaMln": 100000,
+      "sylaby": [
+        "vr",
+        "eth",
+        "gor",
+        "ak",
+        "thu",
+        "ruk",
+        "zan",
+        "dr",
+        "ok",
+        "mal"
       ],
-      "potrzebyM3NaMlnNaDobe": {
-        "Food": 0.72,
-        "Minerals": 0.36,
-        "Solvents": 0.16,
-        "Explosives": 0.04,
-        "Electronics": 0.008,
-        "Fuel": 0.4
+      "potrzeby": {
+        "Food": 0.9,
+        "Minerals": 1.0,
+        "Solvents": 0.8,
+        "Explosives": 1.4,
+        "Electronics": 0.6,
+        "Fuel": 1.0
       },
-      "produkcjaM3NaMlnNaDobe": {
-        "Food": 0.48,
-        "Minerals": 0.24,
-        "Solvents": 0.208,
-        "Explosives": 0.048,
-        "Electronics": 0.0112,
-        "Fuel": 0.34
+      "produkcjaDoPotrzeb": {
+        "Minerals": 2.6,
+        "Solvents": 0.3,
+        "Explosives": 0.3,
+        "Electronics": 0.3,
+        "Fuel": 1.2
       }
     },
-    {
-      "id": "cisi",
-      "nazwa": "Cisi",
-      "rola": "ramie",
-      "znanaNaStarcie": false,
-      "start": false,
-      "planety": [
-        {
-          "nazwa": "Milczek",
-          "populacjaMln": 9,
-          "specjalizacja": {
-            "Minerals": 1.5
-          }
-        },
-        {
-          "nazwa": "Szept",
-          "populacjaMln": 6,
-          "specjalizacja": {
-            "Food": 1.6
-          }
-        },
-        {
-          "nazwa": "Cień",
-          "populacjaMln": 4,
-          "specjalizacja": {
-            "Minerals": 1.2,
-            "Food": 0.8
-          }
-        },
-        {
-          "nazwa": "Echo",
-          "populacjaMln": 3,
-          "specjalizacja": {
-            "Food": 1.2
-          }
-        }
+    "corrath": {
+      "kolor": "#c7731a",
+      "populacjaMln": 2000000,
+      "sylaby": [
+        "cor",
+        "rath",
+        "ith",
+        "an",
+        "sel",
+        "dra",
+        "vos",
+        "ir",
+        "kel",
+        "um"
       ],
-      "potrzebyM3NaMlnNaDobe": {
-        "Food": 0.72,
-        "Minerals": 0.32,
-        "Solvents": 0.08,
-        "Explosives": 0.02,
-        "Electronics": 0.004,
-        "Fuel": 0.3
+      "potrzeby": {
+        "Food": 1.0,
+        "Minerals": 1.5,
+        "Solvents": 1.0,
+        "Explosives": 0.8,
+        "Electronics": 1.2,
+        "Fuel": 1.1
       },
-      "produkcjaM3NaMlnNaDobe": {
-        "Food": 0.96,
-        "Minerals": 0.48,
-        "Solvents": 0.04,
-        "Explosives": 0.012,
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.3,
+        "Solvents": 2.4,
+        "Explosives": 2.2,
+        "Electronics": 0.5,
+        "Fuel": 0.9
+      }
+    },
+    "orak": {
+      "kolor": "#7a4fb3",
+      "populacjaMln": 20000,
+      "sylaby": [
+        "or",
+        "ak",
+        "gr",
+        "um",
+        "th",
+        "ash",
+        "kh",
+        "ul",
+        "mor",
+        "dz"
+      ],
+      "potrzeby": {
+        "Food": 1.2,
+        "Minerals": 0.7,
+        "Solvents": 0.6,
+        "Explosives": 1.2,
+        "Electronics": 0.8,
+        "Fuel": 0.9
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 2.0,
+        "Solvents": 0.2,
+        "Explosives": 0.4,
         "Electronics": 0.0,
-        "Fuel": 0.4
+        "Fuel": 1.0
+      }
+    },
+    "szkarni": {
+      "kolor": "#b3261e",
+      "populacjaMln": 300000,
+      "sylaby": [
+        "szk",
+        "ar",
+        "ni",
+        "tsz",
+        "ok",
+        "ra",
+        "vy",
+        "mir",
+        "kol",
+        "ec"
+      ],
+      "potrzeby": {
+        "Food": 1.0,
+        "Minerals": 1.0,
+        "Solvents": 1.1,
+        "Explosives": 0.9,
+        "Electronics": 0.9,
+        "Fuel": 1.0
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 1.8,
+        "Solvents": 0.4,
+        "Explosives": 2.6,
+        "Electronics": 0.4,
+        "Fuel": 1.1
+      }
+    },
+    "ai": {
+      "kolor": "#2c8c99",
+      "populacjaMln": 10000000,
+      "sylaby": [
+        "ax",
+        "on",
+        "qu",
+        "el",
+        "ix",
+        "tr",
+        "om",
+        "sy",
+        "nth",
+        "ia"
+      ],
+      "potrzeby": {
+        "Food": 0.5,
+        "Minerals": 1.4,
+        "Solvents": 1.3,
+        "Explosives": 0.7,
+        "Electronics": 1.5,
+        "Fuel": 1.2
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.3,
+        "Solvents": 1.1,
+        "Explosives": 0.6,
+        "Electronics": 4.0,
+        "Fuel": 1.0
+      }
+    },
+    "planta": {
+      "kolor": "#6aa84f",
+      "populacjaMln": 5000000,
+      "sylaby": [
+        "pl",
+        "an",
+        "ta",
+        "fol",
+        "ia",
+        "ver",
+        "dis",
+        "sem",
+        "en",
+        "lia"
+      ],
+      "potrzeby": {
+        "Food": 1.1,
+        "Minerals": 0.8,
+        "Solvents": 1.0,
+        "Explosives": 0.3,
+        "Electronics": 1.0,
+        "Fuel": 0.9
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.4,
+        "Solvents": 2.6,
+        "Explosives": 0.3,
+        "Electronics": 0.5,
+        "Fuel": 1.1
+      }
+    },
+    "duhari": {
+      "kolor": "#d4a017",
+      "populacjaMln": 1000000,
+      "sylaby": [
+        "du",
+        "ha",
+        "ri",
+        "sal",
+        "mar",
+        "ek",
+        "ob",
+        "yan",
+        "tir",
+        "as"
+      ],
+      "potrzeby": {
+        "Food": 1.0,
+        "Minerals": 0.9,
+        "Solvents": 1.0,
+        "Explosives": 1.0,
+        "Electronics": 0.9,
+        "Fuel": 1.0
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.7,
+        "Solvents": 0.4,
+        "Explosives": 0.4,
+        "Electronics": 0.5,
+        "Fuel": 1.1
+      }
+    },
+    "velhari": {
+      "kolor": "#1f5fa8",
+      "populacjaMln": 3000000,
+      "sylaby": [
+        "vel",
+        "ha",
+        "ri",
+        "lor",
+        "ien",
+        "cas",
+        "tel",
+        "ar",
+        "um",
+        "ys"
+      ],
+      "potrzeby": {
+        "Food": 1.0,
+        "Minerals": 1.3,
+        "Solvents": 1.0,
+        "Explosives": 0.8,
+        "Electronics": 1.3,
+        "Fuel": 1.1
+      },
+      "produkcjaDoPotrzeb": {
+        "Minerals": 0.4,
+        "Solvents": 1.0,
+        "Explosives": 2.4,
+        "Electronics": 2.2,
+        "Fuel": 1.0
       }
     }
-  ],
-  "punktyTankowania": [
-    {
-      "nazwa": "Obóz Wędrowców"
+  },
+  "swiatS": {
+    "dobyRozruchuRynku": 40,
+    "zapasStartowyUlamekNormy": 1.0,
+    "zapasStartowyJitter": 0.2,
+    "uklad": {
+      "promienGalaktykiPc": 100,
+      "promienHubaPc": 11,
+      "odlegloscTankowaniaPc": 28,
+      "krokRamieniaPc": 16,
+      "jitterPc": 2.5,
+      "jitterKatStopnie": 10,
+      "katMiedzyRamionamiStopnie": [
+        150,
+        210
+      ],
+      "minOdstepPc": 8,
+      "maxProb": 200
     },
-    {
-      "nazwa": "Ognisko Plemion"
-    }
-  ],
+    "cywilizacje": [
+      {
+        "id": "agraria",
+        "nazwa": "Agraria",
+        "rola": "ramie",
+        "znanaNaStarcie": true,
+        "start": true,
+        "planety": [
+          {
+            "nazwa": "Zielna",
+            "populacjaMln": 12,
+            "specjalizacja": {
+              "Food": 1.6,
+              "Minerals": 0.4
+            }
+          },
+          {
+            "nazwa": "Kamieniec",
+            "populacjaMln": 8,
+            "specjalizacja": {
+              "Food": 0.5,
+              "Minerals": 2.2
+            }
+          },
+          {
+            "nazwa": "Łęg",
+            "populacjaMln": 5,
+            "specjalizacja": {
+              "Food": 1.3
+            }
+          },
+          {
+            "nazwa": "Przysiek",
+            "populacjaMln": 3,
+            "specjalizacja": {
+              "Minerals": 1.5
+            }
+          }
+        ],
+        "potrzebyM3NaMlnNaDobe": {
+          "Food": 0.8,
+          "Minerals": 0.24,
+          "Solvents": 0.08,
+          "Explosives": 0.012,
+          "Electronics": 0.0024,
+          "Fuel": 0.3
+        },
+        "produkcjaM3NaMlnNaDobe": {
+          "Food": 1.04,
+          "Minerals": 0.36,
+          "Solvents": 0.048,
+          "Explosives": 0.008,
+          "Electronics": 0.0016,
+          "Fuel": 0.36
+        },
+        "kolor": "#3c9a4a",
+        "otwartosc": 0
+      },
+      {
+        "id": "kuznia",
+        "nazwa": "Kuźnia",
+        "rola": "hub",
+        "znanaNaStarcie": true,
+        "start": false,
+        "planety": [
+          {
+            "nazwa": "Młot",
+            "populacjaMln": 15,
+            "specjalizacja": {
+              "Solvents": 1.4,
+              "Electronics": 0.6
+            }
+          },
+          {
+            "nazwa": "Tygiel",
+            "populacjaMln": 10,
+            "specjalizacja": {
+              "Explosives": 1.8,
+              "Solvents": 0.7
+            }
+          },
+          {
+            "nazwa": "Iskra",
+            "populacjaMln": 7,
+            "specjalizacja": {
+              "Electronics": 2.2,
+              "Solvents": 0.6
+            }
+          },
+          {
+            "nazwa": "Żużel",
+            "populacjaMln": 4,
+            "specjalizacja": {
+              "Solvents": 1.2,
+              "Explosives": 1.2
+            }
+          }
+        ],
+        "potrzebyM3NaMlnNaDobe": {
+          "Food": 0.72,
+          "Minerals": 0.36,
+          "Solvents": 0.16,
+          "Explosives": 0.04,
+          "Electronics": 0.008,
+          "Fuel": 0.4
+        },
+        "produkcjaM3NaMlnNaDobe": {
+          "Food": 0.48,
+          "Minerals": 0.24,
+          "Solvents": 0.208,
+          "Explosives": 0.048,
+          "Electronics": 0.0112,
+          "Fuel": 0.34
+        },
+        "kolor": "#c7731a",
+        "otwartosc": 0
+      },
+      {
+        "id": "cisi",
+        "nazwa": "Cisi",
+        "rola": "ramie",
+        "znanaNaStarcie": false,
+        "start": false,
+        "planety": [
+          {
+            "nazwa": "Milczek",
+            "populacjaMln": 9,
+            "specjalizacja": {
+              "Minerals": 1.5
+            }
+          },
+          {
+            "nazwa": "Szept",
+            "populacjaMln": 6,
+            "specjalizacja": {
+              "Food": 1.6
+            }
+          },
+          {
+            "nazwa": "Cień",
+            "populacjaMln": 4,
+            "specjalizacja": {
+              "Minerals": 1.2,
+              "Food": 0.8
+            }
+          },
+          {
+            "nazwa": "Echo",
+            "populacjaMln": 3,
+            "specjalizacja": {
+              "Food": 1.2
+            }
+          }
+        ],
+        "potrzebyM3NaMlnNaDobe": {
+          "Food": 0.72,
+          "Minerals": 0.32,
+          "Solvents": 0.08,
+          "Explosives": 0.02,
+          "Electronics": 0.004,
+          "Fuel": 0.3
+        },
+        "produkcjaM3NaMlnNaDobe": {
+          "Food": 0.96,
+          "Minerals": 0.48,
+          "Solvents": 0.04,
+          "Explosives": 0.012,
+          "Electronics": 0.0,
+          "Fuel": 0.4
+        },
+        "kolor": "#7a4fb3",
+        "otwartosc": 0
+      }
+    ],
+    "punktyTankowania": [
+      {
+        "nazwa": "Obóz Wędrowców"
+      },
+      {
+        "nazwa": "Ognisko Plemion"
+      }
+    ]
+  },
   "nazwyTowarow": {
     "Food": "Żywność",
     "Minerals": "Minerały",
@@ -258,7 +683,12 @@
     "lotMaxSek": 5,
     "lotSekNaDobe": 0.6,
     "skrotTestowy": 0.05,
-    "progBilansu": 1.05
+    "progBilansu": 1.05,
+    "poziomyMapy": {
+      "sredniPc": 900,
+      "bliskiPc": 300
+    },
+    "tablicaCenWierszy": 25
   },
   "bot": {
     "liczbaZiaren": 200,
@@ -266,9 +696,12 @@
     "maxSkokowTrasy": 6,
     "minZyskNettoKr": 0,
     "tankujGdyCenaPonizejBazyRazy": 1.0,
-    "eksplorujDoDoby": 80,
-    "eksplorujMaxSkokow": 3,
     "topN": 5,
-    "krokiIlosci": 8
+    "krokiIlosci": 8,
+    "liczbaZiarenL": 50,
+    "najlepszychCelowDoOcenyZalogi": 4,
+    "eksplorujMaxPc": 260,
+    "eksplorujDoUlamkaHoryzontu": 0.6,
+    "premiaEksploracjiKr": 400000
   }
 }

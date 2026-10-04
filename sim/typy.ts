@@ -1,7 +1,9 @@
 export type Towar = 'Food' | 'Minerals' | 'Solvents' | 'Explosives' | 'Electronics';
 export type TowarLubPaliwo = Towar | 'Fuel';
 export type Rola = 'pilot' | 'nawigator' | 'handlowiec';
-export type TypWezla = 'planeta' | 'tankowanie';
+export type TypWezla = 'planeta' | 'tankowanie' | 'przelot';
+export type Skala = 'S' | 'M' | 'L';
+export type TrybInformacji = 'pelna' | 'zasieg';
 
 export const TOWARY: Towar[] = ['Food', 'Minerals', 'Solvents', 'Explosives', 'Electronics'];
 export const TOWARY_I_PALIWO: TowarLubPaliwo[] = [...TOWARY, 'Fuel'];
@@ -15,6 +17,9 @@ export interface Wezel {
   y: number;
   cywilizacja?: string;
   populacjaMln?: number;
+  sektor?: number;
+  /** Czy to układ zamieszkiwalny (planeta z rynkiem albo plemiona z paliwem). */
+  zamieszkiwalny: boolean;
 }
 
 export interface Krawedz {
@@ -31,14 +36,24 @@ export interface ProfilCywilizacji {
   planety: string[];
   potrzebyM3NaDobe: Record<TowarLubPaliwo, number>;
   produkcjaM3NaDobe: Record<TowarLubPaliwo, number>;
+  /** Sufit dobowej wymiany NPC jako ułamek dziennego PKB; 0 = brak wymiany NPC (świat S). */
+  otwartosc: number;
+  /** Samowystarczalność żywnościowa: produkcja / potrzeby. */
+  ssr: number;
+  kolor: string;
+  sektor?: number;
+  stolica: string;
 }
 
 export interface Swiat {
   ziarno: string;
+  skala: Skala;
   wezly: Wezel[];
   krawedzie: Krawedz[];
   cywilizacje: ProfilCywilizacji[];
   startId: string;
+  /** Geometria kanonu do rysowania granic (brak dla S). */
+  geometria?: { promien: number; rdzen: number; strefaOd: number; strefaDo: number; sektory: number[]; liczbaSektorow: number };
 }
 
 /** Rynek jednego towaru na jednej planecie. Wszystko w m³ i m³/dobę. */
@@ -49,6 +64,15 @@ export interface PozycjaRynku {
   konsumpcja: number;
   /** Konsumpcja uśpiona do kontaktu (Elektronika u nieznanej cywilizacji). */
   konsumpcjaUspiona: number;
+  /** Otwartość handlowa cywilizacji: sufit dobowej wymiany NPC = otwartość × konsumpcja × mnożnik. */
+  otwartosc: number;
+}
+
+/** Co gracz wie o rynku planety: na żywo, ostatni odczyt (z wiekiem w dobach) albo nic. */
+export interface InformacjaORynku {
+  tryb: 'zywa' | 'odczyt';
+  rynek: Rynek;
+  wiekDob: number;
 }
 
 export type Rynek = Record<TowarLubPaliwo, PozycjaRynku>;
@@ -157,6 +181,8 @@ export interface Ceny {
   normaM3: number;
   zapasDoby: number;
   bilansNaDobe: number;
+  informacja: 'zywa' | 'odczyt';
+  wiekDob: number;
 }
 
 export interface Wycena {
@@ -175,4 +201,9 @@ export interface Osiagalny {
   dystans: number;
   paliwo: number;
   sciezka: string[];
+}
+
+export interface OpcjeGry {
+  skala?: Skala;
+  informacja?: TrybInformacji;
 }

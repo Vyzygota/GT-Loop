@@ -38,10 +38,10 @@ function naglowek(): string {
   const postep = Math.min(1, Math.max(0, (wartosc - K.startingCredits) / (cel - K.startingCredits)));
   return `<header>
     <h1>GalaxyTrader: Pętla</h1>
-    <div class="miara"><span class="et">Doba</span><span class="w" id="licznik-dob">${liczba1(g.stan.doba)} / ${P.dobyGry}</span></div>
+    <div class="miara"><span class="et">Doba</span><span class="w" id="licznik-dob">${liczba1(g.stan.doba)} / ${g.limitDob}</span></div>
     <div class="miara"><span class="et">Saldo</span><span class="w">${kr(g.stan.kr)}</span></div>
     <div class="miara"><span class="et">Wartość firmy</span><span class="w">${kr(wartosc)}</span></div>
-    <div class="miara"><span class="et">Cel: ${kr(cel)} w ${P.dobyGry} dób</span><div class="cel-pasek" title="${Math.round(postep * 100)}% drogi do celu"><div style="width:${(postep * 100).toFixed(1)}%"></div></div></div>
+    <div class="miara"><span class="et">Cel: ${kr(cel)} w ${g.limitDob} dób</span><div class="cel-pasek" title="${Math.round(postep * 100)}% drogi do celu"><div style="width:${(postep * 100).toFixed(1)}%"></div></div></div>
     <div class="miara"><span class="et">Paliwo</span><span class="w">${liczba1(g.stan.paliwo)} / ${K.bak} m³</span></div>
     <div class="miara"><span class="et">Lotów</span><span class="w">${g.stan.numerLotu}</span></div>
     <div class="ziarno"><label class="maly">Ziarno <input type="text" id="ziarno" value="${esc(g.swiat.ziarno)}" /></label><button data-akcja="nowa-gra">Nowa gra</button></div>
@@ -57,7 +57,7 @@ function renderuj(): void {
         <li>W doku czas stoi. Kupuj tanio to, czego gdzie indziej brakuje (tablica cen na dole), sprzedawaj to, co przywiozłeś, tankuj.</li>
         <li>Zatrudniaj załogę: handlowiec poprawia ceny, nawigator oszczędza paliwo, pilot skraca lot. Pilot i nawigator z tej samej cywilizacji dają synergię.</li>
         <li>Wybierz cel na mapie (albo klikając wiersz tablicy cen) i naciśnij „Leć”. Lot kosztuje paliwo i płace za doby w drodze.</li>
-        <li>Raport po locie pokazuje linia po linii, skąd wzięła się zmiana salda. Cel: podwoić wartość firmy w ${P.dobyGry} dób.</li>
+        <li>Raport po locie pokazuje linia po linii, skąd wzięła się zmiana salda. Cel: podwoić wartość firmy w ${g.limitDob} dób.</li>
         <li>Każdy m³, który sprzedasz, obniża cenę na tej planecie; wożenie w kółko tego samego przestaje się opłacać. Nieznana cywilizacja odsłania rynek po pierwszym lądowaniu.</li>
       </ol>
     </details>
@@ -131,7 +131,7 @@ async function lec(): Promise<void> {
   const licznik = document.getElementById('licznik-dob');
   const info = document.getElementById('lot-info');
   await animujLot(svg, g, trasa, dobaStart, raport.dobaKoniec, szybko ? P.ui.skrotTestowy : 1, (doba) => {
-    if (licznik) licznik.textContent = `${liczba1(doba)} / ${P.dobyGry}`;
+    if (licznik) licznik.textContent = `${liczba1(doba)} / ${g.limitDob}`;
     if (info) info.textContent = `W locie: ${esc(g.wezel(raport.z).nazwa)} → ${esc(g.wezel(raport.do).nazwa)}, doba ${liczba1(doba)}`;
   });
   ui.wLocie = false;

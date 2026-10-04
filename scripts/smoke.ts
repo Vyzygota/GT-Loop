@@ -8,7 +8,7 @@
 import { chromium, type Page } from 'playwright';
 import { build, preview } from 'vite';
 import { mkdirSync } from 'node:fs';
-import { Gra, P } from '../sim/index';
+import { Gra } from '../sim/index';
 import { sprzedajWszystko, wykonaj, zaplanuj } from '../bot/strategia';
 
 const ziarno = process.argv[2] ?? '7';
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
   await przegladarka.close();
   await serwer.close();
   console.log(
-    `Smoke: ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${P.dobyGry}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
+    `Smoke: ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${blizniak.limitDob}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
   );
   if (!koniec || !blizniak.stan.koniec) {
     console.error('Smoke: gra nie doszła do końca');

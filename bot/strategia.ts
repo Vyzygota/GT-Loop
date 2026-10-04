@@ -1,4 +1,4 @@
-import { Gra, K, P, TOWARY, efektyZalogi, type Towar, type Zalogant } from '../sim/index';
+import { Gra, K, P, TOWARY, efektyZalogi, type OpcjeGry, type Towar, type Zalogant } from '../sim/index';
 
 export interface Zakup {
   towar: Towar;
@@ -81,7 +81,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[]): Plan[] {
   const ef = efektyZalogi(zaloga);
   const tu = gra.stan.pozycja;
   const d = gra.graf.dijkstra(tu);
-  const cenaPaliwaTu = gra.cenaPaliwa(tu);
+  const cenaPaliwaTu = gra.cenaPaliwaTutaj();
   const plany: Plan[] = [];
   const ktosNieznany = gra.swiat.cywilizacje.some((c) => !gra.stan.znaneCywilizacje[c.id]);
   for (const [id, w] of d) {
@@ -99,7 +99,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[]): Plan[] {
     const place = Math.round(ef.placeNaDobe * doby);
     const kosztPaliwa = Math.round(paliwo * cenaPaliwaTu);
     const znany = gra.rynekZnany(id);
-    const eksploracja = !znany && ktosNieznany && gra.stan.doba <= P.bot.eksplorujDoDoby && w.skoki <= P.bot.eksplorujMaxSkokow;
+    const eksploracja = !znany && ktosNieznany && gra.stan.doba <= P.bot.eksplorujDoUlamkaHoryzontu * gra.limitDob && dystans <= P.bot.eksplorujMaxPc;
     if (!znany && !eksploracja) continue;
     const gotowka = gra.stan.kr - kosztTankowania - place;
     if (gotowka < 0) continue;
@@ -240,7 +240,7 @@ export function wykonaj(gra: Gra, d: Decyzja): { plan: Plan; akcje: Akcja[] } {
     }
   }
   // Tanie paliwo: dotankuj do pełna, jeśli cena poniżej progu i zostaje gotówka.
-  if (gra.cenaPaliwa(tu) <= P.bot.tankujGdyCenaPonizejBazyRazy * K.kurs * K.towary.Fuel.basePrice) {
+  if (gra.maPaliwo() && gra.cenaPaliwaTutaj() <= P.bot.tankujGdyCenaPonizejBazyRazy * K.kurs * K.towary.Fuel.basePrice) {
     tankuj(Math.min(K.bak - gra.stan.paliwo, gra.maxPaliwo(gra.stan.kr - rezerwa)));
   }
   // Paliwo na trasę mogło zjeść gotówkę przeznaczoną na towar; upewnij się, że wystarczy na lot.
@@ -270,8 +270,8 @@ export interface WynikZiarna {
   kontaktDoba: number | null;
 }
 
-export function zagrajZiarno(ziarno: string): WynikZiarna {
-  const gra = new Gra(ziarno);
+export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna {
+  const gra = new Gra(ziarno, opcje);
   const trasy: string[] = [];
   const towary: Towar[] = [];
   let pierwszy: number | null = null;

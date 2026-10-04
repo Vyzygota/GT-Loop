@@ -16,8 +16,8 @@ function migawkaCen(g: Gra): string {
 
 describe('determinizm', () => {
   it('to samo ziarno daje ten sam świat, te same ceny i tych samych kandydatów po tych samych akcjach', () => {
-    const a = new Gra('det-1');
-    const b = new Gra('det-1');
+    const a = new Gra('det-1', { skala: 'S' });
+    const b = new Gra('det-1', { skala: 'S' });
     expect(JSON.stringify(a.swiat)).toBe(JSON.stringify(b.swiat));
     expect(migawkaCen(a)).toBe(migawkaCen(b));
     expect(JSON.stringify(a.stan.kandydaci)).toBe(JSON.stringify(b.stan.kandydaci));
@@ -31,8 +31,8 @@ describe('determinizm', () => {
   });
 
   it('inne ziarno daje inny świat', () => {
-    const a = new Gra('det-1');
-    const b = new Gra('det-2');
+    const a = new Gra('det-1', { skala: 'S' });
+    const b = new Gra('det-2', { skala: 'S' });
     expect(JSON.stringify(a.swiat.wezly)).not.toBe(JSON.stringify(b.swiat.wezly));
     expect(migawkaCen(a)).not.toBe(migawkaCen(b));
   });
@@ -41,7 +41,7 @@ describe('determinizm', () => {
 describe('raport po locie', () => {
   it('suma linii równa się zmianie salda w każdym locie, także z pełną załogą', () => {
     for (const ziarno of ['raport-1', 'raport-2', 'raport-3']) {
-      const g = new Gra(ziarno);
+      const g = new Gra(ziarno, { skala: 'S' });
       while (!g.stan.koniec) {
         const saldoPrzed = g.stan.kr;
         krokBota(g);
@@ -58,7 +58,7 @@ describe('raport po locie', () => {
   });
 
   it('linie załogi: handlowiec, nawigator, synergia i pilot pojawiają się, gdy załoga jest na pokładzie', () => {
-    const g = new Gra('linie');
+    const g = new Gra('linie', { skala: 'S' });
     const tu = g.stan.pozycja;
     g.stan.zaloga = [
       { id: 'p', imie: 'P', rola: 'pilot', cywilizacja: 'cisi', umiejetnosc: 1.2, placa: K.placa.pilot },
@@ -83,7 +83,7 @@ describe('raport po locie', () => {
   });
 
   it('kontakt z nieznaną cywilizacją odsłania rynek i budzi popyt na Elektronikę', () => {
-    const g = new Gra('kontakt');
+    const g = new Gra('kontakt', { skala: 'S' });
     const nieznana = g.swiat.cywilizacje.find((c) => !c.znanaNaStarcie)!;
     const cel = nieznana.planety[0];
     expect(g.rynekZnany(cel)).toBe(false);
@@ -105,7 +105,7 @@ describe('raport po locie', () => {
   });
 
   it('wartość firmy = kr + ładunek po cenie sprzedaży w doku, a cel to podwojenie', () => {
-    const g = new Gra('wartosc');
+    const g = new Gra('wartosc', { skala: 'S' });
     expect(g.wartoscFirmy()).toBe(K.startingCredits);
     expect(g.celWartosci()).toBe(K.startingCredits * P.celMnoznikWartosci);
     const t = TOWARY.find((x) => g.maxKupno(x) >= 20)!;
@@ -115,14 +115,14 @@ describe('raport po locie', () => {
   });
 
   it('gra kończy się po przekroczeniu limitu dób', () => {
-    const g = new Gra('koniec');
+    const g = new Gra('koniec', { skala: 'S' });
     let loty = 0;
     while (!g.stan.koniec && loty < 500) {
       krokBota(g);
       loty++;
     }
     expect(g.stan.koniec).toBe(true);
-    expect(g.stan.doba).toBeGreaterThanOrEqual(P.dobyGry);
+    expect(g.stan.doba).toBeGreaterThanOrEqual(g.limitDob);
     expect(g.sprawdzTrase([g.stan.pozycja, g.graf.sasiedzi(g.stan.pozycja)[0].id]).blad).toMatch(/zakończona|paliwa|gotówki/);
   });
 });

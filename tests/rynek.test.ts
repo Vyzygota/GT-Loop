@@ -38,7 +38,7 @@ describe('nacisk i całka ceny krańcowej', () => {
   });
 
   it('cena krańcowa nie zależy od podziału transakcji na części', () => {
-    const g = new Gra('podzial');
+    const g = new Gra('podzial', { skala: 'S' });
     const tu = g.stan.pozycja;
     const towar = 'Food';
     const calosc = g.wycenaKupna(towar, 300, tu, 0).kwotaKr;
@@ -59,7 +59,7 @@ describe('niezmiennik spreadu', () => {
       [...zaloga({ handlowiec: K.skillCeiling }), ...zaloga({ handlowiec: K.skillCeiling }, 'kuznia')],
     ];
     for (const ziarno of ['1', '2', '3', 'alfa']) {
-      const g = new Gra(ziarno);
+      const g = new Gra(ziarno, { skala: 'S' });
       for (const c of g.swiat.cywilizacje) g.stan.znaneCywilizacje[c.id] = true;
       for (const w of g.swiat.wezly) {
         if (w.typ !== 'planeta') continue;
@@ -86,7 +86,7 @@ describe('niezmiennik spreadu', () => {
 
 describe('ładownia: objętość i masa', () => {
   it('nie da się przekroczyć objętości ani masy', () => {
-    const g = new Gra('masa');
+    const g = new Gra('masa', { skala: 'S' });
     const tu = g.stan.pozycja;
     g.stan.kr = 1e12;
     for (const t of TOWARY) g.stan.rynki[tu][t].zapas = 1e6;
@@ -103,7 +103,7 @@ describe('ładownia: objętość i masa', () => {
   });
 
   it('maxKupno respektuje zapas, miejsce, masę i gotówkę', () => {
-    const g = new Gra('maxkupno');
+    const g = new Gra('maxkupno', { skala: 'S' });
     const tu = g.stan.pozycja;
     for (const t of TOWARY) {
       const m = g.maxKupno(t);
@@ -117,7 +117,7 @@ describe('ładownia: objętość i masa', () => {
 
 describe('paliwo i zasięg', () => {
   it('zużycie = dystans × koszt na parsek × mnożnik załogi, a lot poza zasięg jest odrzucany', () => {
-    const g = new Gra('paliwo');
+    const g = new Gra('paliwo', { skala: 'S' });
     const tu = g.stan.pozycja;
     const sasiad = g.graf.sasiedzi(tu)[0];
     const przed = g.stan.paliwo;
@@ -146,7 +146,7 @@ describe('paliwo i zasięg', () => {
   });
 
   it('zasięg zawiera dokładnie węzły, do których starcza paliwa', () => {
-    const g = new Gra('zasieg');
+    const g = new Gra('zasieg', { skala: 'S' });
     const d = g.graf.dijkstra(g.stan.pozycja);
     const z = g.zasieg();
     for (const [id, w] of d) {
@@ -157,7 +157,7 @@ describe('paliwo i zasięg', () => {
 
   it('graf jest spójny, a każda krawędź ma długość ≤ skok podstawowy', () => {
     for (const ziarno of ['1', '7', '42', 'x']) {
-      const g = new Gra(ziarno);
+      const g = new Gra(ziarno, { skala: 'S' });
       expect(g.graf.spojny()).toBe(true);
       for (const k of g.swiat.krawedzie) expect(k.dystans).toBeLessThanOrEqual(K.skokPodstawowy);
       expect(g.swiat.wezly.filter((w) => w.typ === 'planeta')).toHaveLength(12);

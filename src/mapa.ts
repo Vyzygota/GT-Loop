@@ -10,7 +10,7 @@ export const KOLORY_CYW: Record<string, string> = {
 export function kolorCywilizacji(gra: Gra, id: string | undefined): string {
   if (!id) return 'var(--tankowanie)';
   if (!gra.stan.znaneCywilizacje[id]) return 'var(--nieznana)';
-  return KOLORY_CYW[id] ?? '#ccc';
+  return gra.cywilizacja(id)?.kolor ?? '#ccc';
 }
 
 const MARGINES = 14;

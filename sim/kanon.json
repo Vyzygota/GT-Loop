@@ -1,12 +1,30 @@
 {
   "kurs": 10,
   "towary": {
-    "Food":        { "basePrice": 315,   "gestosc": 0.7 },
-    "Minerals":    { "basePrice": 600,   "gestosc": 3.0 },
-    "Solvents":    { "basePrice": 1629,  "gestosc": 1.1 },
-    "Explosives":  { "basePrice": 6276,  "gestosc": 1.5 },
-    "Electronics": { "basePrice": 61307, "gestosc": 0.4 },
-    "Fuel":        { "basePrice": 1000,  "gestosc": 1.0 }
+    "Food": {
+      "basePrice": 315,
+      "gestosc": 0.7
+    },
+    "Minerals": {
+      "basePrice": 600,
+      "gestosc": 3.0
+    },
+    "Solvents": {
+      "basePrice": 1629,
+      "gestosc": 1.1
+    },
+    "Explosives": {
+      "basePrice": 6276,
+      "gestosc": 1.5
+    },
+    "Electronics": {
+      "basePrice": 61307,
+      "gestosc": 0.4
+    },
+    "Fuel": {
+      "basePrice": 1000,
+      "gestosc": 1.0
+    }
   },
   "ladownia": 480,
   "maxMasaLadunku": 1440,
@@ -23,6 +41,72 @@
   "normaZapasu": 30,
   "skillFloor": 0.8,
   "skillCeiling": 1.25,
-  "placa": { "pilot": 800, "nawigator": 400, "handlowiec": 500 },
-  "miejscaZalogi": 4
+  "placa": {
+    "pilot": 800,
+    "nawigator": 400,
+    "handlowiec": 500
+  },
+  "miejscaZalogi": 4,
+  "promienGalaktyki": 1257,
+  "DeadCoreFraction": 0.3,
+  "gradientZdatnosci": {
+    "od": 0.3,
+    "do": 0.467
+  },
+  "habitableZoneInner": 0.467,
+  "habitableZoneOuter": 0.6,
+  "SectorCount": 7,
+  "ukladyZamieszkiwalne": 464,
+  "terytoriumZPopulacji": {
+    "staly": 3,
+    "naDekade": 2.2
+  },
+  "zasiegLacznosci": 182,
+  "cywilizacje": {
+    "ai": {
+      "nazwa": "AI",
+      "otwartosc": 1.66,
+      "ssr": 0.09
+    },
+    "corrath": {
+      "nazwa": "Corrath",
+      "otwartosc": 0.77,
+      "ssr": 0.46
+    },
+    "duhari": {
+      "nazwa": "Duhari",
+      "otwartosc": 0.46,
+      "ssr": 1.7
+    },
+    "ludzie": {
+      "nazwa": "Ludzie",
+      "otwartosc": 0.26,
+      "ssr": 1.25
+    },
+    "orak": {
+      "nazwa": "Orak",
+      "otwartosc": 0.04,
+      "ssr": 0.02
+    },
+    "planta": {
+      "nazwa": "Planta",
+      "otwartosc": 0.85,
+      "ssr": 0.54
+    },
+    "szkarni": {
+      "nazwa": "Szkarni",
+      "otwartosc": 0.72,
+      "ssr": 0.43
+    },
+    "velhari": {
+      "nazwa": "Velhari",
+      "otwartosc": 1.18,
+      "ssr": 0.56
+    },
+    "vreth": {
+      "nazwa": "Vreth",
+      "otwartosc": 0.5,
+      "ssr": 1.2
+    }
+  }
 }

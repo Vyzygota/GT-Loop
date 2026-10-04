@@ -23,7 +23,7 @@ export function uruchomBota(liczba = P.bot.liczbaZiaren, pierwsze = P.bot.pierws
   const pierwsze_ = wyniki.map((w) => w.pierwszyZyskownyLot).filter((x): x is number => x !== null);
   const kontakt = wyniki.filter((w) => w.kontaktDoba !== null).length;
   const linie = [
-    `Bot: ${liczba} ziaren × ${P.dobyGry} dób, strategia zachłanna (${((Date.now() - start) / 1000).toFixed(1)} s)`,
+    `Bot: ${liczba} ziaren × ${P.skale[P.skala].limitDob} dób, strategia zachłanna (${((Date.now() - start) / 1000).toFixed(1)} s)`,
     `Ziarna z zyskiem (wartość końcowa > start): ${((100 * zZyskiem) / liczba).toFixed(1)}%`,
     `Ziarna z podwojeniem wartości: ${((100 * podwoili) / liczba).toFixed(1)}%`,
     `Mediana lotów do pierwszej zyskownej trasy: ${mediana(pierwsze_)} (brak zyskownej trasy w ${liczba - pierwsze_.length} ziarnach)`,

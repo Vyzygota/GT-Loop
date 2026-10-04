@@ -73,10 +73,43 @@ export function kwotaPaliwaWU(poz: PozycjaRynku, m3: number): number {
   return K.towary.Fuel.basePrice * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n);
 }
 
-/** Upływ dt dób: produkcja dodaje, konsumpcja zabiera, zapas w [0, maxZapasWNormach × norma]. */
+const EPS_CZASU = 1e-9;
+
+/**
+ * Dobowa wymiana NPC (m³/dobę): handlarze NPC ciągną zapas ku normie w tempie `tempoWymianyNPC`,
+ * ale nie szybciej niż sufit = otwartość × dobowa konsumpcja × mnożnik. Otwartość 0 = brak wymiany (świat S).
+ */
+export function wymianaNPC(poz: PozycjaRynku): number {
+  if (poz.otwartosc <= 0) return 0;
+  const sufit = poz.otwartosc * poz.konsumpcja * P.galaktyka.mnoznikSufituNPC;
+  const chec = P.galaktyka.tempoWymianyNPC * (poz.norma - poz.zapas);
+  return ogranicz(chec, -sufit, sufit);
+}
+
+/** Sufit dobowej wymiany NPC dla pozycji (m³/dobę). */
+export function sufitWymianyNPC(poz: PozycjaRynku): number {
+  return poz.otwartosc * poz.konsumpcja * P.galaktyka.mnoznikSufituNPC;
+}
+
+/**
+ * Upływ dt dób: produkcja dodaje, konsumpcja zabiera, zapas w [0, maxZapasWNormach × norma].
+ * Bez wymiany NPC jedna aktualizacja liniowa (jak w świecie S); z wymianą NPC krok co najwyżej jednej doby,
+ * bo wymiana zależy od bieżącego zapasu.
+ */
 export function krokRynku(poz: PozycjaRynku, dt: number): void {
+  if (!(dt > 0)) return;
+  const max = P.maxZapasWNormach * poz.norma;
   const bilans = poz.produkcja - poz.konsumpcja;
-  poz.zapas = ogranicz(poz.zapas + bilans * dt, 0, P.maxZapasWNormach * poz.norma);
+  if (poz.otwartosc <= 0) {
+    poz.zapas = ogranicz(poz.zapas + bilans * dt, 0, max);
+    return;
+  }
+  let pozostalo = dt;
+  while (pozostalo > EPS_CZASU) {
+    const krok = Math.min(1, pozostalo);
+    poz.zapas = ogranicz(poz.zapas + (bilans + wymianaNPC(poz)) * krok, 0, max);
+    pozostalo -= krok;
+  }
 }
 
 /** Rzut zapasu w przód bez mutacji (do planowania). */

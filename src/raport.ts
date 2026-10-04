@@ -1,4 +1,4 @@
-import { K, P, type Gra, type Raport } from '../sim/index';
+import { K, type Gra, type Raport } from '../sim/index';
 import { doby, esc, kr, krZnak, liczba1, liczba2, m3, nazwaTowaru, pc } from './format';
 
 function klasa(x: number): string {
@@ -63,7 +63,7 @@ export function modalKonca(gra: Gra): string {
   const cel = gra.celWartosci();
   const sukces = wartosc >= cel;
   return `<div class="wniosek" style="border-color:${sukces ? 'var(--zysk)' : 'var(--strata)'}">
-    <b>Koniec gry po ${liczba1(gra.stan.doba)} dobach (limit ${P.dobyGry}).</b> Wartość firmy: <b>${kr(wartosc)}</b> z ${kr(K.startingCredits)} na starcie (×${liczba2(wartosc / K.startingCredits)}).
+    <b>Koniec gry po ${liczba1(gra.stan.doba)} dobach (limit ${gra.limitDob}).</b> Wartość firmy: <b>${kr(wartosc)}</b> z ${kr(K.startingCredits)} na starcie (×${liczba2(wartosc / K.startingCredits)}).
     ${sukces ? 'Cel osiągnięty: wartość firmy podwojona.' : `Cel nieosiągnięty: zabrakło ${kr(cel - wartosc)} do ${kr(cel)}.`}
     Lotów: ${gra.stan.numerLotu}. Nową grę zaczniesz przyciskiem w nagłówku (możesz zmienić ziarno).
   </div>`;

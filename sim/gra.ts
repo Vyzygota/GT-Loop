@@ -12,21 +12,25 @@ import {
 } from './rynek';
 import { K, P, kr } from './stale';
 import { generujSwiat } from './swiat';
-import { Graf } from './trasa';
+import { Graf, odleglosc } from './trasa';
 import { efektyZalogi, generujKandydatow } from './zaloga';
 import {
   TOWARY,
   TOWARY_I_PALIWO,
   type Ceny,
   type EfektyZalogi,
+  type InformacjaORynku,
   type LiniaRaportu,
+  type OpcjeGry,
   type Osiagalny,
   type PozycjaLadowni,
   type Raport,
   type Rynek,
+  type Skala,
   type Swiat,
   type Towar,
   type Transakcja,
+  type TrybInformacji,
   type Wezel,
   type Wycena,
   type WynikHandlowy,
@@ -34,6 +38,11 @@ import {
 } from './typy';
 
 const EPS = 1e-9;
+
+export interface Odczyt {
+  doba: number;
+  rynek: Rynek;
+}
 
 export interface Stan {
   doba: number;
@@ -46,6 +55,8 @@ export interface Stan {
   rynki: Record<string, Rynek>;
   znaneCywilizacje: Record<string, boolean>;
   wizyty: Record<string, number>;
+  /** Ostatnie odczyty rynków odwiedzonych planet (tryb informacji `zasieg`). */
+  odczyty: Record<string, Odczyt>;
   numerLotu: number;
   koniec: boolean;
   raporty: Raport[];
@@ -63,16 +74,28 @@ function zaokr(x: number): number {
   return Math.round(x);
 }
 
+function kopiaRynku(r: Rynek): Rynek {
+  const k = {} as Rynek;
+  for (const t of TOWARY_I_PALIWO) k[t] = { ...r[t] };
+  return k;
+}
+
 /** Gra: czysta symulacja bez DOM. UI i bot wywołują wyłącznie jej metody. */
 export class Gra {
   readonly swiat: Swiat;
   readonly graf: Graf;
   readonly stan: Stan;
+  readonly skala: Skala;
+  readonly informacja: TrybInformacji;
+  readonly limitDob: number;
   private okres!: Okres;
   private readonly rng: Losowosc;
 
-  constructor(ziarno: string) {
-    const { swiat, rynki } = generujSwiat(ziarno);
+  constructor(ziarno: string, opcje: OpcjeGry = {}) {
+    this.skala = opcje.skala ?? P.skala;
+    this.informacja = opcje.informacja ?? P.informacja;
+    this.limitDob = P.skale[this.skala].limitDob;
+    const { swiat, rynki } = generujSwiat(ziarno, this.skala);
     this.swiat = swiat;
     this.graf = new Graf(swiat.wezly, swiat.krawedzie);
     this.rng = new Losowosc(ziarno);
@@ -91,6 +114,7 @@ export class Gra {
       rynki,
       znaneCywilizacje: znane,
       wizyty: {},
+      odczyty: {},
       numerLotu: 0,
       koniec: false,
       raporty: [],
@@ -106,25 +130,56 @@ export class Gra {
     return w;
   }
 
+  cywilizacja(id: string | undefined) {
+    return this.swiat.cywilizacje.find((c) => c.id === id);
+  }
+
   cywilizacjaZnana(idCyw: string | undefined): boolean {
     return !!idCyw && !!this.stan.znaneCywilizacje[idCyw];
   }
 
+  /** Czy węzeł ma rynek, który gracz może poznać (planeta znanej cywilizacji). */
   rynekZnany(idWezla: string): boolean {
     const w = this.wezel(idWezla);
     return w.typ === 'planeta' && this.cywilizacjaZnana(w.cywilizacja);
+  }
+
+  /** Czy węzeł sprzedaje paliwo (planeta albo plemiona; układ przelotowy nie). */
+  maPaliwo(idWezla: string = this.stan.pozycja): boolean {
+    return this.wezel(idWezla).typ !== 'przelot';
+  }
+
+  /** Odległość w linii prostej od statku (łączność). */
+  odlegloscOdStatku(idWezla: string): number {
+    return odleglosc(this.wezel(), this.wezel(idWezla));
+  }
+
+  wLacznosci(idWezla: string): boolean {
+    return idWezla === this.stan.pozycja || this.odlegloscOdStatku(idWezla) <= K.zasiegLacznosci + EPS;
+  }
+
+  /**
+   * Co gracz wie o rynku planety. Tryb `pelna`: wszystko na żywo. Tryb `zasieg`: na żywo w zasięgu łączności,
+   * poza nim ostatni odczyt z odwiedzonej planety (z wiekiem), a nieodwiedzonej planety nie widać wcale.
+   */
+  informacjaORynku(idWezla: string): InformacjaORynku | null {
+    if (!this.rynekZnany(idWezla)) return null;
+    if (this.informacja === 'pelna' || this.wLacznosci(idWezla)) return { tryb: 'zywa', rynek: this.stan.rynki[idWezla], wiekDob: 0 };
+    const o = this.stan.odczyty[idWezla];
+    if (!o) return null;
+    return { tryb: 'odczyt', rynek: o.rynek, wiekDob: this.stan.doba - o.doba };
   }
 
   efekty(zaloga: readonly Zalogant[] = this.stan.zaloga): EfektyZalogi {
     return efektyZalogi(zaloga);
   }
 
-  /** Ceny jednostkowe towaru na znanej planecie (kr/m³) przy danym udziale handlowca. */
+  /** Ceny jednostkowe towaru (kr/m³) według tego, co gracz wie o planecie. */
   ceny(idWezla: string, towar: Towar, udzial = this.efekty().udzialHandlowca): Ceny | null {
-    if (!this.rynekZnany(idWezla)) return null;
-    const poz = this.stan.rynki[idWezla][towar];
+    const info = this.informacjaORynku(idWezla);
+    if (!info) return null;
+    const poz = info.rynek[towar];
     const baza = cenaBazowaWU(K.towary[towar].basePrice, poz);
-    const bilans = poz.produkcja - poz.konsumpcja;
     return {
       kupnoKr: kr(baza * mnoznikKupna(udzial)),
       sprzedazKr: kr(baza * mnoznikSprzedazy(udzial)),
@@ -133,20 +188,31 @@ export class Gra {
       zapasM3: poz.zapas,
       normaM3: poz.norma,
       zapasDoby: poz.konsumpcja > 0 ? poz.zapas / poz.konsumpcja : Infinity,
-      bilansNaDobe: bilans,
+      bilansNaDobe: poz.produkcja - poz.konsumpcja,
+      informacja: info.tryb,
+      wiekDob: info.wiekDob,
     };
   }
 
-  /** Cena jednostkowa paliwa w węźle (kr/m³). */
-  cenaPaliwa(idWezla: string = this.stan.pozycja): number {
+  /** Cena jednostkowa paliwa w węźle (kr/m³); null, gdy nie ma paliwa albo brak informacji. */
+  cenaPaliwa(idWezla: string = this.stan.pozycja): number | null {
     const w = this.wezel(idWezla);
+    if (w.typ === 'przelot') return null;
     if (w.typ === 'tankowanie') return kr(K.towary.Fuel.basePrice);
-    return kr(cenaBazowaWU(K.towary.Fuel.basePrice, this.stan.rynki[idWezla].Fuel));
+    if (idWezla === this.stan.pozycja) return kr(cenaBazowaWU(K.towary.Fuel.basePrice, this.stan.rynki[idWezla].Fuel));
+    const info = this.informacjaORynku(idWezla);
+    if (!info) return null;
+    return kr(cenaBazowaWU(K.towary.Fuel.basePrice, info.rynek.Fuel));
+  }
+
+  /** Cena paliwa tutaj; w układzie bez paliwa cena bazowa (do wycen odniesienia). */
+  cenaPaliwaTutaj(): number {
+    return this.cenaPaliwa() ?? kr(K.towary.Fuel.basePrice);
   }
 
   // ---------- Wyceny (bez mutacji) ----------
 
-  private wycenaNaPlanecie(idWezla: string, towar: Towar, m3: number, rodzaj: 'kupno' | 'sprzedaz', udzial: number, rynek = this.stan.rynki[idWezla][towar]): Wycena {
+  private wycenaNaRynku(towar: Towar, m3: number, rodzaj: 'kupno' | 'sprzedaz', udzial: number, rynek: Rynek[Towar]): Wycena {
     const base = K.towary[towar].basePrice;
     const znak = rodzaj === 'kupno' ? -1 : 1;
     const po = { ...rynek, zapas: rynek.zapas + znak * m3 };
@@ -166,25 +232,35 @@ export class Gra {
     };
   }
 
+  private rynekDoWyceny(idWezla: string): Rynek {
+    if (idWezla === this.stan.pozycja) {
+      if (!this.rynekZnany(idWezla)) throw new Error('Tu nie ma rynku');
+      return this.stan.rynki[idWezla];
+    }
+    const info = this.informacjaORynku(idWezla);
+    if (!info) throw new Error('Brak informacji o tym rynku');
+    return info.rynek;
+  }
+
   wycenaKupna(towar: Towar, m3: number, idWezla = this.stan.pozycja, udzial = this.efekty().udzialHandlowca): Wycena {
-    if (!this.rynekZnany(idWezla)) throw new Error('Rynek nieznany');
-    return this.wycenaNaPlanecie(idWezla, towar, m3, 'kupno', udzial);
+    return this.wycenaNaRynku(towar, m3, 'kupno', udzial, this.rynekDoWyceny(idWezla)[towar]);
   }
 
   wycenaSprzedazy(towar: Towar, m3: number, idWezla = this.stan.pozycja, udzial = this.efekty().udzialHandlowca): Wycena {
-    if (!this.rynekZnany(idWezla)) throw new Error('Rynek nieznany');
-    return this.wycenaNaPlanecie(idWezla, towar, m3, 'sprzedaz', udzial);
+    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, this.rynekDoWyceny(idWezla)[towar]);
   }
 
-  /** Wycena sprzedaży na znanej planecie za `doby` dób (zapas rzutowany w przód). */
+  /** Wycena sprzedaży na planecie za `doby` dób: odczyt na żywo rzutowany w przód, stary odczyt bez rzutowania. */
   wycenaSprzedazyZa(towar: Towar, m3: number, idWezla: string, doby: number, udzial = this.efekty().udzialHandlowca): Wycena {
-    if (!this.rynekZnany(idWezla)) throw new Error('Rynek nieznany');
-    const rynek = zapasPo(this.stan.rynki[idWezla][towar], doby);
-    return this.wycenaNaPlanecie(idWezla, towar, m3, 'sprzedaz', udzial, rynek);
+    const info = idWezla === this.stan.pozycja ? ({ tryb: 'zywa', rynek: this.rynekDoWyceny(idWezla), wiekDob: 0 } as InformacjaORynku) : this.informacjaORynku(idWezla);
+    if (!info) throw new Error('Brak informacji o tym rynku');
+    const rynek = info.tryb === 'zywa' ? zapasPo(info.rynek[towar], doby) : info.rynek[towar];
+    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, rynek);
   }
 
   wycenaPaliwa(m3: number, idWezla = this.stan.pozycja): { m3: number; kwotaKr: number; cenaSredniaKr: number } {
     const w = this.wezel(idWezla);
+    if (w.typ === 'przelot') return { m3, kwotaKr: 0, cenaSredniaKr: 0 };
     const kwotaWU = w.typ === 'tankowanie' ? K.towary.Fuel.basePrice * m3 : kwotaPaliwaWU(this.stan.rynki[idWezla].Fuel, m3);
     const kwotaKr = zaokr(kr(kwotaWU));
     return { m3, kwotaKr, cenaSredniaKr: m3 > 0 ? kwotaKr / m3 : 0 };
@@ -201,7 +277,7 @@ export class Gra {
   /** Największa ilość towaru, jaką da się tu kupić: zapas, objętość, masa i gotówka. */
   maxKupno(towar: Towar, gotowka = this.stan.kr, idWezla = this.stan.pozycja, udzial = this.efekty().udzialHandlowca): number {
     if (!this.rynekZnany(idWezla)) return 0;
-    const poz = this.stan.rynki[idWezla][towar];
+    const poz = this.rynekDoWyceny(idWezla)[towar];
     const g = K.towary[towar].gestosc;
     let hi = Math.min(poz.zapas, K.ladownia - this.objetoscZajeta(), (K.maxMasaLadunku - this.masaZajeta()) / g);
     hi = Math.max(0, hi);
@@ -216,6 +292,7 @@ export class Gra {
   }
 
   maxPaliwo(gotowka = this.stan.kr): number {
+    if (!this.maPaliwo()) return 0;
     let hi = Math.max(0, K.bak - this.stan.paliwo);
     if (this.wycenaPaliwa(hi).kwotaKr <= gotowka) return hi;
     let lo = 0;
@@ -233,18 +310,18 @@ export class Gra {
 
   /** Węzły osiągalne z bieżącej pozycji na obecnym paliwie, najkrótszą ścieżką. */
   zasieg(paliwo = this.stan.paliwo, zaloga: readonly Zalogant[] = this.stan.zaloga): Map<string, Osiagalny> {
-    const d = this.graf.dijkstra(this.stan.pozycja);
+    const mnoznik = this.efekty(zaloga).mnoznikPaliwa;
+    const maxDystans = paliwo / (K.kosztPaliwaNaParsek * mnoznik) + EPS;
+    const d = this.graf.dijkstra(this.stan.pozycja, maxDystans);
     const wynik = new Map<string, Osiagalny>();
     for (const [id, w] of d) {
-      const potrzebne = this.potrzebnePaliwo(w.dystans, zaloga);
-      if (potrzebne <= paliwo + EPS) {
-        wynik.set(id, { id, dystans: w.dystans, paliwo: potrzebne, sciezka: this.graf.najkrotszaSciezka(this.stan.pozycja, id)! });
-      }
+      const potrzebne = w.dystans * K.kosztPaliwaNaParsek * mnoznik;
+      if (potrzebne <= paliwo + EPS) wynik.set(id, { id, dystans: w.dystans, paliwo: potrzebne, sciezka: Graf.sciezkaZ(d, id)! });
     }
     return wynik;
   }
 
-  /** Wartość firmy = kr + ładunek po cenie sprzedaży w bieżącym doku (w punkcie plemion: po koszcie zakupu). */
+  /** Wartość firmy = kr + ładunek po cenie sprzedaży w bieżącym doku (bez rynku: po koszcie zakupu). */
   wartoscFirmy(): number {
     return this.stan.kr + this.wartoscLadowni();
   }
@@ -333,6 +410,7 @@ export class Gra {
 
   tankuj(m3: number): { m3: number; kwotaKr: number } {
     if (!(m3 > 0) || !Number.isFinite(m3)) throw new Error('Ilość musi być dodatnia');
+    if (!this.maPaliwo()) throw new Error('W układzie przelotowym nie ma paliwa');
     if (this.stan.paliwo + m3 > K.bak + EPS) throw new Error('Bak nie pomieści tyle paliwa');
     const w = this.wezel();
     const wyc = this.wycenaPaliwa(m3);
@@ -393,7 +471,8 @@ export class Gra {
     const stanPrzed = { saldo: okres.saldoNaStarcie, wartosc: okres.wartoscNaStarcie };
     const z = this.stan.pozycja;
     const cel = trasa[trasa.length - 1];
-    const cenaOdniesienia = this.cenaPaliwa(z);
+    const cenaOdniesienia = this.cenaPaliwaTutaj();
+    this.zapiszOdczyt(z);
 
     // Paliwo: bez załogi, nawigator, synergia.
     const bezZalogi = s.dystans * K.kosztPaliwaNaParsek;
@@ -420,7 +499,7 @@ export class Gra {
     this.stan.pozycja = cel;
     this.stan.numerLotu += 1;
     const kontakt = this.zadokuj();
-    this.stan.koniec = this.stan.doba >= P.dobyGry - EPS;
+    this.stan.koniec = this.stan.doba >= this.limitDob - EPS;
 
     // Raport: linie sumują się do zmiany salda.
     const sprzedaze = okres.transakcje.filter((t) => t.rodzaj === 'sprzedaz');
@@ -433,7 +512,6 @@ export class Gra {
     const oszczSynKr = zaokr(oszczSyn * cenaOdniesienia);
     const paliwoKupione = okres.paliwoKosztKr;
     const pilotKr = placeNominalne - place;
-    const nazwaCelu = this.wezel(cel).nazwa;
     const nazwaZ = this.wezel(z).nazwa;
 
     const linie: LiniaRaportu[] = [];
@@ -506,7 +584,6 @@ export class Gra {
       kontakt,
       koniecGry: this.stan.koniec,
     };
-    void nazwaCelu;
     this.stan.raporty.push(raport);
     return raport;
   }
@@ -517,14 +594,21 @@ export class Gra {
     return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy() };
   }
 
-  /** Dokowanie: licznik wizyt, kontakt z nieznaną cywilizacją, kandydaci do załogi. */
+  /** Zapamiętuje odczyt rynku odwiedzonej planety (tylko w trybie `zasieg`). */
+  private zapiszOdczyt(idWezla: string): void {
+    if (this.informacja !== 'zasieg') return;
+    if (!this.rynekZnany(idWezla) || !(this.stan.wizyty[idWezla] > 0)) return;
+    this.stan.odczyty[idWezla] = { doba: this.stan.doba, rynek: kopiaRynku(this.stan.rynki[idWezla]) };
+  }
+
+  /** Dokowanie: licznik wizyt, kontakt z nieznaną cywilizacją, odczyty w łączności, kandydaci do załogi. */
   private zadokuj(): Raport['kontakt'] | undefined {
     const w = this.wezel();
     this.stan.wizyty[w.id] = (this.stan.wizyty[w.id] ?? 0) + 1;
     let kontakt: Raport['kontakt'];
     if (w.typ === 'planeta' && w.cywilizacja && !this.stan.znaneCywilizacje[w.cywilizacja]) {
       this.stan.znaneCywilizacje[w.cywilizacja] = true;
-      const cyw = this.swiat.cywilizacje.find((c) => c.id === w.cywilizacja)!;
+      const cyw = this.cywilizacja(w.cywilizacja)!;
       for (const id of cyw.planety) {
         for (const t of TOWARY_I_PALIWO) {
           const poz = this.stan.rynki[id][t];
@@ -537,8 +621,13 @@ export class Gra {
       kontakt = {
         cywilizacja: cyw.id,
         nazwa: cyw.nazwa,
-        opis: `Odsłonięto rynki planet: ${cyw.planety.map((id) => this.wezel(id).nazwa).join(', ')}. Odblokowano ich popyt na ${P.nazwyTowarow.Electronics.toLowerCase()}.`,
+        opis: `Odsłonięto rynki ${cyw.planety.length} planet (stolica: ${this.wezel(cyw.stolica).nazwa}). Odblokowano ich popyt na ${P.nazwyTowarow.Electronics.toLowerCase()}.`,
       };
+    }
+    if (this.informacja === 'zasieg') {
+      for (const inny of this.swiat.wezly) {
+        if (inny.typ === 'planeta' && this.stan.wizyty[inny.id] > 0 && this.wLacznosci(inny.id)) this.zapiszOdczyt(inny.id);
+      }
     }
     if (w.typ === 'planeta') {
       const rng = this.rng.odgalezienie(`kandydaci:${w.id}:${this.stan.wizyty[w.id]}`);

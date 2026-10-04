@@ -79,7 +79,7 @@ function wierszPaliwa(gra: Gra, ilosci: Record<string, number>): string {
   return `<table style="margin-top:8px"><thead><tr><th>Paliwo</th><th>Cena kr/m³</th><th>Bak</th><th>Ilość</th><th></th></tr></thead>
     <tbody><tr>
       <td class="lewo"><b>${nazwaTowaru('Fuel')}</b><div class="szary maly">${liczba1(K.kosztPaliwaNaParsek)} m³/pc</div></td>
-      <td>${kr(gra.cenaPaliwa())}${w ? `<div class="wycena">za ${liczba1(il)}: ${kr(w.kwotaKr)} (śr. ${kr(w.cenaSredniaKr)})</div>` : ''}</td>
+      <td>${kr(gra.cenaPaliwaTutaj())}${w ? `<div class="wycena">za ${liczba1(il)}: ${kr(w.kwotaKr)} (śr. ${kr(w.cenaSredniaKr)})</div>` : ''}</td>
       <td>${m3(gra.stan.paliwo)} / ${m3(K.bak)}</td>
       <td class="ilosc"><input type="number" min="0" step="1" value="${il || ''}" data-ilosc="Fuel" placeholder="m³" /></td>
       <td class="akcje"><button data-akcja="tankuj" ${w ? '' : 'disabled'}>Tankuj</button>
@@ -184,7 +184,7 @@ export function tablicaCen(gra: Gra): string {
         <td class="lewo"><span class="kropka" style="background:${kolorCywilizacji(gra, w.cywilizacja)}"></span>${esc(w.nazwa)}${w.id === tu ? ' <span class="szary">(tu)</span>' : ''}</td>
         <td>${w.id === tu ? '—' : `${pc(d.dystans)}, ${d.skoki} sk.`}${wZasiegu || w.id === tu ? '' : '<div class="strata maly">poza zasięgiem</div>'}</td>
         ${komorki}
-        <td>${Math.round(gra.cenaPaliwa(w.id)).toLocaleString('pl-PL')}</td>
+        <td>${gra.cenaPaliwa(w.id) === null ? '?' : Math.round(gra.cenaPaliwa(w.id)!).toLocaleString('pl-PL')}</td>
       </tr>`;
     })
     .join('');

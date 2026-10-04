@@ -1,6 +1,6 @@
 import kanonJson from './kanon.json';
 import prototypJson from './prototyp.json';
-import type { Rola, TowarLubPaliwo } from './typy';
+import type { Rola, Skala, TowarLubPaliwo, TrybInformacji } from './typy';
 
 export interface Kanon {
   kurs: number;
@@ -22,6 +22,16 @@ export interface Kanon {
   skillCeiling: number;
   placa: Record<Rola, number>;
   miejscaZalogi: number;
+  promienGalaktyki: number;
+  DeadCoreFraction: number;
+  gradientZdatnosci: { od: number; do: number };
+  habitableZoneInner: number;
+  habitableZoneOuter: number;
+  SectorCount: number;
+  ukladyZamieszkiwalne: number;
+  terytoriumZPopulacji: { staly: number; naDekade: number };
+  zasiegLacznosci: number;
+  cywilizacje: Record<string, { nazwa: string; otwartosc: number; ssr: number }>;
 }
 
 export interface PlanetaProfil {
@@ -36,13 +46,40 @@ export interface CywilizacjaProfil {
   rola: 'hub' | 'ramie';
   znanaNaStarcie: boolean;
   start: boolean;
+  kolor: string;
+  otwartosc: number;
   planety: PlanetaProfil[];
   potrzebyM3NaMlnNaDobe: Record<TowarLubPaliwo, number>;
   produkcjaM3NaMlnNaDobe: Record<TowarLubPaliwo, number>;
 }
 
+export interface CywilizacjaWSkali {
+  id: string;
+  sektor: number;
+  start: boolean;
+  znanaNaStarcie: boolean;
+}
+
+export interface KonfiguracjaSkali {
+  limitDob: number;
+  opis?: string;
+  sektory?: number[];
+  ukladyZamieszkiwalne?: number;
+  cywilizacje?: CywilizacjaWSkali[];
+}
+
+export interface CywilizacjaKanonuProfil {
+  kolor: string;
+  populacjaMln: number;
+  sylaby: string[];
+  potrzeby: Record<TowarLubPaliwo, number>;
+  produkcjaDoPotrzeb: Partial<Record<TowarLubPaliwo, number>>;
+}
+
 export interface Prototyp {
-  dobyGry: number;
+  skala: Skala;
+  informacja: TrybInformacji;
+  skale: Record<Skala, KonfiguracjaSkali>;
   celMnoznikWartosci: number;
   nawigatorMaxRedukcjaPaliwa: number;
   synergiaRedukcjaPaliwa: number;
@@ -50,38 +87,72 @@ export interface Prototyp {
   liczbaKandydatow: number;
   umiejetnoscMiejscaDziesietne: number;
   maxZapasWNormach: number;
-  dobyRozruchuRynku: number;
-  zapasStartowyUlamekNormy: number;
-  zapasStartowyJitter: number;
   kontaktZapasElektronikiUlamekNormy: number;
-  uklad: {
-    promienGalaktykiPc: number;
-    promienHubaPc: number;
-    odlegloscTankowaniaPc: number;
-    krokRamieniaPc: number;
-    jitterPc: number;
-    jitterKatStopnie: number;
-    katMiedzyRamionamiStopnie: [number, number];
-    minOdstepPc: number;
-    maxProb: number;
+  galaktyka: {
+    minOdstepZamieszkiwalnychPc: number;
+    maxProbLosowania: number;
+    maxDlugoscSzlakuDodatkowegoPc: number;
+    krokPrzelotuPc: number;
+    jitterPrzelotuPc: number;
+    rozrzutTerytorium: number;
+    wykladnikWagiUkladu: number;
+    specjalizacjaMnoznik: number;
+    specjalizacjaReszta: number;
+    portNaUkladM3NaDobe: Record<TowarLubPaliwo, number>;
+    tempoWymianyNPC: number;
+    mnoznikSufituNPC: number;
+    glebokoscPortuMin: number;
+    glebokoscPortuMax: number;
+    zapasStartowyUlamekNormy: number;
+    zapasStartowyJitter: number;
+    dobyRozruchuRynku: number;
+    maxProbUkladu: number;
   };
-  cywilizacje: CywilizacjaProfil[];
-  punktyTankowania: { nazwa: string }[];
+  cywilizacjeKanonu: Record<string, CywilizacjaKanonuProfil>;
+  swiatS: {
+    dobyRozruchuRynku: number;
+    zapasStartowyUlamekNormy: number;
+    zapasStartowyJitter: number;
+    uklad: {
+      promienGalaktykiPc: number;
+      promienHubaPc: number;
+      odlegloscTankowaniaPc: number;
+      krokRamieniaPc: number;
+      jitterPc: number;
+      jitterKatStopnie: number;
+      katMiedzyRamionamiStopnie: [number, number];
+      minOdstepPc: number;
+      maxProb: number;
+    };
+    cywilizacje: CywilizacjaProfil[];
+    punktyTankowania: { nazwa: string }[];
+  };
   nazwyTowarow: Record<TowarLubPaliwo, string>;
   nazwyRol: Record<Rola, string>;
   imiona: string[];
   nazwiska: string[];
-  ui: { lotMinSek: number; lotMaxSek: number; lotSekNaDobe: number; skrotTestowy: number; progBilansu: number };
+  ui: {
+    lotMinSek: number;
+    lotMaxSek: number;
+    lotSekNaDobe: number;
+    skrotTestowy: number;
+    progBilansu: number;
+    poziomyMapy: { sredniPc: number; bliskiPc: number };
+    tablicaCenWierszy: number;
+  };
   bot: {
     liczbaZiaren: number;
+    liczbaZiarenL: number;
     pierwszeZiarno: number;
     maxSkokowTrasy: number;
     minZyskNettoKr: number;
     tankujGdyCenaPonizejBazyRazy: number;
-    eksplorujDoDoby: number;
-    eksplorujMaxSkokow: number;
     topN: number;
     krokiIlosci: number;
+    najlepszychCelowDoOcenyZalogi: number;
+    eksplorujMaxPc: number;
+    eksplorujDoUlamkaHoryzontu: number;
+    premiaEksploracjiKr: number;
   };
 }
 
