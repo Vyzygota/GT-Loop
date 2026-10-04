@@ -8,6 +8,15 @@
 - Bot: jeden lot na L trwa medianowo ok. 14 dób (34 loty w 480 dób, 1,9 s na ziarno), więc 1 200 dób × 50 ziaren to ok. 4–5 min na konfigurację; przegląd 3 parametrów × 4 wartości mieści się w godzinie.
 - Horyzont `limitDob` pochodzi ze skali (L 480); potrzebny jest osobny horyzont progresji (1 200) jako opcja gry.
 
+## Fazy 2–6: co wyszło w trakcie implementacji (L, B, progresja, pojedyncze ziarna)
+
+- **Premia awansu bez hamulca bankrutuje bota.** Pierwsza wersja wyceniała awans z domyślnej marży 0,3 ceny bazowej i rozkładała ją na potrzebną wartość koszyka; przy niskim `progAwansu` premia na m³ rosła bez ograniczeń i bot kupował Elektronikę po 613 tys. kr/m³, żeby ją „dostarczyć” ze stratą — ziarno 2 zbankrutowało w 228. dobie. Działa dopiero zestaw: marża z własnych sprzedaży bota (co najmniej 3), pułap premii 1 × cena bazowa na m³ i odrzucenie premii w planie, który spaliłby > 10% gotówki.
+- **Zachłanna stopa na dobę nigdy nie eksploruje daleko.** Nawet z premią kontaktu skalowaną horyzontem i zasięgiem 650 pc bot kończył 1 200 dób znając 3 cywilizacje z 9 (pusty lot na 600–1 500 pc przegrywa z każdym kursem handlowym). Potrzebna była jawna polityka ekspedycji: co 100 dób zobowiązanie do najbliższej planety nieznanej cywilizacji, dopóki `doba ≤ 0,6 horyzontu` i gotówka z ładunkiem ≥ 2 × koszt paliwa i płac. Pierwsza wersja (bez warunku gotówki) ruszała w dobie 0 i bankrutowała na paliwie.
+- **Odległości na L.** Z grafu tankowania (z karą przystanku 80 pc) najbliższa planeta Corrath leży 320–730 pc od startu, Velhari 580–900 pc, Szkarni 920–1 170 pc, Duhari 1 260–1 510 pc, AI 1 490–1 690 pc, Planta ok. 2 000 pc. Objazd 9 stolic najbliższym sąsiadem po grafie skoków to mediana ok. 4 550 pc = 1 140 dób przy 4 pc/dobę i 45 mln kr paliwa po cenie bazowej (kapitał startowy 6,8 mln). Bak 100 m³ nie jest przeszkodą: na szczeblu 0 graf tankowania sięga wszystkich 9 cywilizacji w 5 sprawdzonych ziarnach.
+- **Drabina kadłubów.** Mediana zysku na kurs (0,4–0,9 mln kr) niemal nie rośnie ze szczeblem, choć ładownia rośnie ×1,5 na szczebel: na płytkich rynkach portowych zysk kursu ogranicza głębokość portu docelowego, nie pojemność statku, więc większy kadłub kupuje głównie bak (dłuższe odcinki) i możliwość wiezienia kilku towarów naraz.
+- **Załoga.** Przy `xpNaDobeLotu` = 2 wszyscy czterej załoganci kończą 1 200 dób z ok. 2 300–2 400 XP (tier Mistrz od ok. 760. doby); Legenda (9 999 XP) wymagałaby ok. 5 000 dób lotu. Bot nie zatrudnia pilotów: nowicjusz ma umiejętność 0,80–0,91, więc spowalnia statek o 9–20%, a tolerancja kosztu dnia XP (500 kr) tego nie pokrywa; zatrudnia nawigatorów i handlowców (w B handlowiec nic nie daje, ale nie szkodzi).
+- **Pierwsze pomiary (3 ziarna, `progAwansu` 20):** udział pozycji rynku na sufitach (zapas 0 albo 6 norm) rośnie z 19% w dobie 0 do 45% w dobie 600 i 47% w dobie 1 200, bez NaN; dzienny PKB portów stały (bez awansów), wartość zapasów ×1,79 w d0–600 i ×0,99 w d600–1200.
+
 ---
 
 # Archiwum: ustalenia zadania spread

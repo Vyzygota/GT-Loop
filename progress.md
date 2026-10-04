@@ -1,11 +1,11 @@
 # Dziennik (progress) — progresja
 
 - [x] Faza 1: rozpoznanie — notatki w `findings.md`.
-- [ ] Faza 2: kanon i przełącznik.
-- [ ] Faza 3: model w symulacji (tier cywilizacji, drabina, XP).
-- [ ] Faza 4: bot z inwestycjami.
-- [ ] Faza 5: testy.
-- [ ] Faza 6: UI i smoke.
+- [x] Faza 2: kanon i przełącznik — `kanon.json`: `TierCount` 4, `tierZalogi` (progi 0/500/1500/9999 XP, widełki płac), `drabinaKadlubow` (6 szczebli, proponowane); `prototyp.json`: blok `progresja` (wyłączona domyślnie, horyzont 1 200, `progAwansu`, koszyki T2–T4, `mnoznikKonsumpcjiAwansu`, `mnoznikSzczebla`, `k`, `minKursowDoWycenySzczebla`, `xpNaDobeLotu`, `xpZaKontakt`, nazwy tierów) i parametry bota (`mnoznikGotowkiNaSzczebel`, premia awansu, `maxKosztDobyXpKr`, ekspedycje).
+- [x] Faza 3: model — `Gra`: `ladownia()/bak()/maxMasa()` ze szczebla, `wycenaSzczebla()/kupSzczebel()` (k × mediana zysku na kurs mierzonego przez grę: kurs = loty między dokami ze sprzedażą), `postepAwansu()/tierCywilizacji()` z dostawami liczonymi po cenie bazowej tylko dla towaru kupionego u innej cywilizacji (pochodzenie ładunku), awans mnoży konsumpcję i normę koszyka; XP w `lec` (doby × `xpNaDobeLotu`, kontakt `xpZaKontakt`), tier/umiejętność/płaca z `zaloga.ts`; linie raportu `stocznia` i `awans`, kamienie milowe w `stan.kamienie`.
+- [x] Faza 4: bot — ładownia/bak z gry, graf tankowania per szczebel, `inwestuj()` (szczebel przy 1,5 × ceny w stolicy), premia perspektywiczna za dostawy koszyka (własne marże bota, pułap 1 × cena bazowa/m³, strażnik 10% gotówki), polityka załogi „zatrudniaj i trzymaj” (tolerancja 500 kr/dobę), ekspedycje co 100 dób do najbliższej nieznanej cywilizacji przy gotówce ≥ 2 × koszt.
+- [x] Faza 5: testy — 66 zielonych (55 dotychczasowych + 11 nowych w `tests/progresja.test.ts`).
+- [x] Faza 6: UI (przełącznik, stocznia, tiery i koszyki, XP) i smoke z parametrem progresji.
 - [ ] Faza 7: pomiary i przegląd parametrów.
 - [ ] Faza 8: DECYZJE, push, opis PR.
 
