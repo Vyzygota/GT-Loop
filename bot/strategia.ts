@@ -325,6 +325,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
   const tu = gra.stan.pozycja;
   const doj = ctx.dojazdyZ(gra.stan.pozycja, zaloga);
   const cenaPaliwaTu = gra.cenaPaliwaTutaj();
+  const cenaBazowaPaliwa = kr(K.towary.Fuel.basePrice);
   const rynekTu = gra.rynekZnany(tu);
   const wartoscLadowniTu = gra.wartoscLadowni();
   const ladunek = pustyLadunek();
@@ -342,7 +343,10 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     if (!znany && !eksploracja) continue;
     const doby = d.dystans / ef.predkosc;
     const paliwo = d.dystans * K.kosztPaliwaNaParsek * ef.mnoznikPaliwa;
-    const kosztPaliwa = Math.round(paliwo * cenaPaliwaTu);
+    // Pierwszy odcinek po cenie tutaj, dalsze ostrożnie po cenie bazowej (u plemion paliwo kosztuje tyle, ile w kanonie).
+    const pierwszyDystans = doj.get(d.odcinki[0])?.dystans ?? d.dystans;
+    const paliwoPierwszego = Math.min(paliwo, pierwszyDystans * K.kosztPaliwaNaParsek * ef.mnoznikPaliwa);
+    const kosztPaliwa = Math.round(paliwoPierwszego * cenaPaliwaTu + (paliwo - paliwoPierwszego) * Math.max(cenaPaliwaTu, cenaBazowaPaliwa));
     const place = Math.round(ef.placeNaDobe * doby);
     const koszty = kosztPaliwa + place;
     const pierwszy = d.odcinki[0];

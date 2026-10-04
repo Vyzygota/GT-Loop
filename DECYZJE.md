@@ -1,6 +1,6 @@
 # DECYZJE — założenia spoza kanonu i wynik bota
 
-Liczby kanonu (`sim/kanon.json`) są wzięte z tabeli w `PROMPT.md` bez zmian. Wszystko poniżej to moje założenia; każde ma liczbę w `sim/prototyp.json` albo jest regułą opisaną tutaj.
+Liczby kanonu (`sim/kanon.json`) są wzięte z tabel w `PROMPT.md` i `PROMPT-galaktyka.md` bez zmian. Wszystko poniżej to moje założenia; każde ma liczbę w `sim/prototyp.json` albo jest regułą opisaną tutaj. Sekcje 1–25 opisują świat **S** (pierwszy prototyp; jego liczby leżą teraz w `prototyp.json → swiatS`), sekcja **Galaktyka** opisuje skale M i L.
 
 ## Rynek i ceny
 
@@ -71,3 +71,101 @@ Kryterium 2 spełnione: ≥ 70% ziaren z zyskiem, pierwsza zyskowna trasa w medi
 - **Paliwo dominuje koszty.** 1 m³/pc po ok. 10 000 kr/m³ to ok. 10 000 kr za parsek; płace (≤ 2 500 kr/dobę) są przy tym pomijalne, więc załoga „opłaca się” prawie zawsze poza słabym pilotem. Nawigator i synergia są zatem najcenniejszą częścią załogi.
 - **Masa vs objętość.** Najgęstszy towar (Minerały, 3 t/m³) wypełnia 1 440 t dokładnie przy 480 m³, więc dla pojedynczego towaru oba limity wyczerpują się razem; limit masy wiąże tylko ładunek mieszany. Test limitu masy istnieje, ale w grze rzadko go widać.
 - **Elektronika** (61 307 WU/m³) jest kapitałochłonna: za cały kapitał startowy kupisz ok. 10–15 m³, a norma zapasu na planecie to kilka m³, więc to towar na „kilka m³ do kilku planet”, a nie na pełną ładownię. To dobrze oddziela ją od towarów masowych.
+
+
+# Galaktyka (PROMPT-galaktyka.md)
+
+## Skale i przełączniki
+
+26. **Przełączniki** `skala` (S/M/L) i `informacja` (pelna/zasieg) w `prototyp.json` są domyślnymi wartościami; UI ma je w nagłówku, a adres `#ziarno=…&skala=M&informacja=zasieg` pozwala wysłać testerowi konkretny świat. Bot: `npm run bot -- [S|M|L|all] [pelna|zasieg|both] [liczba ziaren]`; smoke: `npm run smoke -- [ziarno] [katalog zrzutów] [skala] [informacja]`.
+27. **S** to dotychczasowy generator (hub + dwa ramiona) i dotychczasowe cywilizacje z otwartością 0 (brak wymiany NPC), więc świat S zachowuje się jak przed tą funkcją; wszystkie wcześniejsze testy działają na S. Przeniesienie liczb do `swiatS` nie zmienia ich wartości.
+28. **Horyzont** `limitDob`: S 120, M 240, L 480. W L dwa sektory to ok. 1 200 pc łuku; przy 4 pc/dobę i objazdach szlakami (ok. 1,3× linii prostej) daje to ok. 400 dób, więc 480 pozwala przejść dwa sektory i jeszcze handlować. Cel ×2 bez zmian.
+
+## Geometria (liczby kanonu w `kanon.json`)
+
+29. **Układy zamieszkiwalne** losowane w pierścieniu od martwego rdzenia (0,300 R) do zewnętrznej strefy (0,600 R) z gęstością ∝ zdatność(r) × r, gdzie zdatność rośnie liniowo od 0 przy 0,300 R do 1 przy 0,467 R i równa się 1 w strefie 0,467–0,600 R. Minimalny odstęp między układami zamieszkiwalnymi `minOdstepZamieszkiwalnychPc` = 14. L ma dokładnie 464 układy (liczba kanonu, status proponowane), M jeden sektor i 75 układów (ok. 464/7 z zapasem, żeby cztery cywilizacje zmieściły się z kilkunastoma układami plemion).
+30. **Sektory** to 7 równych wycinków kątowych; M używa sektora 1 (indeks 0). Granice i okręgi rdzenia oraz strefy są rysowane na mapie.
+31. **Terytorium z populacji**: liczba układów = round(3 + 2,2 × log10(populacja w mln) + rozrzut), rozrzut ∈ [−1,5; 1,5] z ziarna. Populacje cywilizacji (`cywilizacjeKanonu.*.populacjaMln`) dobrałem tak, by terytoria miały 12–19 układów (Orak 2·10⁴ mln → 12–13, Ludzie 1,5·10⁷ mln → 18–19); razem ok. 150 zamieszkanych układów w L, ok. 62 w M. Terytorium rośnie od zalążka w sektorze cywilizacji, zawsze najbliższym układem do środka ciężkości (zwarty obszar). Kolejna cywilizacja w tym samym sektorze zaczyna przy granicy poprzedniej (`sasiedztwoTerytoriow`), bo przy kanonicznym paliwie handel między cywilizacjami jest możliwy tylko na krótkich dystansach (patrz 44).
+32. **Trzy poziomy przejezdności**: planeta cywilizacji (rynek, paliwo, kandydaci), układ plemion (zamieszkiwalny bez cywilizacji: tylko paliwo po cenie bazowej; w S to były „punkty tankowania”), układ przelotowy (nic). Układy przelotowe leżą wzdłuż szlaków co `krokPrzelotuPc` = 19 pc z poprzecznym rozrzutem ±1,5 pc, więc każdy skok ma ≤ 19,3 pc < 20.
+33. **Szlaki** = minimalne drzewo rozpinające układów zamieszkiwalnych ∪ graf względnego sąsiedztwa (krawędź a–b, gdy żaden układ c nie leży bliżej obu końców niż one siebie; do `maxDlugoscSzlakuDodatkowegoPc` = 160 pc). Daje spójny, planarny układ szlaków o długości ok. 1,3× odległości w linii prostej. Pierwsza wersja (MST + 2 najbliższych ≤ 90 pc) była zbyt drzewiasta: do sąsiedniego sektora prowadziło 4 500 pc okrężnej drogi.
+34. **Stolica** cywilizacji = układ najbliższy środka ciężkości terytorium; statek zaczyna w stolicy cywilizacji startowej. Wagi układów w cywilizacji: w ∝ ranga^(−0,5) według odległości od stolicy, średnia 1; populacja układu = populacja cywilizacji × waga / liczba układów.
+
+## Gospodarka portowa cywilizacji kanonu
+
+35. **Port zamiast per capita.** Populacje kanonu (10⁴–10⁷ mln) są o rzędy większe niż cokolwiek, co może przewieźć jeden statek, więc rynek, na którym handluje gracz, to port międzygwiezdny: konsumpcja portu układu = `portNaUkladM3NaDobe[towar]` × potrzeby cywilizacji (mnożnik profilu) × waga układu × głębokość portu. **Głębokość portu** = clamp(otwartość, `glebokoscPortuMin` = 0,35, 1,0): zamknięta cywilizacja ma płytkie porty (Orak 0,35 maksimum), otwarta pełne. Paliwo nie jest skalowane głębokością. Produkcja portu = konsumpcja × (produkcja/potrzeby cywilizacji) × specjalizacja układu (`specjalizacjaMnoznik` 1,2 dla losowego towaru układu, 0,95 dla reszty, znormalizowane tak, by suma cywilizacji była dokładna). Dla Żywności stosunek produkcji do potrzeb to **SSR z kanonu**; pozostałe stosunki zaprojektowałem w `cywilizacjeKanonu`: Vreth/Orak/Szkarni kopią minerały, Corrath/Planta robią rozpuszczalniki, Corrath/Szkarni/Velhari materiały wybuchowe, AI (4×), Velhari i Ludzie elektronikę; każdy producent ma głównego odbiorcę w innym sektorze L (np. elektronika AI s4 → Ludzie s1, Corrath s2, Planta s5; żywność Duhari s6 → AI s4, Velhari s7). Wszystkie cywilizacje mają nadwyżkę paliwa (2×), więc paliwo na planetach jest tanie (nacisk → 0,45), a u plemion kosztuje cenę bazową.
+36. **Otwartość = sufit dobowej wymiany NPC.** Co dobę handlarze NPC ciągną zapas każdej pozycji portu ku normie w tempie `tempoWymianyNPC` = 0,04 × (norma − zapas), ale nie szybciej niż otwartość × dzienna konsumpcja portu × `mnoznikSufituNPC` (1,0). Dzienna konsumpcja portu w WU to mój „PKB” portu, więc dla całej cywilizacji wymiana NPC ≤ otwartość × PKB (test). Skutki: Orak (0,04) nie jest w stanie uzupełnić deficytu żywności 98%, więc jego porty stoją na cenie maksymalnej i odbudowują się tylko dzięki graczowi; AI (1,66) wchłania 480 m³ w kilkanaście dób; cywilizacje pośrodku (Ludzie 0,26) mają deficyty, których NPC nie domyka, i nadwyżki, które się piętrzą. Krok rynku z wymianą NPC liczony jest co najwyżej dobę (zależy od zapasu); przy otwartości 0 pozostaje jedna aktualizacja liniowa jak w S.
+37. **Rozruch** `galaktyka.dobyRozruchuRynku` = 180 dób (S: 40). Przy krótszym rozruchu (60) nadwyżki i braki nie zdążyły się ujawnić i w pierwszym doku nie było żadnego dodatniego planu; po 180 dobach deficyty, których NPC nie domyka, stoją na cenie maksymalnej, a nadwyżki na minimalnej, co jest stanem długookresowym tej gospodarki.
+38. **Nieznane cywilizacje** (M: Vreth i Orak; L: wszystkie poza Ludźmi, Vreth i Corrath) działają jak w S: rynek ukryty do pierwszego lądowania, konsumpcja elektroniki uśpiona, zapas 0,05 normy.
+
+## Informacja o cenach
+
+39. **Tryb `zasieg`**: ceny na żywo tylko dla planet w promieniu 182 pc od statku (w linii prostej); poza nim dla planet **odwiedzonych** ostatni odczyt (zapisywany przy każdym dokowaniu dla odwiedzonych planet w łączności i przy odlocie z planety) z wiekiem w dobach; planet nieodwiedzonych poza łącznością nie widać wcale (na mapie: puste kółko). Odczyt pokazywany jest surowo, bez rzutowania w przód, bo świat jest deterministyczny i rzut odtworzyłby rzeczywistość dokładnie, zerując wartość informacji. Bot używa tych samych reguł (`informacjaORynku`), więc różnica wyników bota między trybami mierzy wartość informacji.
+
+## Bot w galaktyce
+
+40. **Graf tankowania.** Lot gracza to jeden ciąg skoków bez tankowania po drodze, a bak (100 m³ = 100 pc) nie wystarcza na trasy między cywilizacjami. Bot buduje więc graf węzłów z paliwem (planety i plemiona) połączonych najkrótszymi ścieżkami ≤ zasięg baku minus `rezerwaPaliwaOdcinkaM3` = 1 m³ i planuje dojazdy jako ciągi odcinków; każdy odcinek to jeden lot, na przystanku tankuje. Kara `karaPrzystankuPc` = 80 pc za przystanek preferuje mniej, dłuższych odcinków. Bot ma pamięć zobowiązania: wiezie ładunek do celu i na przystankach tylko tankuje oraz dokupuje.
+41. **Sprzedaż częściowa i klaster dystrybucji.** Na płytkich rynkach ładunek rozwozi się po kilku planetach. W doku bot dla każdego towaru wybiera, ile sprzedać tutaj, a ile wieźć do celu (maksimum łącznego przychodu); wieziony ładunek wycenia tylko na samym celu. Zakupy pod cel są wymiarowane na klaster: cel plus do `maxPlanetDystrybucji` = 2 najbliższych planet tej samej cywilizacji w promieniu `promienDystrybucjiPc` = 70 pc (bez planety, na której stoi), z kosztem objazdu. Bez wykluczenia bieżącej planety z klastra bot wpadał w nieskończone wahadło między dwoma sąsiadami („sprzedam to później przez klaster sąsiada”).
+42. **Dwa kroki.** Dla `planowDoDrugiegoKroku` = 5 najlepszych planów bot dolicza najlepszy pojedynczy kurs powrotny z celu (jeden towar, jeden z `celowDrugiegoKroku` = 25 najbliższych celów) i wybiera plan o najwyższej stopie na dobę z obu kroków. Bez tego w pierwszym doku żaden plan nie był dodatni (żywność z Ludzi do Corrath nie pokrywa paliwa), a opłacalność bierze się z pętli: żywność i elektronika w jedną stronę, rozpuszczalniki i materiały wybuchowe z powrotem.
+43. **Eksploracja** to plan do najbliższej nieznanej planety w zasięgu `eksplorujMaxPc` = 260 pc, do `eksplorujDoUlamkaHoryzontu` = 0,6 horyzontu, o wartości `premiaEksploracjiKr` = 0,8 mln minus koszty; konkuruje z handlem na równych prawach (stopa na dobę). Loty eksploracyjne są wyłączone z korelacji zysku z dystansem, bo ich premia jest fikcyjna.
+44. **Czego nie da się osiągnąć bez zmiany kanonu: dodatniej korelacji zysku na dobę z dystansem.** Blokują ją `kosztPaliwaNaParsek` = 1 m³/pc i `BasePrice Fuel` = 1 000 WU (10 000 kr/pc, u plemion; ok. 4 500 kr/pc na planetach z nadwyżką) wobec wartości ładunku (pełna ładownia żywności to 151 200 WU, czyli paliwo na ok. 150 pc; minerałów na ok. 290 pc) oraz `bak` = 100 m³ wymuszający przystanki. Przy promieniu galaktyki 1 257 pc i układach co ok. 40 pc masowe towary nie mogą opłacalnie przebyć odległości między cywilizacjami; zysk powstaje przez pozycjonowanie (długi lot z tanią żywnością do producenta rozpuszczalników, który sam w sobie prawie nic nie daje) i jest realizowany na krótkich odcinkach dystrybucji. Dlatego zarówno korelacja na poziomie lotu, jak i całej trasy handlowej (zakup → cel) wychodzi ujemna we wszystkich przebadanych wariantach profili i rozmieszczenia (12 wariantów głębokości portu, tempa NPC i specjalizacji; 6 wariantów specjalizacji × tempa × głębokości). Strojenie w `prototyp.json` zmienia pozostałe miary, nie znak korelacji. Marża **na lot** rośnie z odległością (dalekie kursy wiozą droższe towary), ale nie marża **na dobę**.
+45. **Strojenie M (historia).** Porty ×1 (jak S) → wszystkie plany ujemne, bot bankrutował; porty ×3 i cywilizacje przyległe → ×4,65; porty ×2, tempo NPC 0,04 → ok. ×1,8–2,6 zależnie od wariantu; głębsze porty zamkniętych cywilizacji (0,5) i tempo 0,05 podnoszą zysk i udział lotów wewnątrz cywilizacji (61%), więc zostało 0,35 i 0,04. Udział lotów wewnątrz jednej cywilizacji (ok. 54%) to w większości odcinki dystrybucji i tranzytu przez własne terytorium (promień terytorium ok. 110–130 pc przy odcinku ≤ 99 pc), nie wahadło między dwiema planetami: 5 najczęstszych tras to poniżej 3% lotów.
+
+## Wynik bota (`npm run bot`)
+
+Pełny przebieg (`npm run bot`, S i M po 200 ziaren, L po 50; czas na jednym rdzeniu):
+
+<!-- TABELA-START -->
+```
+Bot zachłanny, horyzont dób: S 120, M 240, L 480
+Miara                                                       |  S/pelna (200 z.) | S/zasieg (200 z.) |  M/pelna (200 z.) | M/zasieg (200 z.) |   L/pelna (50 z.) |  L/zasieg (50 z.)
+------------------------------------------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+------------------
+Ziarna z zyskiem (próg M ≥ 70%)                             |            100.0% |            100.0% |             98.0% |             99.5% |             96.0% |            100.0%
+Ziarna z podwojeniem wartości                               |             21.5% |             21.5% |             73.5% |             71.5% |             96.0% |             96.0%
+Pierwsza zyskowna trasa, mediana lotów (≤ 3)                |               3.0 |               3.0 |               3.0 |               3.0 |               2.0 |               2.0
+Udział 5 najczęstszych tras (≤ 25%)                         |             35.0% |             35.0% |              0.6% |              0.7% |              1.6% |              1.4%
+Loty wewnątrz jednej cywilizacji (≤ 50%)                    |             38.9% |             38.9% |             54.8% |             54.3% |             60.3% |             58.6%
+Mediana skoków zyskownego lotu (≥ 2)                        |               2.0 |               2.0 |               3.0 |               3.0 |               3.0 |               3.0
+Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji) |             -0.34 |             -0.34 |             -0.32 |             -0.29 |             -0.32 |             -0.28
+  loty eksploracyjne                                        |              7.8% |              7.8% |              8.2% |              8.2% |              0.1% |              0.1%
+  …z dystansem całej trasy handlowej (zakup → cel)          |             -0.34 |             -0.34 |             -0.41 |             -0.40 |             -0.49 |             -0.45
+  trasy handlowe między cywilizacjami                       |             57.8% |             57.8% |             55.0% |             54.9% |             51.9% |             52.3%
+  mediana dystansu trasy handlowej                          |           33.0 pc |           33.0 pc |           46.2 pc |           45.6 pc |           47.8 pc |           48.7 pc
+Kontakt z nieznaną cywilizacją (≥ 50%)                      |            100.0% |            100.0% |             74.0% |             74.0% |              4.0% |              4.0%
+Mediana wartości firmy na koniec                            |     12 655 385 kr |     12 655 385 kr |     16 705 443 kr |     16 321 518 kr |     24 461 546 kr |     25 037 184 kr
+Mediana liczby lotów                                        |              14.0 |              14.0 |              19.0 |              19.5 |              38.0 |              38.0
+Ziarna, w których bot utknął                                |                 0 |                 0 |                 0 |                 0 |        2 (27, 40) |                 0
+Czas bota                                                   |            12.0 s |            11.3 s |            39.8 s |            35.6 s |            74.2 s |            75.1 s
+S/pelna: najczęstsze trasy: mlot → zielna (217); milczek → iskra (214); zielna → milczek (187); milczek → szept (173); zielna → kamieniec (166)
+S/pelna: najczęstsze towary: Żywność (849); Minerały (686); Elektronika (674); Materiały wybuchowe (664); Rozpuszczalniki (649)
+S/zasieg: najczęstsze trasy: mlot → zielna (217); milczek → iskra (214); zielna → milczek (187); milczek → szept (173); zielna → kamieniec (166)
+S/zasieg: najczęstsze towary: Żywność (849); Minerały (686); Elektronika (674); Materiały wybuchowe (664); Rozpuszczalniki (649)
+M/pelna: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); vreth-gorrukdr → corrath-ithircor (5); corrath-kelumdra → orak-morak (5); orak-dzdzul → ludzie-dormiven (5); ludzie-kador → ludzie-selterno (4)
+M/pelna: najczęstsze towary: Minerały (849); Elektronika (570); Żywność (551); Rozpuszczalniki (541); Materiały wybuchowe (466)
+M/zasieg: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); ludzie-kador → ludzie-selterno (5); vreth-gorrukdr → corrath-ithircor (5); corrath-kelumdra → orak-morak (5); orak-dzdzul → ludzie-dormiven (5)
+M/zasieg: najczęstsze towary: Minerały (896); Elektronika (610); Żywność (580); Rozpuszczalniki (541); Materiały wybuchowe (464)
+L/pelna: najczęstsze trasy: vreth-akokruk → ludzie-lunlunter (6); vreth-ethvr → vreth-gorruketh (6); vreth-vrokmal → vreth-malthuruk (6); vreth-malthuruk → vreth-drak (6); vreth-drdrvr → vreth-maldrthu (5)
+L/pelna: najczęstsze towary: Elektronika (470); Materiały wybuchowe (415); Minerały (364); Żywność (111); Rozpuszczalniki (58)
+L/zasieg: najczęstsze trasy: vreth-okak → vreth-thuzan (6); vreth-akokruk → ludzie-lunlunter (5); vreth-vrok → vreth-akthu (5); vreth-drdrvr → vreth-maldrthu (5); vreth-drdr → vreth-akak (5)
+L/zasieg: najczęstsze towary: Elektronika (470); Materiały wybuchowe (409); Minerały (397); Żywność (134); Rozpuszczalniki (76)
+S: informacja=zasieg vs pelna: mediana wartości firmy 12 655 385 kr vs 12 655 385 kr (0.0%)
+M: informacja=zasieg vs pelna: mediana wartości firmy 16 321 518 kr vs 16 705 443 kr (-2.3%)
+L: informacja=zasieg vs pelna: mediana wartości firmy 25 037 184 kr vs 24 461 546 kr (2.4%)
+```
+<!-- TABELA-KONIEC -->
+
+### Ocena progów na M (kolumna M/pelna)
+
+| Miara | Próg | Wynik | |
+|---|---|---|---|
+| Ziarna z zyskiem | ≥ 70% | 98,0% | spełnione |
+| Pierwsza zyskowna trasa, mediana | ≤ 3 loty | 3,0 | spełnione |
+| Udział 5 najczęstszych tras | ≤ 25% | 0,6% | spełnione (w S było 35–40%) |
+| Loty wewnątrz jednej cywilizacji | ≤ 50% | 54,8% | **nie**: to odcinki dystrybucji i tranzytu przez własne terytorium (promień terytorium 110–130 pc, odcinek ≤ 99 pc); trasy handlowe między cywilizacjami to 55% |
+| Mediana długości zyskownego lotu | ≥ 2 skoki | 3 | spełnione |
+| Zysk na dobę: korelacja z dystansem | dodatnia | −0,32 (lot), −0,41 (cała trasa) | **nie**: blokują liczby kanonu paliwa i baku, patrz 44 |
+| Kontakt z nieznaną cywilizacją | ≥ 50% ziaren | 74% | spełnione |
+| `zasieg` vs `pelna`: mediana wartości | pomiar | −2,3% (M), 0,0% (S), +2,4% (L, 50 ziaren, w granicach szumu) | informacja o cenach jest warta niewiele, bo bot i tak handluje w promieniu łączności, a odczyty z odwiedzonych planet starzeją się wolno (rynki zamkniętych cywilizacji stoją na skrajach) |
+| Czas bota, 200 ziaren | ≤ 120 s | 40 s | spełnione |
+
+Uwagi: podwojenie osiąga 73% ziaren na M (mediana ×2,46 w 240 dób), więc cel ×2 jest dla gracza osiągalny, ale nie darmowy; w L bot kończy z medianą ×3,6 w 480 dób i prawie nie eksploruje (4%), bo nieznane cywilizacje leżą dalej niż `eksplorujMaxPc` od szlaków Ludzie–Vreth–Corrath; w L zostały 2 ziarna z utknięciem bota (patrz 46). Wynik S zmienił się względem pierwszego prototypu (mediana 12,7 mln zamiast 11,8 mln, top-5 tras 35% zamiast 40%), bo zmienił się bot (dwa kroki, sprzedaż częściowa), nie świat S.
+
