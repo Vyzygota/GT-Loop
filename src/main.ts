@@ -19,7 +19,7 @@ interface StanUI {
 const app = document.getElementById('app')!;
 const SKALE: Skala[] = ['S', 'M', 'L'];
 const TRYBY: TrybInformacji[] = ['pelna', 'zasieg'];
-const WARIANTY: WariantSpreadu[] = ['A', 'B', 'C', 'D'];
+const WARIANTY: WariantSpreadu[] = ['A', 'B', 'C', 'D', 'E'];
 
 function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; szybko: boolean } {
   const h = location.hash;

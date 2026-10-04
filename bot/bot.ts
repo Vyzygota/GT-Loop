@@ -227,7 +227,7 @@ if (uruchomionyBezposrednio) {
   const skale: Skala[] = process.argv[2] && process.argv[2] !== 'all' ? [process.argv[2] as Skala] : ['S', 'M', 'L'];
   const tryby: TrybInformacji[] = process.argv[3] && process.argv[3] !== 'both' ? [process.argv[3] as TrybInformacji] : ['pelna', 'zasieg'];
   const liczbaArg = process.argv[4] && process.argv[4] !== '-' ? Number(process.argv[4]) : undefined;
-  const warianty: WariantSpreadu[] = process.argv[5] && process.argv[5] !== 'all' ? [process.argv[5] as WariantSpreadu] : process.argv[5] === 'all' ? ['A', 'B', 'C', 'D'] : [P.spread];
+  const warianty: WariantSpreadu[] = process.argv[5] && process.argv[5] !== 'all' ? [process.argv[5] as WariantSpreadu] : process.argv[5] === 'all' ? ['A', 'B', 'C', 'D', 'E'] : [P.spread];
   const miary: Miary[] = [];
   for (const skala of skale) {
     for (const tryb of tryby) {

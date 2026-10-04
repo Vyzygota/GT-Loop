@@ -4,7 +4,7 @@ export type Rola = 'pilot' | 'nawigator' | 'handlowiec';
 export type TypWezla = 'planeta' | 'tankowanie' | 'przelot';
 export type Skala = 'S' | 'M' | 'L';
 export type TrybInformacji = 'pelna' | 'zasieg';
-export type WariantSpreadu = 'A' | 'B' | 'C' | 'D';
+export type WariantSpreadu = 'A' | 'B' | 'C' | 'D' | 'E';
 
 export const TOWARY: Towar[] = ['Food', 'Minerals', 'Solvents', 'Explosives', 'Electronics'];
 export const TOWARY_I_PALIWO: TowarLubPaliwo[] = [...TOWARY, 'Fuel'];

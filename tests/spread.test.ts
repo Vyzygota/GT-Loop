@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { krokBota, nowyStanBota } from '../bot/strategia';
-import { Gra, K, P, TOWARY, type WariantSpreadu, type Zalogant } from '../sim/index';
+import { Gra, K, P, TOWARY, calkaNacisku, nacisk, type WariantSpreadu, type Zalogant } from '../sim/index';
 
 const handlowiec = (u: number): Zalogant => ({ id: 'h', imie: 'H', rola: 'handlowiec', cywilizacja: 'ludzie', umiejetnosc: u, placa: K.placa.handlowiec });
 
@@ -28,7 +28,7 @@ describe('spread: wariant A (punkt odniesienia)', () => {
   });
 });
 
-for (const wariant of ['B', 'C', 'D'] as WariantSpreadu[]) {
+for (const wariant of ['B', 'C', 'D', 'E'] as WariantSpreadu[]) {
   describe(`spread: wariant ${wariant} (pamięć zakupu)`, () => {
     const konfig = P.wariantySpreadu[wariant];
 
@@ -144,3 +144,42 @@ for (const wariant of ['B', 'C', 'D'] as WariantSpreadu[]) {
     });
   });
 }
+
+
+describe('spread: wariant E (bez obcięcia nacisku)', () => {
+  it('nacisk bez obcięcia to max(zapas/norma, floor)^(−w): od ok. 0,45 przy 6 normach do ok. 5,8 przy pustym zapasie', () => {
+    expect(nacisk(0, false)).toBeCloseTo(Math.pow(K.StockRatioFloor, -K.StockPriceWeight), 9);
+    expect(nacisk(0, false)).toBeGreaterThan(K.StockPressureMax);
+    expect(nacisk(P.maxZapasWNormach, false)).toBeCloseTo(Math.pow(P.maxZapasWNormach, -K.StockPriceWeight), 9);
+    expect(nacisk(1, false)).toBeCloseTo(1, 12);
+    // Całka zamknięta zgadza się z sumą numeryczną także bez obcięcia.
+    for (const [r0, r1] of [[0, 0.5], [0.01, 0.2], [0.05, 3], [2, 6]] as const) {
+      const n = 100000;
+      const h = (r1 - r0) / n;
+      let suma = 0;
+      for (let i = 0; i < n; i++) suma += nacisk(r0 + (i + 0.5) * h, false) * h;
+      expect(calkaNacisku(r0, r1, false)).toBeCloseTo(suma, 4);
+    }
+  });
+
+  it('gra w wariancie E pokazuje naciski poza [0,45; 2,5], a w A nie', () => {
+    const e = new Gra('e-1', { skala: 'M', spread: 'E' });
+    const a = new Gra('e-1', { skala: 'M', spread: 'A' });
+    expect(e.obciecieNacisku).toBe(false);
+    expect(a.obciecieNacisku).toBe(true);
+    let pozaPasmem = 0;
+    for (const c of e.swiat.cywilizacje) e.stan.znaneCywilizacje[c.id] = true;
+    for (const c of a.swiat.cywilizacje) a.stan.znaneCywilizacje[c.id] = true;
+    for (const w of e.swiat.wezly) {
+      if (w.typ !== 'planeta') continue;
+      for (const t of TOWARY) {
+        const ce = e.ceny(w.id, t, 0)!;
+        const ca = a.ceny(w.id, t, 0)!;
+        expect(ca.nacisk).toBeGreaterThanOrEqual(K.StockPressureMin - 1e-12);
+        expect(ca.nacisk).toBeLessThanOrEqual(K.StockPressureMax + 1e-12);
+        if (ce.nacisk > K.StockPressureMax + 1e-9) pozaPasmem++;
+      }
+    }
+    expect(pozaPasmem).toBeGreaterThan(0);
+  });
+});

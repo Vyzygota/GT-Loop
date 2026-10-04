@@ -92,8 +92,10 @@ export class Gra {
   readonly informacja: TrybInformacji;
   readonly limitDob: number;
   readonly wariantSpreadu: WariantSpreadu;
-  /** Spread podstawowy wariantu: A = tradeSpread na każdej transakcji, B/D = 0, C = 0,10. */
+  /** Spread podstawowy wariantu: A = tradeSpread na każdej transakcji, B/D/E = 0, C = 0,10. */
   readonly spreadPodstawowy: number;
+  /** Czy nacisk jest obcinany do [StockPressureMin, StockPressureMax] (wariant E: nie). */
+  readonly obciecieNacisku: boolean;
   private okres!: Okres;
   private readonly rng: Losowosc;
 
@@ -104,6 +106,7 @@ export class Gra {
     this.wariantSpreadu = opcje.spread ?? P.spread;
     const konfig = P.wariantySpreadu[this.wariantSpreadu];
     this.spreadPodstawowy = konfig.tryb === 'staly' ? K.tradeSpread : (konfig.spreadPodstawowy ?? 0);
+    this.obciecieNacisku = !konfig.bezObcieciaNacisku;
     const { swiat, rynki } = generujSwiat(ziarno, this.skala);
     this.swiat = swiat;
     this.graf = new Graf(swiat.wezly, swiat.krawedzie);
@@ -210,7 +213,7 @@ export class Gra {
     const info = this.informacjaORynku(idWezla);
     if (!info) return null;
     const poz = info.rynek[towar];
-    const baza = cenaBazowaWU(K.towary[towar].basePrice, poz);
+    const baza = cenaBazowaWU(K.towary[towar].basePrice, poz, this.obciecieNacisku);
     const kara = this.karaSprzedazy(idWezla, towar, skokiWPrzod);
     return {
       kupnoKr: kr(baza * mnoznikKupna(udzial, this.spreadPodstawowy)),
@@ -218,7 +221,7 @@ export class Gra {
       kara,
       licznikPamieci: this.licznikPamieci(idWezla, towar, skokiWPrzod),
       bazowaKr: kr(baza),
-      nacisk: nacisk(poz.zapas / poz.norma),
+      nacisk: nacisk(poz.zapas / poz.norma, this.obciecieNacisku),
       zapasM3: poz.zapas,
       normaM3: poz.norma,
       zapasDoby: poz.konsumpcja > 0 ? poz.zapas / poz.konsumpcja : Infinity,
@@ -233,10 +236,10 @@ export class Gra {
     const w = this.wezel(idWezla);
     if (w.typ === 'przelot') return null;
     if (w.typ === 'tankowanie') return kr(K.towary.Fuel.basePrice);
-    if (idWezla === this.stan.pozycja) return kr(cenaBazowaWU(K.towary.Fuel.basePrice, this.stan.rynki[idWezla].Fuel));
+    if (idWezla === this.stan.pozycja) return kr(cenaBazowaWU(K.towary.Fuel.basePrice, this.stan.rynki[idWezla].Fuel, this.obciecieNacisku));
     const info = this.informacjaORynku(idWezla);
     if (!info) return null;
-    return kr(cenaBazowaWU(K.towary.Fuel.basePrice, info.rynek.Fuel));
+    return kr(cenaBazowaWU(K.towary.Fuel.basePrice, info.rynek.Fuel, this.obciecieNacisku));
   }
 
   /** Cena paliwa tutaj; w układzie bez paliwa cena bazowa (do wycen odniesienia). */
@@ -249,21 +252,22 @@ export class Gra {
   private wycenaNaRynku(towar: Towar, m3: number, rodzaj: 'kupno' | 'sprzedaz', udzial: number, rynek: Rynek[Towar], kara = 0): Wycena {
     const base = K.towary[towar].basePrice;
     const sp = this.spreadPodstawowy;
+    const ob = this.obciecieNacisku;
     const znak = rodzaj === 'kupno' ? -1 : 1;
     const po = { ...rynek, zapas: rynek.zapas + znak * m3 };
-    const kwotaWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, udzial, sp) : kwotaSprzedazyWU(base, rynek, m3, udzial, sp, kara);
-    const kwotaBezWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, 0, sp) : kwotaSprzedazyWU(base, rynek, m3, 0, sp, kara);
-    const kwotaBezKaryWU = rodzaj === 'kupno' ? kwotaBezWU : kwotaSprzedazyWU(base, rynek, m3, 0, sp, 0);
+    const kwotaWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, udzial, sp, ob) : kwotaSprzedazyWU(base, rynek, m3, udzial, sp, kara, ob);
+    const kwotaBezWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, 0, sp, ob) : kwotaSprzedazyWU(base, rynek, m3, 0, sp, kara, ob);
+    const kwotaBezKaryWU = rodzaj === 'kupno' ? kwotaBezWU : kwotaSprzedazyWU(base, rynek, m3, 0, sp, 0, ob);
     const mn = rodzaj === 'kupno' ? mnoznikKupna(udzial, sp) : mnoznikSprzedazy(udzial, sp, kara);
     const kwotaKr = zaokr(kr(kwotaWU));
     return {
       m3,
       kwotaKr,
       cenaSredniaKr: m3 > 0 ? kwotaKr / m3 : 0,
-      cenaJednPrzedKr: kr(cenaBazowaWU(base, rynek) * mn),
-      cenaJednPoKr: kr(cenaBazowaWU(base, po) * mn),
-      naciskPrzed: nacisk(rynek.zapas / rynek.norma),
-      naciskPo: nacisk(po.zapas / po.norma),
+      cenaJednPrzedKr: kr(cenaBazowaWU(base, rynek, ob) * mn),
+      cenaJednPoKr: kr(cenaBazowaWU(base, po, ob) * mn),
+      naciskPrzed: nacisk(rynek.zapas / rynek.norma, ob),
+      naciskPo: nacisk(po.zapas / po.norma, ob),
       kwotaBezHandlowcaKr: zaokr(kr(kwotaBezWU)),
       kwotaBezKaryKr: zaokr(kr(kwotaBezKaryWU)),
       kara,
@@ -300,7 +304,7 @@ export class Gra {
   wycenaPaliwa(m3: number, idWezla = this.stan.pozycja): { m3: number; kwotaKr: number; cenaSredniaKr: number } {
     const w = this.wezel(idWezla);
     if (w.typ === 'przelot') return { m3, kwotaKr: 0, cenaSredniaKr: 0 };
-    const kwotaWU = w.typ === 'tankowanie' ? K.towary.Fuel.basePrice * m3 : kwotaPaliwaWU(this.stan.rynki[idWezla].Fuel, m3);
+    const kwotaWU = w.typ === 'tankowanie' ? K.towary.Fuel.basePrice * m3 : kwotaPaliwaWU(this.stan.rynki[idWezla].Fuel, m3, this.obciecieNacisku);
     const kwotaKr = zaokr(kr(kwotaWU));
     return { m3, kwotaKr, cenaSredniaKr: m3 > 0 ? kwotaKr / m3 : 0 };
   }

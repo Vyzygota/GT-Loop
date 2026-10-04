@@ -14,7 +14,7 @@ import { nowyStanBota, wykonaj, zaplanuj } from '../bot/strategia';
 const ziarno = process.argv[2] ?? '7';
 const skala = (process.argv[4] as 'S' | 'M' | 'L' | undefined) ?? 'M';
 const informacja = (process.argv[5] as 'pelna' | 'zasieg' | undefined) ?? 'pelna';
-const spread = (process.argv[6] as 'A' | 'B' | 'C' | 'D' | undefined) ?? 'A';
+const spread = (process.argv[6] as 'A' | 'B' | 'C' | 'D' | 'E' | undefined) ?? 'A';
 const katalogZrzutow = process.argv[3] ?? '';
 const sciezkaChromium = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium';
 

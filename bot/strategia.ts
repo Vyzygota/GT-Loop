@@ -240,7 +240,7 @@ export class Kontekst {
     for (const p of pozycje) {
       const czesc = (m3 * p.poz.norma) / sumaNorm;
       if (czesc <= 0) continue;
-      kwota += Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, p.poz, czesc, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(p.id, towar, skoki))));
+      kwota += Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, p.poz, czesc, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(p.id, towar, skoki), this.gra.obciecieNacisku)));
       objazd = Math.max(objazd, p.odleglosc);
     }
     return { kwota, objazd };
@@ -251,19 +251,19 @@ export class Kontekst {
     if (m3 <= 0) return 0;
     const tu = this.gra.stan.pozycja;
     const poz = this.gra.stan.rynki[tu][towar];
-    return Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(tu, towar, 0))));
+    return Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(tu, towar, 0), this.gra.obciecieNacisku)));
   }
 
   kosztKupnaTutaj(towar: Towar, m3: number, udzial: number): number {
     const poz = this.gra.stan.rynki[this.gra.stan.pozycja][towar];
-    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy)));
+    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy, this.gra.obciecieNacisku)));
   }
 
   /** Koszt kupna na innej planecie za `doby` dób (rzut rynku), null bez informacji. */
   kosztKupnaNa(id: string, towar: Towar, m3: number, doby: number, udzial: number): number | null {
     const poz = this.rynekZa(id, towar, doby);
     if (!poz) return null;
-    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, Math.min(m3, poz.zapas), udzial, this.gra.spreadPodstawowy)));
+    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, Math.min(m3, poz.zapas), udzial, this.gra.spreadPodstawowy, this.gra.obciecieNacisku)));
   }
 }
 

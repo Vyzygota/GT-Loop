@@ -6,10 +6,14 @@ export function ogranicz(x: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, x));
 }
 
-/** Nacisk cenowy z kanonu: clamp(max(zapas/norma, floor)^(−w), min, max). */
-export function nacisk(stosunek: number): number {
+/**
+ * Nacisk cenowy z kanonu: clamp(max(zapas/norma, floor)^(−w), min, max).
+ * `obciecie = false` (wariant spreadu E) zdejmuje clamp: zostaje tylko strażnik dziedziny StockRatioFloor.
+ */
+export function nacisk(stosunek: number, obciecie = true): number {
   const r = Math.max(stosunek, K.StockRatioFloor);
-  return ogranicz(Math.pow(r, -K.StockPriceWeight), K.StockPressureMin, K.StockPressureMax);
+  const surowy = Math.pow(r, -K.StockPriceWeight);
+  return obciecie ? ogranicz(surowy, K.StockPressureMin, K.StockPressureMax) : surowy;
 }
 
 // Granice przedziałów, na których nacisk jest stały albo czysto potęgowy.
@@ -22,21 +26,21 @@ const R_MIN = Math.pow(K.StockPressureMin, -1 / W); // powyżej: nacisk = min
  * Cena krańcowa: każdy kolejny m³ wyceniany jest przy zapasie, jaki jest w tej chwili,
  * więc duża transakcja sama sobie psuje cenę, a podział na części niczego nie zmienia.
  */
-export function calkaNacisku(r0: number, r1: number): number {
+export function calkaNacisku(r0: number, r1: number, obciecie = true): number {
   if (!(r1 > r0)) return 0;
-  const punkty = [K.StockRatioFloor, R_MAX, R_MIN].filter((p) => p > r0 && p < r1).sort((a, b) => a - b);
+  const punkty = (obciecie ? [K.StockRatioFloor, R_MAX, R_MIN] : [K.StockRatioFloor]).filter((p) => p > r0 && p < r1).sort((a, b) => a - b);
   const granice = [r0, ...punkty, r1];
   let suma = 0;
   for (let i = 0; i + 1 < granice.length; i++) {
     const a = granice[i];
     const b = granice[i + 1];
     const srodek = (a + b) / 2;
-    const potegowy = srodek >= K.StockRatioFloor && srodek > R_MAX && srodek < R_MIN;
+    const potegowy = srodek >= K.StockRatioFloor && (!obciecie || (srodek > R_MAX && srodek < R_MIN));
     if (potegowy) {
       const e = 1 - W;
       suma += (Math.pow(b, e) - Math.pow(a, e)) / e;
     } else {
-      suma += nacisk(srodek) * (b - a);
+      suma += nacisk(srodek, obciecie) * (b - a);
     }
   }
   return suma;
@@ -55,26 +59,26 @@ export function mnoznikSprzedazy(udzialHandlowca: number, spread = K.tradeSpread
   return (1 - (spread / 2) * (1 - udzialHandlowca)) * (1 - kara);
 }
 
-export function cenaBazowaWU(basePrice: number, poz: PozycjaRynku): number {
-  return basePrice * nacisk(poz.zapas / poz.norma);
+export function cenaBazowaWU(basePrice: number, poz: PozycjaRynku, obciecie = true): number {
+  return basePrice * nacisk(poz.zapas / poz.norma, obciecie);
 }
 
 /** Łączna kwota w WU za kupno m3 (zapas spada z z do z − m3). */
-export function kwotaKupnaWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread): number {
+export function kwotaKupnaWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread, obciecie = true): number {
   const n = poz.norma;
-  return basePrice * mnoznikKupna(udzial, spread) * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n);
+  return basePrice * mnoznikKupna(udzial, spread) * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n, obciecie);
 }
 
 /** Łączna kwota w WU za sprzedaż m3 (zapas rośnie z z do z + m3). */
-export function kwotaSprzedazyWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread, kara = 0): number {
+export function kwotaSprzedazyWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread, kara = 0, obciecie = true): number {
   const n = poz.norma;
-  return basePrice * mnoznikSprzedazy(udzial, spread, kara) * n * calkaNacisku(poz.zapas / n, (poz.zapas + m3) / n);
+  return basePrice * mnoznikSprzedazy(udzial, spread, kara) * n * calkaNacisku(poz.zapas / n, (poz.zapas + m3) / n, obciecie);
 }
 
 /** Paliwo na planecie: BasePrice × nacisk, bez spreadu. */
-export function kwotaPaliwaWU(poz: PozycjaRynku, m3: number): number {
+export function kwotaPaliwaWU(poz: PozycjaRynku, m3: number, obciecie = true): number {
   const n = poz.norma;
-  return K.towary.Fuel.basePrice * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n);
+  return K.towary.Fuel.basePrice * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n, obciecie);
 }
 
 const EPS_CZASU = 1e-9;

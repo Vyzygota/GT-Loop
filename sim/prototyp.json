@@ -25,6 +25,13 @@
       "spreadPodstawowy": 0.0,
       "kara": "liniowy",
       "opis": "pamięć zakupu, spread podstawowy 0, kara liniowa 0,3 × licznik / 5"
+    },
+    "E": {
+      "tryb": "pamiec",
+      "spreadPodstawowy": 0.0,
+      "kara": "schodek",
+      "bezObcieciaNacisku": true,
+      "opis": "jak B, ale bez obcięcia nacisku 0,45–2,5: zostaje strażnik StockRatioFloor i pułap 6 norm (nacisk ok. 0,45–5,8)"
     }
   },
   "pamiecZakupuSkokow": 5,

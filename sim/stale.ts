@@ -80,6 +80,8 @@ export interface KonfiguracjaSpreadu {
   tryb: 'staly' | 'pamiec';
   spreadPodstawowy?: number;
   kara?: 'schodek' | 'liniowy';
+  /** Wariant E: nacisk bez obcięcia StockPressureMin/Max (zostaje StockRatioFloor i pułap zapasu). */
+  bezObcieciaNacisku?: boolean;
   opis?: string;
 }
 

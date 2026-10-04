@@ -8,3 +8,10 @@
 - [x] Faza 6: pomiary 4 × 3 — 9,5 min; tabela wstawiona do DECYZJE.md (sekcja „Spread: pamięć zakupu”).
 - [x] Faza 7: obliczenie paliwa — przegląd `BasePrice Fuel`/`kosztPaliwaNaParsek` × {1…0} oraz hipotetyczne zmiany pasma nacisku, ładowni, kapitału, prędkości i baku na M (`findings.md`); przegląd paliwa na L w toku.
 - [ ] Faza 8: DECYZJE, push, PR.
+
+## v2 promptu (PROMPT-spread_2.md): wariant E
+
+- [x] Model: parametr `obciecie` w `nacisk`/`calkaNacisku`/wycenach (domyślnie włączony, A–D bez zmian); gra niesie `obciecieNacisku`, bot i UI go przekazują.
+- [x] Testy: niezmienniki B/C/D rozszerzone na E, test zakresu nacisku bez obcięcia i całki.
+- [ ] Pomiary 5 × 3 — do uruchomienia.
+- [ ] DECYZJE: tabela 5 × 3 i odpowiedzi z uwzględnieniem E.
