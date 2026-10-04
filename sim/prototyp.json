@@ -38,7 +38,7 @@
   "progresja": {
     "wlaczona": false,
     "horyzontDob": 1200,
-    "progAwansu": 20.0,
+    "progAwansu": 0.25,
     "koszyki": [
       {
         "tier": 2,
@@ -66,9 +66,9 @@
     ],
     "mnoznikKonsumpcjiAwansu": 1.5,
     "mnoznikSzczebla": 1.5,
-    "k": 10.0,
+    "k": 5.0,
     "minKursowDoWycenySzczebla": 5,
-    "xpNaDobeLotu": 2.0,
+    "xpNaDobeLotu": 11.0,
     "xpZaKontakt": 100.0,
     "xpStartoweKandydata": 0.0,
     "nazwyTierowZalogi": [
@@ -795,7 +795,7 @@
     "maxPremiaUlamekCeny": 1.0,
     "maxStrataNaKoszykUlamek": 0.1,
     "dobyMiedzyEkspedycjami": 100,
-    "mnoznikGotowkiNaEkspedycje": 2.0,
+    "mnoznikGotowkiNaEkspedycje": 3.0,
     "mnoznikGotowkiNaKontynuacje": 1.3,
     "slabychDokowDoOdwrotu": 1,
     "maxResztaKoszykaKrotnoscMajatku": 2.0
