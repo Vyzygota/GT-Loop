@@ -1,4 +1,19 @@
-# Dziennik (progress)
+# Dziennik (progress) — progresja
+
+- [x] Faza 1: rozpoznanie — notatki w `findings.md`.
+- [ ] Faza 2: kanon i przełącznik.
+- [ ] Faza 3: model w symulacji (tier cywilizacji, drabina, XP).
+- [ ] Faza 4: bot z inwestycjami.
+- [ ] Faza 5: testy.
+- [ ] Faza 6: UI i smoke.
+- [ ] Faza 7: pomiary i przegląd parametrów.
+- [ ] Faza 8: DECYZJE, push, opis PR.
+
+---
+
+# Archiwum: dziennik zadania spread
+
+## Dziennik (progress)
 
 - [x] Faza 1: rozpoznanie — `tradeSpread` wszyty w `rynek.ts`, bot wycenia bezpośrednio funkcjami rynku, graf tankowania bez liczby skoków.
 - [x] Faza 2: model w symulacji — przełącznik `spread` (A/B/C/D), `pamiecZakupu` w stanie gry (klucz „planeta|towar” → licznik), licznik 5 przy zakupie, −1 za skok w `lec`, `karaSprzedazy` (schodek/liniowa), spread podstawowy w mnożnikach, linia „Kara za odsprzedaż w miejscu zakupu” w raporcie (suma linii nadal = zmiana salda).

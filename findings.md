@@ -1,4 +1,18 @@
-# Ustalenia (findings)
+# Ustalenia (findings) — progresja
+
+## Faza 1: rozpoznanie
+
+- Ładownia, bak i masa są dziś stałymi kanonu (`K.ladownia`, `K.bak`, `K.maxMasaLadunku`) używanymi w `gra.ts`, `bot/strategia.ts` (graf tankowania liczony raz na świat z `K.bak`), UI i testach; drabina kadłubów wymaga, by stały się funkcją stanu gry (szczebel), a graf tankowania zależał od szczebla.
+- Kandydaci (`generujKandydatow`) losują umiejętność jednostajnie z [0,8; 1,25] i dostają płacę kanonu per rola (800/400/500); nie ma XP ani tierów. Tiery załogi z progami 0/500/1 500/9 999 XP i widełkami 120–180 / 280–450 / 580–900 / 1 100–1 800 kr/dobę zmieniają obie rzeczy, więc wprowadzam je pod przełącznikiem.
+- Cywilizacje nie mają tieru ani wzrostu; jedyna zmiana popytu to kontakt (budzi konsumpcję Elektroniki). Dzienny „PKB” portów cywilizacji = Σ konsumpcja × cena bazowa ≈ 30–64 tys. WU na układ i dobę (głębokość portu 0,35–1), czyli dla Ludzi (19 układów) ok. 0,6 mln WU = 6 mln kr dziennie; pełna ładownia Elektroniki to 29 mln WU, a kapitał startowy 0,68 mln WU, więc o tempie awansów decyduje kapitał i głębokość portów, nie pojemność statku.
+- Bot: jeden lot na L trwa medianowo ok. 14 dób (34 loty w 480 dób, 1,9 s na ziarno), więc 1 200 dób × 50 ziaren to ok. 4–5 min na konfigurację; przegląd 3 parametrów × 4 wartości mieści się w godzinie.
+- Horyzont `limitDob` pochodzi ze skali (L 480); potrzebny jest osobny horyzont progresji (1 200) jako opcja gry.
+
+---
+
+# Archiwum: ustalenia zadania spread
+
+## Ustalenia (findings)
 
 ## Faza 1: rozpoznanie
 
