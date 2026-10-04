@@ -1,4 +1,4 @@
-import { K, P, TOWARY, TOWARY_I_PALIWO, type Gra, type Towar, type Zalogant } from '../sim/index';
+import { K, P, TOWARY, TOWARY_I_PALIWO, nazwaTieruZalogi, tierZalogi, type Gra, type Towar, type Zalogant } from '../sim/index';
 import { doby, esc, kr, liczba1, liczba2, m3, nazwaRoli, nazwaTowaru, pc, procent } from './format';
 import { kolorCywilizacji } from './mapa';
 
@@ -71,7 +71,19 @@ export function panelRynku(gra: Gra, ilosci: Record<string, number>): string {
     </table>
     <div class="szary maly" style="margin-top:4px">Cena krańcowa: każdy kolejny m³ wyceniany jest przy zapasie po poprzednim. Handlowiec (pozycja ${procent(ef.udzialHandlowca)} okna spreadu${gra.spreadPodstawowy > 0 ? ` ${Math.round(gra.spreadPodstawowy * 100)}%` : ''}) ${gra.spreadPodstawowy > 0 ? 'przesuwa obie ceny ku środkowi okna' : 'nie ma na co wpływać: spread podstawowy wynosi 0'}.${gra.wariantSpreadu !== 'A' ? ` Wariant ${gra.wariantSpreadu}: odsprzedaż w miejscu zakupu karana ${Math.round(K.tradeSpread * 100)}% przez ${P.pamiecZakupuSkokow} skoków.` : ''}</div>
     ${wierszPaliwa(gra, ilosci)}
+    ${stocznia(gra)}
   </div>`;
+}
+
+/** Stocznia w doku stolicy (progresja): wycena kolejnego szczebla kadłuba z historii kursów gracza. */
+function stocznia(gra: Gra): string {
+  if (!gra.progresja || !gra.wStoczni()) return '';
+  const w = gra.wycenaSzczebla();
+  if (!w) return `<div class="maly" style="margin-top:8px"><b>Stocznia:</b> masz najwyższy szczebel kadłuba (${gra.stan.szczebel}).</div>`;
+  const opis = `szczebel ${w.nastepny}: ładownia ${Math.round(w.ladowniaM3)} m³, bak ${Math.round(w.bakM3)} m³ (teraz ${Math.round(gra.ladownia())} / ${Math.round(gra.bak())})`;
+  if (w.kwotaKr === null) return `<div class="maly" style="margin-top:8px"><b>Stocznia:</b> ${opis}. Brak wyceny: ${esc(w.powod ?? '')}.</div>`;
+  return `<div class="maly" style="margin-top:8px"><b>Stocznia:</b> ${opis} za <b>${kr(w.kwotaKr)}</b> (${P.progresja.k} × mediana Twojego zysku na kurs ${kr(w.medianaZyskuKr ?? 0)} z ${w.kursow} kursów)
+    <button data-akcja="kup-szczebel" ${w.kwotaKr <= gra.stan.kr ? '' : 'disabled'} title="Kadłub szczebla ${w.nastepny}">Kup kadłub</button></div>`;
 }
 
 function wierszPaliwa(gra: Gra, ilosci: Record<string, number>): string {
@@ -83,7 +95,7 @@ function wierszPaliwa(gra: Gra, ilosci: Record<string, number>): string {
     <tbody><tr>
       <td class="lewo"><b>${nazwaTowaru('Fuel')}</b><div class="szary maly">${liczba1(K.kosztPaliwaNaParsek)} m³/pc</div></td>
       <td>${kr(gra.cenaPaliwaTutaj())}${w ? `<div class="wycena">za ${liczba1(il)}: ${kr(w.kwotaKr)} (śr. ${kr(w.cenaSredniaKr)})</div>` : ''}</td>
-      <td>${m3(gra.stan.paliwo)} / ${m3(K.bak)}</td>
+      <td>${m3(gra.stan.paliwo)} / ${m3(gra.bak())}</td>
       <td class="ilosc"><input type="number" min="0" step="1" value="${il || ''}" data-ilosc="Fuel" placeholder="m³" /></td>
       <td class="akcje"><button data-akcja="tankuj" ${w ? '' : 'disabled'}>Tankuj</button>
         <button data-akcja="tankuj-pelny" ${maxP > 1e-6 ? '' : 'disabled'} title="${kr(doPelna.kwotaKr)}">Do pełna (${m3(maxP)}, ${kr(doPelna.kwotaKr)})</button></td>
@@ -95,7 +107,7 @@ export function panelLadowni(gra: Gra): string {
   const masa = gra.masaZajeta();
   const wartosc = gra.wartoscLadowni();
   return `<div class="panel">
-    <h2>Ładownia <span class="szary maly">${m3(obj)} / ${m3(K.ladownia)} · ${liczba1(masa)} t / ${liczba1(K.maxMasaLadunku)} t</span></h2>
+    <h2>Ładownia <span class="szary maly">${m3(obj)} / ${m3(gra.ladownia())} · ${liczba1(masa)} t / ${liczba1(gra.maxMasa())} t${gra.progresja ? ` · kadłub szczebla ${gra.stan.szczebel}` : ''}</span></h2>
     <div class="maly">Wartość ładunku po cenach sprzedaży tutaj: <b>${kr(wartosc)}</b>${gra.rynekZnany(gra.stan.pozycja) ? '' : ' (brak rynku: po koszcie zakupu)'}</div>
   </div>`;
 }
@@ -114,7 +126,7 @@ export function panelZalogi(gra: Gra): string {
       <td class="lewo"><b>${nazwaRoli(z.rola)}</b></td>
       <td class="lewo">${esc(z.imie)}</td>
       <td class="lewo"><span class="kropka" style="background:${kolorCywilizacji(gra, z.cywilizacja)}"></span>${esc(nazwaCyw(z.cywilizacja))}</td>
-      <td>${liczba2(z.umiejetnosc)}</td>
+      <td>${liczba2(z.umiejetnosc)}${z.xp !== undefined ? `<div class="szary maly">${nazwaTieruZalogi(tierZalogi(z.xp))} · ${Math.round(z.xp)} XP</div>` : ''}</td>
       <td>${kr(z.placa)}/dobę</td>
       <td class="lewo szary maly">${opisEfektu(gra, z)}</td>
       <td><button data-akcja="${akcja}" data-id="${z.id}" ${wylaczony ? 'disabled' : ''}>${etykieta}</button></td>
@@ -158,7 +170,13 @@ export function panelCywilizacji(gra: Gra): string {
       const opis = (lista: typeof produkuje) =>
         lista.length ? lista.map((t) => `${nazwaTowaru(t)} (${liczba1(Math.abs(c.produkcjaM3NaDobe[t] - c.potrzebyM3NaDobe[t]))} m³/dobę)`).join(', ') : 'nic znaczącego';
       const otwartosc = c.otwartosc > 0 ? `otwartość handlowa ${liczba2(c.otwartosc)} (sufit wymiany NPC: ${procent(c.otwartosc)} dziennej konsumpcji portu)` : 'bez wymiany NPC';
-      return `<div class="cyw" style="border-color:${kolor}"><b>${esc(c.nazwa)}</b> <span class="szary">${sektor}${c.populacjaMln.toLocaleString('pl-PL')} mln</span>
+      const postep = gra.progresja ? gra.postepAwansu(c.id) : null;
+      const tier = postep
+        ? postep.nastepny
+          ? `<div class="maly">Tier <b>${postep.tier}</b> / ${K.TierCount}. Koszyk T${postep.nastepny}: ${postep.towary.map((x) => `${nazwaTowaru(x.towar)} ${procent(Math.min(1, x.dostarczoneWU / x.potrzebneWU))} (${liczba1(x.dostarczoneWU / K.towary[x.towar].basePrice)} / ${liczba1(x.potrzebneWU / K.towary[x.towar].basePrice)} m³)`).join(', ')} · PKB portów ${Math.round(postep.pkbWU).toLocaleString('pl-PL')} WU/dobę</div>`
+          : `<div class="maly">Tier <b>${postep.tier}</b> / ${K.TierCount}: najwyższy.</div>`
+        : '';
+      return `<div class="cyw" style="border-color:${kolor}"><b>${esc(c.nazwa)}</b> <span class="szary">${sektor}${c.populacjaMln.toLocaleString('pl-PL')} mln</span>${tier}
         <div class="maly">${planety}</div>
         <div class="maly">${otwartosc} · samowystarczalność żywnościowa SSR ${liczba2(c.ssr)} (${c.ssr >= 1 ? 'eksporter' : 'importer'} żywności)</div>
         <div class="maly"><span class="zysk">Nadwyżka portów:</span> ${opis(produkuje)}</div>

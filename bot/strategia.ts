@@ -11,6 +11,7 @@ import {
   zapasPo,
   type OpcjeGry,
   type PozycjaRynku,
+  type Raport,
   type Towar,
   type Zalogant,
 } from '../sim/index';
@@ -33,10 +34,10 @@ function najmniejszyMnoznikPaliwa(): number {
 }
 
 function grafTankowania(gra: Gra): Map<string, Odcinek[]> {
-  const klucz = `${gra.swiat.skala}:${gra.swiat.ziarno}`;
+  const klucz = `${gra.swiat.skala}:${gra.swiat.ziarno}:${gra.stan.szczebel}`;
   const gotowy = cacheGrafow.get(klucz);
   if (gotowy) return gotowy;
-  const maxZasieg = K.bak / (K.kosztPaliwaNaParsek * najmniejszyMnoznikPaliwa());
+  const maxZasieg = gra.bak() / (K.kosztPaliwaNaParsek * najmniejszyMnoznikPaliwa());
   const odcinki = new Map<string, Odcinek[]>();
   for (const w of gra.swiat.wezly) {
     if (w.typ === 'przelot') continue;
@@ -69,7 +70,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[]): 
   const graf = grafTankowania(gra);
   const mnoznik = efektyZalogi(zaloga).mnoznikPaliwa;
   // Odcinek musi zostawić rezerwę: bak tankuje się w krokach, a zużycie nie może przekroczyć stanu baku.
-  const zasiegOdcinka = (K.bak - P.bot.rezerwaPaliwaOdcinkaM3) / (K.kosztPaliwaNaParsek * mnoznik);
+  const zasiegOdcinka = (gra.bak() - P.bot.rezerwaPaliwaOdcinkaM3) / (K.kosztPaliwaNaParsek * mnoznik);
   const dystans = new Map<string, number>([[start, 0]]);
   const skokiDo = new Map<string, number>([[start, 0]]);
   const poprzednik = new Map<string, string | null>([[start, null]]);
@@ -122,6 +123,8 @@ export interface Zakup {
   m3: number;
   kosztKr: number;
   przychodKr: number;
+  /** Progresja: perspektywiczna wartość dostawy do koszyka awansu (nie jest gotówką). */
+  premiaKr: number;
 }
 
 export interface Plan {
@@ -141,6 +144,8 @@ export interface Plan {
   eksploracja: boolean;
   /** Szacowana gotówka po przylocie i sprzedaży wszystkiego w celu. */
   gotowkaPo: number;
+  /** Progresja: łączna premia perspektywiczna za dostawy koszyków awansu wliczona w zyskNetto. */
+  premiaAwansuKr: number;
 }
 
 export interface OpcjaZalogi {
@@ -158,9 +163,65 @@ interface PlanetaKlastra {
 export class Kontekst {
   private rzuty = new Map<string, PozycjaRynku | null>();
   private klastry = new Map<string, PlanetaKlastra[]>();
+  private premie = new Map<string, Partial<Record<Towar, { naWU: number; pozostaloWU: number }>>>();
   readonly dojazdyCache = new Map<string, Map<string, Dojazd>>();
   readonly drugiKrokCache = new Map<string, { zysk: number; doby: number }>();
-  constructor(readonly gra: Gra) {}
+  constructor(
+    readonly gra: Gra,
+    /** Marże na m³ zaobserwowane przez bota na własnych sprzedażach (do wyceny przyszłego popytu po awansie). */
+    readonly marzeNaM3: Partial<Record<Towar, number[]>> = {},
+  ) {}
+
+  /** Marża na m³ towaru, jakiej bot może oczekiwać: mediana własnych sprzedaży (co najmniej minSprzedazyDoMarzy), inaczej 0. */
+  marzaOczekiwana(towar: Towar): number {
+    const m = this.marzeNaM3[towar] ?? [];
+    if (m.length < P.bot.minSprzedazyDoMarzy) return 0;
+    const s = [...m].sort((a, b) => a - b);
+    const i = Math.floor(s.length / 2);
+    return Math.max(0, s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2);
+  }
+
+  /**
+   * Progresja: ile kr perspektywicznej wartości daje 1 WU dostawy towaru koszyka do cywilizacji.
+   * Wartość awansu = Σ towarów koszyka: dodatkowa konsumpcja po awansie (m³/dobę) × marża oczekiwana (kr/m³)
+   * × min(pozostałe doby, horyzont) × udział bota w tym popycie; rozłożona liniowo na potrzebną wartość koszyka,
+   * ale nie więcej niż maxPremiaUlamekCeny ceny bazowej za m³ (żeby niski próg nie zamienił bota w darczyńcę).
+   */
+  premiaAwansu(idCyw: string): Partial<Record<Towar, { naWU: number; pozostaloWU: number }>> {
+    const gotowa = this.premie.get(idCyw);
+    if (gotowa) return gotowa;
+    const gra = this.gra;
+    const wynik: Partial<Record<Towar, { naWU: number; pozostaloWU: number }>> = {};
+    const koszyk = gra.koszykTieru(idCyw);
+    const cyw = gra.cywilizacja(idCyw);
+    if (koszyk && cyw && gra.cywilizacjaZnana(idCyw)) {
+      const postep = gra.postepAwansu(idCyw);
+      const doby = Math.max(0, Math.min(gra.limitDob - gra.stan.doba, P.bot.horyzontAwansuDob));
+      let wartoscAwansu = 0;
+      for (const t of Object.keys(koszyk.udzialy) as Towar[]) {
+        const dodatkowa = (P.progresja.mnoznikKonsumpcjiAwansu - 1) * cyw.potrzebyM3NaDobe[t];
+        wartoscAwansu += dodatkowa * this.marzaOczekiwana(t) * doby * P.bot.udzialWPopycieAwansu;
+      }
+      for (const x of postep.towary) {
+        if (!(x.potrzebneWU > 0)) continue;
+        const udzial = koszyk.udzialy[x.towar] ?? 0;
+        const naWU = Math.min((wartoscAwansu * udzial) / x.potrzebneWU, P.bot.maxPremiaUlamekCeny * K.kurs);
+        if (naWU > 0) wynik[x.towar] = { naWU, pozostaloWU: Math.max(0, x.potrzebneWU - x.dostarczoneWU) };
+      }
+    }
+    this.premie.set(idCyw, wynik);
+    return wynik;
+  }
+
+  /** Premia perspektywiczna za sprzedaż m3 towaru na planecie (0 bez progresji albo poza koszykiem). */
+  premiaZa(idPlanety: string, towar: Towar, m3: number): number {
+    if (!this.gra.progresja || m3 <= 0) return 0;
+    const cyw = this.gra.wezel(idPlanety).cywilizacja;
+    if (!cyw) return 0;
+    const p = this.premiaAwansu(cyw)[towar];
+    if (!p) return 0;
+    return Math.round(Math.min(m3 * K.towary[towar].basePrice, p.pozostaloWU) * p.naWU);
+  }
 
   dojazdyZ(start: string, zaloga: readonly Zalogant[]): Map<string, Dojazd> {
     const klucz = `${start}:${efektyZalogi(zaloga).mnoznikPaliwa.toFixed(4)}`;
@@ -221,8 +282,8 @@ export class Kontekst {
    * Przychód ze sprzedaży m3 w klastrze celu po `skoki` skokach: ilość dzielona proporcjonalnie do norm rynków,
    * z karą pamięci zakupu tam, gdzie licznik jeszcze nie zgaśnie (bot zna regułę).
    */
-  przychodSprzedazy(cel: string, towar: Towar, m3: number, doby: number, udzial: number, zKlastrem = true, skoki = 0): { kwota: number; objazd: number } | null {
-    if (m3 <= 0) return { kwota: 0, objazd: 0 };
+  przychodSprzedazy(cel: string, towar: Towar, m3: number, doby: number, udzial: number, zKlastrem = true, skoki = 0): { kwota: number; objazd: number; premia: number } | null {
+    if (m3 <= 0) return { kwota: 0, objazd: 0, premia: 0 };
     const klaster = zKlastrem ? this.klaster(cel) : [{ id: cel, odleglosc: 0 }];
     const pozycje: { id: string; poz: PozycjaRynku; odleglosc: number }[] = [];
     for (const k of klaster) {
@@ -234,7 +295,7 @@ export class Kontekst {
       pozycje.push({ id: k.id, poz, odleglosc: k.odleglosc });
     }
     const sumaNorm = pozycje.reduce((s, p) => s + p.poz.norma, 0);
-    if (!(sumaNorm > 0)) return { kwota: 0, objazd: 0 };
+    if (!(sumaNorm > 0)) return { kwota: 0, objazd: 0, premia: 0 };
     let kwota = 0;
     let objazd = 0;
     for (const p of pozycje) {
@@ -243,7 +304,8 @@ export class Kontekst {
       kwota += Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, p.poz, czesc, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(p.id, towar, skoki), this.gra.obciecieNacisku)));
       objazd = Math.max(objazd, p.odleglosc);
     }
-    return { kwota, objazd };
+    // Klaster to jedna cywilizacja, więc premia awansu liczy się od całej ilości.
+    return { kwota, objazd, premia: this.premiaZa(cel, towar, m3) };
   }
 
   /** Przychód ze sprzedaży tutaj (rynek na żywo, kara pamięci zakupu bez skoków w przód). */
@@ -302,9 +364,11 @@ function dobierzLadunek(ctx: Kontekst, cel: string, doby: number, gotowka: numbe
         const m3 = Math.floor((max * k) / P.bot.krokiIlosci);
         if (m3 <= 0) continue;
         const koszt = ctx.kosztKupnaTutaj(t, m3, udzial);
-        const przychod = ctx.przychodSprzedazy(cel, t, bazowe[t] + m3, doby, udzial, true, skoki)!.kwota - przychodBazy.kwota;
-        const marza = przychod - koszt;
-        if (marza > 0 && (!najlepszy || marza > najlepszy.przychodKr - najlepszy.kosztKr)) najlepszy = { towar: t, m3, kosztKr: koszt, przychodKr: przychod };
+        const r = ctx.przychodSprzedazy(cel, t, bazowe[t] + m3, doby, udzial, true, skoki)!;
+        const przychod = r.kwota - przychodBazy.kwota;
+        const premia = r.premia - przychodBazy.premia;
+        const marza = przychod + premia - koszt;
+        if (marza > 0 && (!najlepszy || marza > najlepszy.przychodKr + najlepszy.premiaKr - najlepszy.kosztKr)) najlepszy = { towar: t, m3, kosztKr: koszt, przychodKr: przychod, premiaKr: premia };
       }
     }
     if (!najlepszy) break;
@@ -327,6 +391,8 @@ export interface FiltrPlanow {
   cele?: Set<string>;
   /** Tylko wariant „wieź ładunek dalej” (zobowiązanie do celu). */
   tylkoDalej?: boolean;
+  /** Ekspedycja do nieznanej cywilizacji: plan eksploracyjny bez ograniczeń zasięgu i horyzontu eksploracji. */
+  ekspedycja?: boolean;
 }
 
 /** Plany lotu dla danej załogi do wskazanych celów (albo wszystkich znanych). */
@@ -343,6 +409,10 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
   for (const t of TOWARY) ladunek[t] = gra.stan.ladownia[t].m3;
   const ktosNieznany = gra.swiat.cywilizacje.some((c) => !gra.stan.znaneCywilizacje[c.id]);
   const eksplorujDo = P.bot.eksplorujDoUlamkaHoryzontu * gra.limitDob;
+  // Progresja: horyzont jest dłuższy niż standardowy horyzont skali, więc kontakt jest wart proporcjonalnie więcej, a zasięg eksploracji rośnie w tej samej proporcji.
+  const skalaHoryzontu = gra.progresja ? Math.max(1, gra.limitDob / P.skale[gra.skala].limitDob) : 1;
+  const eksplorujMaxPc = P.bot.eksplorujMaxPc * skalaHoryzontu;
+  const premiaEksploracji = P.bot.premiaEksploracjiKr * (gra.progresja ? Math.max(1, (gra.limitDob - gra.stan.doba) / P.skale[gra.skala].limitDob) : 1);
   const plany: Plan[] = [];
 
   for (const [cel, d] of doj) {
@@ -350,7 +420,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     const w = gra.wezel(cel);
     if (w.typ !== 'planeta') continue;
     const znany = gra.informacjaORynku(cel) !== null;
-    const eksploracja = !znany && ktosNieznany && !gra.cywilizacjaZnana(w.cywilizacja) && gra.stan.doba <= eksplorujDo && d.dystans <= P.bot.eksplorujMaxPc;
+    const eksploracja = !znany && ktosNieznany && !gra.cywilizacjaZnana(w.cywilizacja) && (filtr.ekspedycja || (gra.stan.doba <= eksplorujDo && d.dystans <= eksplorujMaxPc));
     if (!znany && !eksploracja) continue;
     const doby = d.dystans / ef.predkosc;
     const paliwo = d.dystans * K.kosztPaliwaNaParsek * ef.mnoznikPaliwa;
@@ -365,8 +435,11 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
 
     if (eksploracja) {
       if (filtr.tylkoDalej && filtr.cele && !filtr.cele.has(cel)) continue;
-      const zysk = P.bot.premiaEksploracjiKr - koszty;
-      plany.push({ ...wspolne, sprzedaze: [], zakupy: [], zyskNetto: zysk, naDobe: zysk / doby, eksploracja: true, gotowkaPo: gra.stan.kr - koszty });
+      // Na ekspedycję bot nie wiezie ładunku (rynek celu nieznany): sprzedaje tutaj wszystko, co ma rynek.
+      const sprzedazeTu = rynekTu ? TOWARY.filter((t) => ladunek[t] > 0).map((t) => ({ towar: t, m3: ladunek[t] })) : [];
+      const przychodTu = sprzedazeTu.reduce((s, x) => s + ctx.przychodTutaj(x.towar, x.m3, ef.udzialHandlowca), 0);
+      const zysk = premiaEksploracji - koszty + (rynekTu ? przychodTu - wartoscLadowniTu : 0);
+      plany.push({ ...wspolne, sprzedaze: sprzedazeTu, zakupy: [], zyskNetto: zysk, naDobe: zysk / doby, eksploracja: true, gotowkaPo: gra.stan.kr + przychodTu - koszty, premiaAwansuKr: 0 });
       continue;
     }
 
@@ -375,31 +448,35 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     const zostaje = pustyLadunek();
     let przychodTu = 0;
     let przychodCel = 0;
+    let premia = 0;
     let objazd = 0;
     let znanyCel = true;
-    let objetosc = K.ladownia - gra.objetoscZajeta();
-    let masa = K.maxMasaLadunku - gra.masaZajeta();
+    let objetosc = gra.ladownia() - gra.objetoscZajeta();
+    let masa = gra.maxMasa() - gra.masaZajeta();
     for (const t of TOWARY) {
       const h = ladunek[t];
       if (h <= 0) continue;
-      let najlepszy: { q: number; tu: number; cel: number; objazd: number } | null = null;
+      let najlepszy: { q: number; tu: number; cel: number; premia: number; objazd: number } | null = null;
       for (let k = 0; k <= P.bot.krokiIlosci; k++) {
         const q = k === P.bot.krokiIlosci ? h : Math.floor((h * k) / P.bot.krokiIlosci);
         if (q > 0 && (!rynekTu || filtr.tylkoDalej)) continue;
         const tuKwota = ctx.przychodTutaj(t, q, ef.udzialHandlowca);
+        const tuPremia = ctx.premiaZa(tu, t, q);
         // Wieziony ładunek wyceniany jest tylko na samym celu: obietnica „rozwiozę po sąsiadach” realizuje się dopiero tam.
         const dalej = ctx.przychodSprzedazy(cel, t, h - q, doby, ef.udzialHandlowca, false, d.skoki);
         if (!dalej) {
           znanyCel = false;
           break;
         }
-        if (!najlepszy || tuKwota + dalej.kwota > najlepszy.tu + najlepszy.cel) najlepszy = { q, tu: tuKwota, cel: dalej.kwota, objazd: dalej.objazd };
+        const ocena = tuKwota + tuPremia + dalej.kwota + dalej.premia;
+        if (!najlepszy || ocena > najlepszy.tu + najlepszy.cel + najlepszy.premia) najlepszy = { q, tu: tuKwota, cel: dalej.kwota, premia: tuPremia + dalej.premia, objazd: dalej.objazd };
       }
       if (!znanyCel || !najlepszy) break;
       if (najlepszy.q > 0) sprzedaze.push({ towar: t, m3: najlepszy.q });
       zostaje[t] = h - najlepszy.q;
       przychodTu += najlepszy.tu;
       przychodCel += najlepszy.cel;
+      premia += najlepszy.premia;
       objazd = Math.max(objazd, najlepszy.objazd);
       objetosc += najlepszy.q;
       masa += najlepszy.q * K.towary[t].gestosc;
@@ -408,7 +485,9 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
 
     const gotowka = gra.stan.kr + przychodTu - koszty;
     const zakupy = rynekTu && gotowka > 0 ? dobierzLadunek(ctx, cel, doby, gotowka, ef.udzialHandlowca, zostaje, objetosc, masa, d.skoki) : [];
-    const marza = zakupy.reduce((s, z) => s + z.przychodKr - z.kosztKr, 0);
+    const premiaLadunku = premia;
+    premia += zakupy.reduce((s, z) => s + z.premiaKr, 0);
+    const marza = zakupy.reduce((s, z) => s + z.przychodKr + z.premiaKr - z.kosztKr, 0);
     // Objazd po klastrze, gdy część ładunku sprzeda się poza celem.
     for (const z of zakupy) {
       const r = ctx.przychodSprzedazy(cel, z.towar, zostaje[z.towar] + z.m3, doby, ef.udzialHandlowca, true, d.skoki);
@@ -416,10 +495,15 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     }
     const dobyObjazdu = objazd / ef.predkosc;
     const kosztObjazdu = Math.round(objazd * K.kosztPaliwaNaParsek * ef.mnoznikPaliwa * cenaPaliwaTu + ef.placeNaDobe * dobyObjazdu);
-    const zysk = przychodTu + przychodCel - wartoscLadowniTu + marza - koszty - kosztObjazdu;
+    let zysk = przychodTu + przychodCel + premiaLadunku - wartoscLadowniTu + marza - koszty - kosztObjazdu;
+    // Premia awansu nie jest gotówką: plan, który spaliłby więcej niż maxStrataNaKoszykUlamek gotówki, traci premię (i zwykle sens).
+    if (premia > 0 && zysk - premia < -P.bot.maxStrataNaKoszykUlamek * gra.stan.kr) {
+      zysk -= premia;
+      premia = 0;
+    }
     const dobyLacznie = doby + dobyObjazdu;
     const gotowkaPo = gra.stan.kr + przychodTu + przychodCel + zakupy.reduce((s, z) => s + z.przychodKr - z.kosztKr, 0) - koszty - kosztObjazdu;
-    plany.push({ ...wspolne, sprzedaze, zakupy, zyskNetto: zysk, naDobe: zysk / dobyLacznie, eksploracja: false, gotowkaPo });
+    plany.push({ ...wspolne, sprzedaze, zakupy, zyskNetto: zysk, naDobe: zysk / dobyLacznie, eksploracja: false, gotowkaPo, premiaAwansuKr: premia });
   }
   return plany;
 }
@@ -448,7 +532,7 @@ function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zy
     for (const t of TOWARY) {
       const zrodlo = ctx.rynekZa(plan.cel, t, plan.doby);
       if (!zrodlo || zrodlo.zapas <= 0) continue;
-      const maxObj = Math.min(K.ladownia, K.maxMasaLadunku / K.towary[t].gestosc, zrodlo.zapas);
+      const maxObj = Math.min(gra.ladownia(), gra.maxMasa() / K.towary[t].gestosc, zrodlo.zapas);
       for (let k = 1; k <= P.bot.krokiDrugiegoKroku; k++) {
         const m3 = Math.floor((maxObj * k) / P.bot.krokiDrugiegoKroku);
         if (m3 <= 0) continue;
@@ -456,7 +540,7 @@ function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zy
         if (koszt === null || koszt > plan.gotowkaPo) continue;
         const r = ctx.przychodSprzedazy(cel2, t, m3, plan.doby + doby2, ef.udzialHandlowca, true, plan.skoki + d.skoki);
         if (!r) continue;
-        const zysk = r.kwota - koszt - koszty;
+        const zysk = r.kwota + r.premia - koszt - koszty;
         if (zysk > najlepszy.zysk) najlepszy = { zysk, doby: doby2 };
       }
     }
@@ -471,13 +555,15 @@ export function opcjeZalogi(gra: Gra): OpcjaZalogi[] {
   const opcje: OpcjaZalogi[] = [{ zaloga: [...obecna], zatrudnij: [], zwolnij: [] }];
   for (const k of gra.stan.kandydaci) {
     if (obecna.length < K.miejscaZalogi) opcje.push({ zaloga: [...obecna, k], zatrudnij: [k.id], zwolnij: [] });
+    // Progresja: XP to inwestycja w załoganta, więc bot nie zwalnia i nie podmienia (kandydat zaczyna od zera).
+    if (gra.progresja) continue;
     for (const z of obecna) {
       if (z.rola === k.rola && z.umiejetnosc < k.umiejetnosc) {
         opcje.push({ zaloga: [...obecna.filter((x) => x.id !== z.id), k], zatrudnij: [k.id], zwolnij: [z.id] });
       }
     }
   }
-  for (const z of obecna) opcje.push({ zaloga: obecna.filter((x) => x.id !== z.id), zatrudnij: [], zwolnij: [z.id] });
+  if (!gra.progresja) for (const z of obecna) opcje.push({ zaloga: obecna.filter((x) => x.id !== z.id), zatrudnij: [], zwolnij: [z.id] });
   return opcje;
 }
 
@@ -491,13 +577,41 @@ export interface Decyzja {
   opcja: OpcjaZalogi;
 }
 
-/** Pamięć bota między dokami: cel, do którego wiezie ładunek (trasa wieloetapowa). */
+/** Pamięć bota między dokami: cel, do którego wiezie ładunek (trasa wieloetapowa), i własne marże per towar (progresja). */
 export interface StanBota {
   cel: string | null;
+  marzeNaM3: Partial<Record<Towar, number[]>>;
+  /** Progresja: doba zakończenia ostatniej ekspedycji (kontaktu), do rytmu kolejnych. */
+  ostatniaEkspedycja: number;
 }
 
 export function nowyStanBota(): StanBota {
-  return { cel: null };
+  return { cel: null, marzeNaM3: {}, ostatniaEkspedycja: 0 };
+}
+
+/**
+ * Progresja: ekspedycja. Gracz, który chce maksimum galaktyki, musi poznać wszystkie cywilizacje, a zachłanna stopa na dobę
+ * nigdy nie wybierze pustego lotu na kilkaset parseków. Dlatego co `dobyMiedzyEkspedycjami` dób (do `eksplorujDoUlamkaHoryzontu`
+ * horyzontu) bot zobowiązuje się do najbliższej planety nieznanej cywilizacji osiągalnej po grafie tankowania.
+ */
+function celEkspedycji(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | null {
+  if (!gra.progresja || stanBota.cel || !gra.rynekZnany(gra.stan.pozycja)) return null;
+  if (gra.stan.doba > P.bot.eksplorujDoUlamkaHoryzontu * gra.limitDob) return null;
+  if (gra.stan.doba - stanBota.ostatniaEkspedycja < P.bot.dobyMiedzyEkspedycjami) return null;
+  if (!gra.swiat.cywilizacje.some((c) => !gra.stan.znaneCywilizacje[c.id])) return null;
+  const doj = ctx.dojazdyZ(gra.stan.pozycja, gra.stan.zaloga);
+  let najlepszy: { id: string; dystans: number } | null = null;
+  for (const [id, d] of doj) {
+    const w = gra.wezel(id);
+    if (w.typ !== 'planeta' || gra.cywilizacjaZnana(w.cywilizacja)) continue;
+    if (!najlepszy || d.dystans < najlepszy.dystans) najlepszy = { id, dystans: d.dystans };
+  }
+  if (!najlepszy) return null;
+  // Ekspedycja to pusty lot: rusza tylko, gdy gotówka (po sprzedaży ładunku tutaj) pokrywa koszt z zapasem.
+  const ef = efektyZalogi(gra.stan.zaloga);
+  const koszt = najlepszy.dystans * K.kosztPaliwaNaParsek * ef.mnoznikPaliwa * kr(K.towary.Fuel.basePrice) + (ef.placeNaDobe * najlepszy.dystans) / ef.predkosc;
+  if (gra.stan.kr + gra.wartoscLadowni() < P.bot.mnoznikGotowkiNaEkspedycje * koszt) return null;
+  return najlepszy.id;
 }
 
 /** Konkretna akcja wykonana w doku; smoke test odtwarza je w UI jeden do jednego. */
@@ -508,6 +622,7 @@ export type Akcja =
   | { typ: 'zatrudnij'; id: string }
   | { typ: 'tankuj'; m3: number }
   | { typ: 'kup'; towar: Towar; m3: number }
+  | { typ: 'kup-szczebel'; szczebel: number }
   | { typ: 'lec'; trasa: string[] };
 
 export interface KrokBota {
@@ -522,18 +637,26 @@ export type ObserwatorPlanow = (plany: Plan[]) => void;
 
 /** Wybór załogi i planu bez mutacji stanu gry; aktualizuje zobowiązanie w stanie bota. */
 export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwator?: ObserwatorPlanow): Decyzja {
-  const ctx = new Kontekst(gra);
+  const ctx = new Kontekst(gra, stanBota.marzeNaM3);
   const bezZmian: OpcjaZalogi = { zaloga: [...gra.stan.zaloga], zatrudnij: [], zwolnij: [] };
   const maLadunek = TOWARY.some((t) => gra.stan.ladownia[t].m3 > 0);
-  if (stanBota.cel === gra.stan.pozycja || !maLadunek) stanBota.cel = null;
+  const ekspedycjaTrwa = stanBota.cel !== null && !gra.rynekZnany(stanBota.cel);
+  if (stanBota.cel === gra.stan.pozycja || (!maLadunek && !ekspedycjaTrwa)) stanBota.cel = null;
+  if (ekspedycjaTrwa && stanBota.cel && gra.rynekZnany(stanBota.cel)) stanBota.cel = null;
+  const ekspedycja = celEkspedycji(gra, stanBota, ctx);
+  if (ekspedycja) {
+    stanBota.cel = ekspedycja;
+    stanBota.ostatniaEkspedycja = gra.stan.doba;
+  }
 
   // Zobowiązanie: wieziemy ładunek do celu, więc na przystanku tylko tankujemy, dokupujemy i lecimy dalej.
   if (stanBota.cel) {
     const cel = stanBota.cel;
     let najlepszy: Plan | null = null;
     let opcjaNaj: OpcjaZalogi = bezZmian;
+    const doNieznanej = !gra.rynekZnany(cel);
     for (const opcja of opcjeZalogi(gra)) {
-      for (const plan of planyDlaZalogi(gra, opcja.zaloga, ctx, { cele: new Set([cel]), tylkoDalej: true })) {
+      for (const plan of planyDlaZalogi(gra, opcja.zaloga, ctx, { cele: new Set([cel]), tylkoDalej: !doNieznanej, ekspedycja: doNieznanej })) {
         if (lepszy(plan, najlepszy)) {
           najlepszy = plan;
           opcjaNaj = opcja;
@@ -563,11 +686,15 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
   if (najlepszyPlan) {
     const cele = new Set([najlepszyPlan.cel]);
     let najlepszaStopa = najlepszyPlan.naDobe;
+    // Progresja: załogant zbiera XP tylko na pokładzie, więc bot toleruje koszt dnia do maxKosztDobyXpKr za zatrudnienie.
+    const tolerancja = gra.progresja ? P.bot.maxKosztDobyXpKr : 0;
+    let najlepszaOcena = najlepszaStopa;
     for (const opcja of opcjeZalogi(gra)) {
       if (opcja.zatrudnij.length === 0 && opcja.zwolnij.length === 0) continue;
       for (const plan of planyDlaZalogi(gra, opcja.zaloga, ctx, { cele })) {
-        if (plan.naDobe > najlepszaStopa) {
-          najlepszaStopa = plan.naDobe;
+        const ocena = plan.naDobe + (opcja.zatrudnij.length > 0 ? tolerancja : 0);
+        if (ocena > najlepszaOcena && plan.naDobe + tolerancja >= najlepszaStopa) {
+          najlepszaOcena = ocena;
           najlepszyPlan = plan;
           najlepszaOpcja = opcja;
         }
@@ -590,7 +717,7 @@ export function wykonaj(gra: Gra, d: Decyzja): { akcje: Akcja[]; utknal: boolean
   const tu = gra.stan.pozycja;
   const akcje: Akcja[] = [];
   const tankuj = (m3: number, rezerwa = 0) => {
-    const ile = zaokrPaliwo(Math.min(m3, K.bak - gra.stan.paliwo, gra.maxPaliwo(gra.stan.kr - rezerwa)));
+    const ile = zaokrPaliwo(Math.min(m3, gra.bak() - gra.stan.paliwo, gra.maxPaliwo(gra.stan.kr - rezerwa)));
     if (ile > 0) {
       gra.tankuj(ile);
       akcje.push({ typ: 'tankuj', m3: ile });
@@ -608,7 +735,7 @@ export function wykonaj(gra: Gra, d: Decyzja): { akcje: Akcja[]; utknal: boolean
 
   /** Lot awaryjny: do najbliższego węzła z paliwem, do którego starczy baku; w ostateczności zwolnij załogę. */
   const lotAwaryjny = (): boolean => {
-    tankuj(K.bak);
+    tankuj(gra.bak());
     for (let proba = 0; proba < 2; proba++) {
       const zas = gra.zasieg();
       const cele = [...zas.values()].filter((o) => o.id !== tu && gra.wezel(o.id).typ !== 'przelot').sort((a, b) => a.dystans - b.dystans);
@@ -658,7 +785,7 @@ export function wykonaj(gra: Gra, d: Decyzja): { akcje: Akcja[]; utknal: boolean
     }
   }
   // Tanie paliwo: dotankuj do pełna, jeśli cena poniżej progu i zostaje gotówka.
-  if (gra.maPaliwo() && gra.cenaPaliwaTutaj() <= P.bot.tankujGdyCenaPonizejBazyRazy * K.kurs * K.towary.Fuel.basePrice) tankuj(K.bak, plan.placeKr);
+  if (gra.maPaliwo() && gra.cenaPaliwaTutaj() <= P.bot.tankujGdyCenaPonizejBazyRazy * K.kurs * K.towary.Fuel.basePrice) tankuj(gra.bak(), plan.placeKr);
   // Upewnij się, że paliwa starczy na odcinek (zakupy mogły zjeść gotówkę).
   if (potrzebneNaOdcinek > gra.stan.paliwo + 1e-9) tankuj(Math.ceil((potrzebneNaOdcinek - gra.stan.paliwo) * 10) / 10);
   if (!lec(plan.pierwszyOdcinek)) {
@@ -671,17 +798,37 @@ export function wykonaj(gra: Gra, d: Decyzja): { akcje: Akcja[]; utknal: boolean
         }
       }
     }
-    tankuj(K.bak);
+    tankuj(gra.bak());
     if (!lec(plan.pierwszyOdcinek)) return { akcje, utknal: !lotAwaryjny() };
   }
   return { akcje, utknal: false };
 }
 
-/** Jeden obrót pętli: zaplanuj i wykonaj. */
+/**
+ * Progresja: inwestycja w kadłub przed planowaniem. W stoczni stolicy bot kupuje kolejny szczebel,
+ * gdy ma co najmniej mnoznikGotowkiNaSzczebel × ceny (po sprzedaży ładunku tutaj byłoby więcej, ale liczy się gotówka w kasie).
+ */
+export function inwestuj(gra: Gra): Akcja[] {
+  const akcje: Akcja[] = [];
+  if (!gra.progresja || !gra.wStoczni()) return akcje;
+  for (;;) {
+    const w = gra.wycenaSzczebla();
+    if (!w || w.kwotaKr === null || gra.stan.kr < P.bot.mnoznikGotowkiNaSzczebel * w.kwotaKr) break;
+    const z = gra.kupSzczebel();
+    akcje.push({ typ: 'kup-szczebel', szczebel: z.szczebel });
+  }
+  return akcje;
+}
+
+/** Jeden obrót pętli: inwestycja (progresja), zaplanuj i wykonaj. */
 export function krokBota(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwator?: ObserwatorPlanow): KrokBota {
+  const inwestycje = inwestuj(gra);
   const decyzja = zaplanuj(gra, stanBota, obserwator);
   const { akcje, utknal } = wykonaj(gra, decyzja);
-  return { plan: decyzja.plan, opcja: decyzja.opcja, akcje, utknal };
+  // Własne marże (kr/m³) ze sprzedaży w tym doku: wycena przyszłego popytu po awansie opiera się na nich.
+  const raport = gra.stan.raporty[gra.stan.raporty.length - 1];
+  if (raport && gra.progresja) for (const w of raport.wynikHandlowy) if (w.m3 > 0) (stanBota.marzeNaM3[w.towar] ??= []).push(w.zyskKr / w.m3);
+  return { plan: decyzja.plan, opcja: decyzja.opcja, akcje: [...inwestycje, ...akcje], utknal };
 }
 
 // ------------------------------------------------------------------------------------
@@ -735,8 +882,16 @@ export interface WynikZiarna {
   plany: { dystans: number; zysk: number; naDobe: number }[];
 }
 
-export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna {
+/** Haki pomiarowe: na starcie, po każdym locie i na końcu rozgrywki (używa ich `bot/progresja.ts`). */
+export interface HakiRozgrywki {
+  naStarcie?: (gra: Gra) => void;
+  poLocie?: (gra: Gra, raport: Raport) => void;
+  naKoniec?: (gra: Gra) => void;
+}
+
+export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}, haki: HakiRozgrywki = {}): WynikZiarna {
   const gra = new Gra(ziarno, opcje);
+  haki.naStarcie?.(gra);
   const loty: LotBota[] = [];
   const trasy: TrasaBota[] = [];
   let pierwszy: number | null = null;
@@ -797,8 +952,10 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
     });
     if (pierwszy === null && raport.wartoscPo > raport.wartoscPrzed) pierwszy = raport.numerLotu;
     if (raport.kontakt && kontaktDoba === null) kontaktDoba = raport.dobaKoniec;
+    haki.poLocie?.(gra, raport);
   }
   if (biezaca && biezaca.loty > 0) trasy.push(biezaca);
+  haki.naKoniec?.(gra);
   const wartosc = gra.wartoscFirmy();
   return { ziarno, wartoscKoncowa: wartosc, zysk: wartosc > K.startingCredits, loty, trasy, pierwszyZyskownyLot: pierwszy, kontaktDoba, utknal, marzeNaM3, cenyPaliwa, plany };
 }

@@ -13,7 +13,7 @@ import {
 import { K, P, kr } from './stale';
 import { generujSwiat } from './swiat';
 import { Graf, odleglosc } from './trasa';
-import { efektyZalogi, generujKandydatow } from './zaloga';
+import { aktualizujZaloganta, efektyZalogi, generujKandydatow, tierZalogi } from './zaloga';
 import {
   TOWARY,
   TOWARY_I_PALIWO,
@@ -23,6 +23,7 @@ import {
   type LiniaRaportu,
   type OpcjeGry,
   type Osiagalny,
+  type PostepAwansu,
   type PozycjaLadowni,
   type Raport,
   type Rynek,
@@ -34,6 +35,7 @@ import {
   type WariantSpreadu,
   type Wezel,
   type Wycena,
+  type WycenaSzczebla,
   type WynikHandlowy,
   type Zalogant,
 } from './typy';
@@ -63,6 +65,20 @@ export interface Stan {
   numerLotu: number;
   koniec: boolean;
   raporty: Raport[];
+  // ---- Progresja (bez progresji pola stoją: tier 1, szczebel 0, puste liczniki) ----
+  /** Tier każdej cywilizacji (1…TierCount); podnosi go tylko gracz dostawą koszyka. */
+  tiery: Record<string, number>;
+  /** Dostawy koszyka kolejnego tieru per cywilizacja: towar → wartość po cenie bazowej (WU). */
+  dostawy: Record<string, Partial<Record<Towar, number>>>;
+  /** Szczebel drabiny kadłubów (0…szczebli−1). */
+  szczebel: number;
+  /** Zyski na kurs (kr) zmierzone na każdym szczeblu; kurs = loty między kolejnymi dokami ze sprzedażą. */
+  zyskiKursow: Record<number, number[]>;
+  /** Bieżący kurs: wartość firmy przy przylocie do ostatniego doku ze sprzedażą, szczebel i wydatki na kadłub od tej chwili. */
+  kursStart: { wartosc: number; szczebel: number; kadlubKr: number };
+  wydanoNaKadlub: number;
+  /** Kamienie milowe: klucz → doba pierwszego osiągnięcia. */
+  kamienie: Record<string, number>;
 }
 
 interface Okres {
@@ -71,10 +87,18 @@ interface Okres {
   paliwoKosztKr: number;
   saldoNaStarcie: number;
   wartoscNaStarcie: number;
+  kadlub: { szczebel: number; kwotaKr: number } | null;
+  awanse: { cywilizacja: string; nazwa: string; tier: number }[];
 }
 
 function zaokr(x: number): number {
   return Math.round(x);
+}
+
+function mediana(xs: readonly number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const i = Math.floor(s.length / 2);
+  return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2;
 }
 
 function kopiaRynku(r: Rynek): Rynek {
@@ -96,13 +120,16 @@ export class Gra {
   readonly spreadPodstawowy: number;
   /** Czy nacisk jest obcinany do [StockPressureMin, StockPressureMax] (wariant E: nie). */
   readonly obciecieNacisku: boolean;
+  /** Progresja: tiery cywilizacji, drabina kadłubów, XP załogi. */
+  readonly progresja: boolean;
   private okres!: Okres;
   private readonly rng: Losowosc;
 
   constructor(ziarno: string, opcje: OpcjeGry = {}) {
     this.skala = opcje.skala ?? P.skala;
     this.informacja = opcje.informacja ?? P.informacja;
-    this.limitDob = P.skale[this.skala].limitDob;
+    this.progresja = opcje.progresja ?? P.progresja.wlaczona;
+    this.limitDob = opcje.limitDob ?? (this.progresja ? P.progresja.horyzontDob : P.skale[this.skala].limitDob);
     this.wariantSpreadu = opcje.spread ?? P.spread;
     const konfig = P.wariantySpreadu[this.wariantSpreadu];
     this.spreadPodstawowy = konfig.tryb === 'staly' ? K.tradeSpread : (konfig.spreadPodstawowy ?? 0);
@@ -112,9 +139,15 @@ export class Gra {
     this.graf = new Graf(swiat.wezly, swiat.krawedzie);
     this.rng = new Losowosc(ziarno);
     const ladownia = {} as Record<Towar, PozycjaLadowni>;
-    for (const t of TOWARY) ladownia[t] = { m3: 0, kosztKr: 0 };
+    for (const t of TOWARY) ladownia[t] = { m3: 0, kosztKr: 0, pochodzenie: {} };
     const znane: Record<string, boolean> = {};
-    for (const c of swiat.cywilizacje) znane[c.id] = c.znanaNaStarcie;
+    const tiery: Record<string, number> = {};
+    const dostawy: Record<string, Partial<Record<Towar, number>>> = {};
+    for (const c of swiat.cywilizacje) {
+      znane[c.id] = c.znanaNaStarcie;
+      tiery[c.id] = 1;
+      dostawy[c.id] = {};
+    }
     this.stan = {
       doba: 0,
       kr: K.startingCredits,
@@ -131,8 +164,175 @@ export class Gra {
       numerLotu: 0,
       koniec: false,
       raporty: [],
+      tiery,
+      dostawy,
+      szczebel: 0,
+      zyskiKursow: { 0: [] },
+      kursStart: { wartosc: K.startingCredits, szczebel: 0, kadlubKr: 0 },
+      wydanoNaKadlub: 0,
+      kamienie: {},
     };
     this.zadokuj();
+  }
+
+  // ---------- Kadłub (drabina) ----------
+
+  private mnoznikKadluba(): number {
+    return Math.pow(P.progresja.mnoznikSzczebla, this.stan.szczebel);
+  }
+
+  /** Pojemność ładowni (m³) na bieżącym szczeblu: BaseShip × mnoznikSzczebla^N. */
+  ladownia(): number {
+    return K.ladownia * this.mnoznikKadluba();
+  }
+
+  bak(): number {
+    return K.bak * this.mnoznikKadluba();
+  }
+
+  maxMasa(): number {
+    return K.maxMasaLadunku * this.mnoznikKadluba();
+  }
+
+  /** Czy stoimy w doku stolicy znanej cywilizacji (tylko tam działa stocznia). */
+  wStoczni(idWezla: string = this.stan.pozycja): boolean {
+    const w = this.wezel(idWezla);
+    if (w.typ !== 'planeta' || !this.cywilizacjaZnana(w.cywilizacja)) return false;
+    return this.cywilizacja(w.cywilizacja)!.stolica === idWezla;
+  }
+
+  /**
+   * Wycena kolejnego szczebla: k × mediana zysku na kurs zmierzona na bieżącym szczeblu (potrzeba
+   * co najmniej `minKursowDoWycenySzczebla` kursów o dodatniej medianie). Kurs = loty między kolejnymi dokami ze sprzedażą.
+   */
+  wycenaSzczebla(): WycenaSzczebla | null {
+    if (!this.progresja) return null;
+    const nastepny = this.stan.szczebel + 1;
+    if (nastepny >= K.drabinaKadlubow.szczebli) return null;
+    const m = Math.pow(P.progresja.mnoznikSzczebla, nastepny);
+    const zyski = this.stan.zyskiKursow[this.stan.szczebel] ?? [];
+    const baza = { nastepny, kursow: zyski.length, ladowniaM3: K.ladownia * m, bakM3: K.bak * m };
+    if (zyski.length < P.progresja.minKursowDoWycenySzczebla) {
+      return { ...baza, kwotaKr: null, medianaZyskuKr: null, powod: `stocznia wycenia kadłub po ${P.progresja.minKursowDoWycenySzczebla} kursach na obecnym szczeblu (masz ${zyski.length})` };
+    }
+    const med = mediana(zyski);
+    if (!(med > 0)) return { ...baza, kwotaKr: null, medianaZyskuKr: med, powod: 'mediana zysku na kurs nie jest dodatnia' };
+    return { ...baza, kwotaKr: zaokr(P.progresja.k * med), medianaZyskuKr: med };
+  }
+
+  /** Kupno kolejnego szczebla w stoczni stolicy: ładownia, bak i masa rosną × mnoznikSzczebla; paliwo i ładunek zostają. */
+  kupSzczebel(): { szczebel: number; kwotaKr: number } {
+    if (!this.progresja) throw new Error('Drabina kadłubów działa tylko w trybie progresji');
+    if (!this.wStoczni()) throw new Error('Stocznia jest tylko w doku stolicy');
+    const w = this.wycenaSzczebla();
+    if (!w) throw new Error('To już najwyższy szczebel');
+    if (w.kwotaKr === null) throw new Error(w.powod ?? 'Brak wyceny');
+    if (w.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
+    this.stan.kr -= w.kwotaKr;
+    this.stan.szczebel = w.nastepny;
+    this.stan.zyskiKursow[w.nastepny] ??= [];
+    this.stan.wydanoNaKadlub += w.kwotaKr;
+    this.stan.kursStart.kadlubKr += w.kwotaKr;
+    this.okres.kadlub = { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
+    this.kamien(`szczebel:${w.nastepny}`);
+    return { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
+  }
+
+  private kamien(klucz: string): void {
+    if (this.stan.kamienie[klucz] === undefined) this.stan.kamienie[klucz] = this.stan.doba;
+  }
+
+  // ---------- Tiery cywilizacji ----------
+
+  tierCywilizacji(idCyw: string): number {
+    return this.stan.tiery[idCyw] ?? 1;
+  }
+
+  /** Koszyk kolejnego tieru cywilizacji (null na najwyższym tierze albo bez progresji). */
+  koszykTieru(idCyw: string) {
+    if (!this.progresja) return null;
+    const nastepny = this.tierCywilizacji(idCyw) + 1;
+    if (nastepny > K.TierCount) return null;
+    return P.progresja.koszyki.find((k) => k.tier === nastepny) ?? null;
+  }
+
+  /** Dzienny „PKB” portów cywilizacji: konsumpcja (łącznie z uśpioną) × cena bazowa, w WU/dobę. */
+  pkbDobowyWU(idCyw: string): number {
+    const cyw = this.cywilizacja(idCyw);
+    if (!cyw) return 0;
+    let suma = 0;
+    for (const id of cyw.planety) {
+      for (const t of TOWARY_I_PALIWO) {
+        const poz = this.stan.rynki[id][t];
+        suma += (poz.konsumpcja + poz.konsumpcjaUspiona) * K.towary[t].basePrice;
+      }
+    }
+    return suma;
+  }
+
+  /** Postęp awansu: próg = progAwansu × mnożnik tieru × PKB, podzielony między towary koszyka według udziałów. */
+  postepAwansu(idCyw: string): PostepAwansu {
+    const tier = this.tierCywilizacji(idCyw);
+    const koszyk = this.koszykTieru(idCyw);
+    const pkbWU = this.pkbDobowyWU(idCyw);
+    if (!koszyk) return { tier, nastepny: null, pkbWU, progWU: 0, towary: [], udzial: 1 };
+    const progWU = P.progresja.progAwansu * koszyk.mnoznikProgu * pkbWU;
+    const dostawy = this.stan.dostawy[idCyw] ?? {};
+    const towary = (Object.keys(koszyk.udzialy) as Towar[]).map((towar) => ({
+      towar,
+      potrzebneWU: progWU * (koszyk.udzialy[towar] ?? 0),
+      dostarczoneWU: dostawy[towar] ?? 0,
+    }));
+    const udzial = Math.min(...towary.map((x) => (x.potrzebneWU > 0 ? x.dostarczoneWU / x.potrzebneWU : 1)));
+    return { tier, nastepny: koszyk.tier, pkbWU, progWU, towary, udzial };
+  }
+
+  /** Zalicza sprzedaż towaru koszyka na planecie cywilizacji; przy pełnym koszyku awansuje tier. */
+  private zaliczDostawe(idCyw: string, towar: Towar, m3: number): void {
+    const koszyk = this.koszykTieru(idCyw);
+    if (!koszyk || !(koszyk.udzialy[towar]! > 0)) return;
+    const d = (this.stan.dostawy[idCyw] ??= {});
+    d[towar] = (d[towar] ?? 0) + m3 * K.towary[towar].basePrice;
+    const postep = this.postepAwansu(idCyw);
+    if (postep.udzial < 1 - EPS) return;
+    // Awans: konsumpcja i norma towarów koszyka rosną na wszystkich planetach cywilizacji; produkcja bez zmian.
+    const cyw = this.cywilizacja(idCyw)!;
+    const m = P.progresja.mnoznikKonsumpcjiAwansu;
+    for (const t of Object.keys(koszyk.udzialy) as Towar[]) {
+      for (const id of cyw.planety) {
+        const poz = this.stan.rynki[id][t];
+        poz.konsumpcja *= m;
+        poz.konsumpcjaUspiona *= m;
+        poz.norma *= m;
+      }
+      cyw.potrzebyM3NaDobe[t] *= m;
+    }
+    this.stan.tiery[idCyw] = koszyk.tier;
+    this.stan.dostawy[idCyw] = {};
+    this.okres.awanse.push({ cywilizacja: idCyw, nazwa: cyw.nazwa, tier: koszyk.tier });
+    this.kamien(`tier:${idCyw}:${koszyk.tier}`);
+    this.kamien(`cywilizacja:pierwsza:T${koszyk.tier}`);
+    const n = this.swiat.cywilizacje.length;
+    const naSzczycie = this.swiat.cywilizacje.filter((c) => this.tierCywilizacji(c.id) >= K.TierCount).length;
+    if (naSzczycie >= Math.ceil(n / 2)) this.kamien(`cywilizacja:polowa:T${K.TierCount}`);
+    if (naSzczycie >= n) this.kamien(`cywilizacja:wszystkie:T${K.TierCount}`);
+  }
+
+  // ---------- XP załogi ----------
+
+  /** Dodaje XP wszystkim załogantom (tryb progresji), aktualizuje tier, umiejętność i płacę, zapisuje kamienie. */
+  private dodajXP(xp: number): void {
+    if (!this.progresja || xp <= 0) return;
+    for (const z of this.stan.zaloga) {
+      if (z.xp === undefined) continue;
+      const przed = tierZalogi(z.xp);
+      z.xp += xp;
+      aktualizujZaloganta(z);
+      const po = tierZalogi(z.xp);
+      for (let t = przed + 1; t <= po; t++) this.kamien(`zaloga:tier:${t}`);
+    }
+    const szczyt = K.TierCount - 1;
+    if (this.stan.zaloga.length >= K.miejscaZalogi && this.stan.zaloga.every((z) => z.xp !== undefined && tierZalogi(z.xp) >= szczyt)) this.kamien('zaloga:wszyscy:legenda');
   }
 
   // ---------- Odczyt świata ----------
@@ -322,7 +522,7 @@ export class Gra {
     if (!this.rynekZnany(idWezla)) return 0;
     const poz = this.rynekDoWyceny(idWezla)[towar];
     const g = K.towary[towar].gestosc;
-    let hi = Math.min(poz.zapas, K.ladownia - this.objetoscZajeta(), (K.maxMasaLadunku - this.masaZajeta()) / g);
+    let hi = Math.min(poz.zapas, this.ladownia() - this.objetoscZajeta(), (this.maxMasa() - this.masaZajeta()) / g);
     hi = Math.max(0, hi);
     if (this.wycenaKupna(towar, hi, idWezla, udzial).kwotaKr <= gotowka) return hi;
     let lo = 0;
@@ -336,7 +536,7 @@ export class Gra {
 
   maxPaliwo(gotowka = this.stan.kr): number {
     if (!this.maPaliwo()) return 0;
-    let hi = Math.max(0, K.bak - this.stan.paliwo);
+    let hi = Math.max(0, this.bak() - this.stan.paliwo);
     if (this.wycenaPaliwa(hi).kwotaKr <= gotowka) return hi;
     let lo = 0;
     for (let i = 0; i < 40; i++) {
@@ -392,8 +592,8 @@ export class Gra {
     if (!(m3 > 0) || !Number.isFinite(m3)) throw new Error('Ilość musi być dodatnia');
     const poz = this.stan.rynki[tu][towar];
     if (m3 > poz.zapas + EPS) throw new Error('Planeta nie ma tyle w zapasie');
-    if (this.objetoscZajeta() + m3 > K.ladownia + EPS) throw new Error('Brak miejsca w ładowni');
-    if (this.masaZajeta() + m3 * K.towary[towar].gestosc > K.maxMasaLadunku + EPS) throw new Error('Przekroczona masa ładunku');
+    if (this.objetoscZajeta() + m3 > this.ladownia() + EPS) throw new Error('Brak miejsca w ładowni');
+    if (this.masaZajeta() + m3 * K.towary[towar].gestosc > this.maxMasa() + EPS) throw new Error('Przekroczona masa ładunku');
     const w = this.wycenaKupna(towar, m3);
     if (w.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
     this.stan.kr -= w.kwotaKr;
@@ -401,6 +601,9 @@ export class Gra {
     const l = this.stan.ladownia[towar];
     l.m3 += m3;
     l.kosztKr += w.kwotaKr;
+    // Pochodzenie ładunku (cywilizacja zakupu): dostawa koszyka awansu liczy tylko towar kupiony u innej cywilizacji.
+    const cywTu = this.wezel(tu).cywilizacja ?? '';
+    l.pochodzenie[cywTu] = (l.pochodzenie[cywTu] ?? 0) + m3;
     // Pamięć zakupu: (towar, planeta, licznik skoków) bez ceny kupna.
     this.stan.pamiecZakupu[this.kluczPamieci(tu, towar)] = P.pamiecZakupuSkokow;
     const t: Transakcja = {
@@ -427,8 +630,24 @@ export class Gra {
     const l = this.stan.ladownia[towar];
     if (m3 > l.m3 + EPS) throw new Error('Nie masz tyle w ładowni');
     m3 = Math.min(m3, l.m3);
+    // Pierwsza sprzedaż w tym doku zamyka kurs: zysk = wartość przy przylocie tutaj − wartość przy przylocie do poprzedniego doku ze sprzedażą (+ wydatki na kadłub).
+    if (!this.okres.transakcje.some((t) => t.rodzaj === 'sprzedaz')) {
+      const ks = this.stan.kursStart;
+      (this.stan.zyskiKursow[ks.szczebel] ??= []).push(this.okres.wartoscNaStarcie - ks.wartosc + ks.kadlubKr);
+      this.stan.kursStart = { wartosc: this.okres.wartoscNaStarcie, szczebel: this.stan.szczebel, kadlubKr: 0 };
+    }
     const w = this.wycenaSprzedazy(towar, m3);
     const kosztZakupu = zaokr((l.kosztKr * m3) / l.m3);
+    const cywTu = this.wezel(tu).cywilizacja ?? '';
+    // Sprzedana ilość schodzi z pochodzenia proporcjonalnie; do koszyka liczy się część kupiona u innych cywilizacji.
+    const udzialSprzedany = m3 / l.m3;
+    let dostawaM3 = 0;
+    for (const c of Object.keys(l.pochodzenie)) {
+      const czesc = l.pochodzenie[c] * udzialSprzedany;
+      if (c !== cywTu) dostawaM3 += czesc;
+      l.pochodzenie[c] -= czesc;
+      if (l.pochodzenie[c] < EPS) delete l.pochodzenie[c];
+    }
     this.stan.kr += w.kwotaKr;
     this.stan.rynki[tu][towar].zapas += m3;
     l.kosztKr -= kosztZakupu;
@@ -436,6 +655,7 @@ export class Gra {
     if (l.m3 < EPS) {
       l.m3 = 0;
       l.kosztKr = 0;
+      l.pochodzenie = {};
     }
     const t: Transakcja = {
       rodzaj: 'sprzedaz',
@@ -452,18 +672,19 @@ export class Gra {
       kosztZakupuKr: kosztZakupu,
     };
     this.okres.transakcje.push(t);
+    if (this.progresja && cywTu && dostawaM3 > EPS) this.zaliczDostawe(cywTu, towar, dostawaM3);
     return t;
   }
 
   tankuj(m3: number): { m3: number; kwotaKr: number } {
     if (!(m3 > 0) || !Number.isFinite(m3)) throw new Error('Ilość musi być dodatnia');
     if (!this.maPaliwo()) throw new Error('W układzie przelotowym nie ma paliwa');
-    if (this.stan.paliwo + m3 > K.bak + EPS) throw new Error('Bak nie pomieści tyle paliwa');
+    if (this.stan.paliwo + m3 > this.bak() + EPS) throw new Error('Bak nie pomieści tyle paliwa');
     const w = this.wezel();
     const wyc = this.wycenaPaliwa(m3);
     if (wyc.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
     this.stan.kr -= wyc.kwotaKr;
-    this.stan.paliwo = Math.min(K.bak, this.stan.paliwo + m3);
+    this.stan.paliwo = Math.min(this.bak(), this.stan.paliwo + m3);
     // Paliwo jest zawsze dostępne: przy pustym zapasie planeta sprzedaje po cenie maksymalnej z wzoru.
     if (w.typ === 'planeta') {
       const poz = this.stan.rynki[w.id].Fuel;
@@ -549,10 +770,14 @@ export class Gra {
       else delete this.stan.pamiecZakupu[klucz];
     }
 
+    // XP załogi za doby lotu (przed przylotem: efekty tego lotu liczyły się przy starej umiejętności).
+    this.dodajXP(P.progresja.xpNaDobeLotu * s.doby);
+
     // Przylot, kontakt, nowi kandydaci.
     this.stan.pozycja = cel;
     this.stan.numerLotu += 1;
     const kontakt = this.zadokuj();
+    if (kontakt) this.dodajXP(P.progresja.xpZaKontakt);
     this.stan.koniec = this.stan.doba >= this.limitDob - EPS;
 
     // Raport: linie sumują się do zmiany salda.
@@ -585,6 +810,8 @@ export class Gra {
     if (ef.synergia) linie.push({ klucz: 'synergia', etykieta: `Synergia „trasa zgrana” (${oszczSyn.toFixed(1)} m³)`, kr: oszczSynKr, opis: 'pilot i nawigator z tej samej cywilizacji' });
     linie.push({ klucz: 'place', etykieta: `Płace załogi za ${dobyNominalne.toFixed(1)} doby przy prędkości nominalnej`, kr: -placeNominalne, opis: `${ef.placeNaDobe} kr/dobę` });
     if (ef.najlepszy.pilot) linie.push({ klucz: 'pilot', etykieta: `Pilot: lot ${s.doby < dobyNominalne ? 'krótszy' : 'dłuższy'} o ${Math.abs(dobyNominalne - s.doby).toFixed(1)} doby`, kr: pilotKr, opis: `prędkość ${ef.predkosc.toFixed(2)} pc/dobę` });
+    if (okres.kadlub) linie.push({ klucz: 'stocznia', etykieta: `Stocznia: kadłub szczebla ${okres.kadlub.szczebel}`, kr: -okres.kadlub.kwotaKr, opis: `ładownia ${Math.round(this.ladownia())} m³, bak ${Math.round(this.bak())} m³` });
+    for (const a of okres.awanse) linie.push({ klucz: 'awans', etykieta: `Awans cywilizacji ${a.nazwa} na tier ${a.tier}`, kr: 0, opis: `dostarczony koszyk tieru ${a.tier}: popyt portów na towary koszyka × ${P.progresja.mnoznikKonsumpcjiAwansu}` });
     if (kontakt) linie.push({ klucz: 'kontakt', etykieta: `Kontakt z cywilizacją ${kontakt.nazwa}`, kr: 0, opis: kontakt.opis });
 
     const zmianaSalda = linie.reduce((a, l) => a + l.kr, 0);
@@ -638,6 +865,8 @@ export class Gra {
         sklad: this.stan.zaloga.map((x) => ({ ...x })),
       },
       kontakt,
+      awanse: okres.awanse.length ? [...okres.awanse] : undefined,
+      kadlub: okres.kadlub ?? undefined,
       koniecGry: this.stan.koniec,
     };
     this.stan.raporty.push(raport);
@@ -647,7 +876,7 @@ export class Gra {
   // ---------- Pomocnicze ----------
 
   private nowyOkres(): Okres {
-    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy() };
+    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy(), kadlub: null, awanse: [] };
   }
 
   /** Zapamiętuje odczyt rynku odwiedzonej planety (tylko w trybie `zasieg`). */
@@ -679,6 +908,9 @@ export class Gra {
         nazwa: cyw.nazwa,
         opis: `Odsłonięto rynki ${cyw.planety.length} planet (stolica: ${this.wezel(cyw.stolica).nazwa}). Odblokowano ich popyt na ${P.nazwyTowarow.Electronics.toLowerCase()}.`,
       };
+      const znanych = this.swiat.cywilizacje.filter((c) => this.stan.znaneCywilizacje[c.id]).length;
+      this.kamien(`kontakt:${znanych}`);
+      if (znanych >= this.swiat.cywilizacje.length) this.kamien('kontakt:wszystkie');
     }
     if (this.informacja === 'zasieg') {
       for (const inny of this.swiat.wezly) {
@@ -687,7 +919,7 @@ export class Gra {
     }
     if (w.typ === 'planeta') {
       const rng = this.rng.odgalezienie(`kandydaci:${w.id}:${this.stan.wizyty[w.id]}`);
-      this.stan.kandydaci = generujKandydatow(rng, this.swiat.cywilizacje.map((c) => c.id), P.liczbaKandydatow, `${w.id}-${this.stan.wizyty[w.id]}`);
+      this.stan.kandydaci = generujKandydatow(rng, this.swiat.cywilizacje.map((c) => c.id), P.liczbaKandydatow, `${w.id}-${this.stan.wizyty[w.id]}`, this.progresja);
     } else {
       this.stan.kandydaci = [];
     }

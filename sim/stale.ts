@@ -1,6 +1,6 @@
 import kanonJson from './kanon.json';
 import prototypJson from './prototyp.json';
-import type { Rola, Skala, TowarLubPaliwo, TrybInformacji, WariantSpreadu } from './typy';
+import type { Rola, Skala, Towar, TowarLubPaliwo, TrybInformacji, WariantSpreadu } from './typy';
 
 export interface Kanon {
   kurs: number;
@@ -32,6 +32,12 @@ export interface Kanon {
   terytoriumZPopulacji: { staly: number; naDekade: number };
   zasiegLacznosci: number;
   cywilizacje: Record<string, { nazwa: string; otwartosc: number; ssr: number }>;
+  /** Liczba tierów cywilizacji i załogi (awans cywilizacji odblokowuje gracz). */
+  TierCount: number;
+  /** Tiery załogi: progi XP (tier 0…TierCount−1) i widełki płacy kr/dobę per tier. */
+  tierZalogi: { progiXP: number[]; placaKrNaDobe: [number, number][] };
+  /** Drabina kadłubów: liczba szczebli (0…szczebli−1), status proponowane. */
+  drabinaKadlubow: { szczebli: number; status: string };
 }
 
 export interface PlanetaProfil {
@@ -85,12 +91,40 @@ export interface KonfiguracjaSpreadu {
   opis?: string;
 }
 
+export interface KoszykTieru {
+  tier: number;
+  /** Udziały wartości towarów w koszyku (sumują się do 1). */
+  udzialy: Partial<Record<Towar, number>>;
+  /** Mnożnik progu awansu tego tieru (T4: „oba w większej ilości”). */
+  mnoznikProgu: number;
+}
+
+export interface KonfiguracjaProgresji {
+  wlaczona: boolean;
+  horyzontDob: number;
+  /** Próg awansu: wartość koszyka (po cenach bazowych) ≥ progAwansu × dzienny PKB portów cywilizacji. */
+  progAwansu: number;
+  koszyki: KoszykTieru[];
+  /** Awans mnoży konsumpcję (i normę) towarów koszyka na wszystkich planetach cywilizacji. */
+  mnoznikKonsumpcjiAwansu: number;
+  /** Szczebel N: ładownia, bak i masa × mnoznikSzczebla^N. */
+  mnoznikSzczebla: number;
+  /** Cena szczebla N+1 = k × mediana zysku na kurs zmierzona na szczeblu N. */
+  k: number;
+  minKursowDoWycenySzczebla: number;
+  xpNaDobeLotu: number;
+  xpZaKontakt: number;
+  xpStartoweKandydata: number;
+  nazwyTierowZalogi: string[];
+}
+
 export interface Prototyp {
   skala: Skala;
   informacja: TrybInformacji;
   spread: WariantSpreadu;
   wariantySpreadu: Record<WariantSpreadu, KonfiguracjaSpreadu>;
   pamiecZakupuSkokow: number;
+  progresja: KonfiguracjaProgresji;
   skale: Record<Skala, KonfiguracjaSkali>;
   celMnoznikWartosci: number;
   nawigatorMaxRedukcjaPaliwa: number;
@@ -173,6 +207,24 @@ export interface Prototyp {
     planowDoDrugiegoKroku: number;
     krokiDrugiegoKroku: number;
     celowDrugiegoKroku: number;
+    /** Progresja: kupuje szczebel, gdy gotówka ≥ mnożnik × cena. */
+    mnoznikGotowkiNaSzczebel: number;
+    /** Progresja: jaki udział dodatkowego popytu po awansie bot spodziewa się obsłużyć. */
+    udzialWPopycieAwansu: number;
+    /** Progresja: horyzont (dób) wyceny dodatkowego popytu po awansie. */
+    horyzontAwansuDob: number;
+    /** Progresja: ile własnych sprzedaży towaru bot potrzebuje, żeby wyceniać przyszły popyt na niego. */
+    minSprzedazyDoMarzy: number;
+    /** Progresja: pułap premii awansu na m³ dostawy (ułamek ceny bazowej). */
+    maxPremiaUlamekCeny: number;
+    /** Progresja: największa strata gotówki (ułamek kasy) na kurs, przy której premia awansu jeszcze się liczy. */
+    maxStrataNaKoszykUlamek: number;
+    /** Progresja: tolerowany koszt dnia (kr/dobę) zatrudnienia załoganta dla XP. */
+    maxKosztDobyXpKr: number;
+    /** Progresja: co ile dób (od ostatniego kontaktu) bot rusza na ekspedycję do najbliższej nieznanej cywilizacji. */
+    dobyMiedzyEkspedycjami: number;
+    /** Progresja: ekspedycja rusza, gdy gotówka z ładunkiem ≥ mnożnik × szacowany koszt paliwa i płac. */
+    mnoznikGotowkiNaEkspedycje: number;
   };
 }
 

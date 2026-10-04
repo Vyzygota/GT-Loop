@@ -21,7 +21,7 @@ const SKALE: Skala[] = ['S', 'M', 'L'];
 const TRYBY: TrybInformacji[] = ['pelna', 'zasieg'];
 const WARIANTY: WariantSpreadu[] = ['A', 'B', 'C', 'D', 'E'];
 
-function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; szybko: boolean } {
+function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; progresja: boolean; szybko: boolean } {
   const h = location.hash;
   const wez = (k: string) => {
     const m = new RegExp(`${k}=([^&]+)`).exec(h);
@@ -35,6 +35,7 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
     skala: SKALE.includes(skala as Skala) ? (skala as Skala) : P.skala,
     informacja: TRYBY.includes(informacja as TrybInformacji) ? (informacja as TrybInformacji) : P.informacja,
     spread: WARIANTY.includes(spread as WariantSpreadu) ? (spread as WariantSpreadu) : P.spread,
+    progresja: wez('progresja') === null ? P.progresja.wlaczona : wez('progresja') === '1',
     szybko: wez('szybko') === '1',
   };
 }
@@ -42,11 +43,11 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
 /** Flaga #szybko=1 skraca animację lotu (używa jej smoke test). */
 const szybko = parametryZAdresu().szybko;
 
-let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja, parametryZAdresu().spread);
+let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja, parametryZAdresu().spread, parametryZAdresu().progresja);
 
-function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji, spread: WariantSpreadu): StanUI {
-  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}${szybko ? '&szybko=1' : ''}`;
-  const gra = new Gra(ziarno, { skala, informacja, spread });
+function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji, spread: WariantSpreadu, progresja: boolean): StanUI {
+  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}&progresja=${progresja ? 1 : 0}${szybko ? '&szybko=1' : ''}`;
+  const gra = new Gra(ziarno, { skala, informacja, spread, progresja });
   return { gra, trasa: [], ilosci: {}, raport: null, wLocie: false, komunikat: '', ekranKonca: false, widok: widokStartowy(gra), pokazWszystkieCeny: false };
 }
 
@@ -68,12 +69,14 @@ function naglowek(): string {
     <div class="miara"><span class="et">Saldo</span><span class="w">${kr(g.stan.kr)}</span></div>
     <div class="miara"><span class="et">Wartość firmy</span><span class="w">${kr(wartosc)}</span></div>
     <div class="miara"><span class="et">Cel: ${kr(cel)} w ${g.limitDob} dób</span><div class="cel-pasek" title="${Math.round(postep * 100)}% drogi do celu"><div style="width:${(postep * 100).toFixed(1)}%"></div></div></div>
-    <div class="miara"><span class="et">Paliwo</span><span class="w">${liczba1(g.stan.paliwo)} / ${K.bak} m³</span></div>
+    <div class="miara"><span class="et">Paliwo</span><span class="w">${liczba1(g.stan.paliwo)} / ${Math.round(g.bak())} m³</span></div>
     <div class="miara"><span class="et">Lotów</span><span class="w">${g.stan.numerLotu}</span></div>
+    ${g.progresja ? `<div class="miara"><span class="et">Kadłub</span><span class="w">szczebel ${g.stan.szczebel} / ${K.drabinaKadlubow.szczebli - 1}</span></div>` : ''}
     <div class="ziarno">
       <label class="maly">Skala <select id="skala">${opcje(SKALE, g.skala)}</select></label>
       <label class="maly">Informacja <select id="informacja">${opcje(TRYBY, g.informacja)}</select></label>
       <label class="maly" title="${esc(P.wariantySpreadu[g.wariantSpreadu].opis ?? '')}">Spread <select id="spread">${opcje(WARIANTY, g.wariantSpreadu)}</select></label>
+      <label class="maly" title="Tiery cywilizacji (awans przez dostawy koszyka), drabina kadłubów w stoczni stolicy, XP i tiery załogi; horyzont ${P.progresja.horyzontDob} dób">Progresja <select id="progresja"><option value="0" ${g.progresja ? '' : 'selected'}>wył.</option><option value="1" ${g.progresja ? 'selected' : ''}>wł.</option></select></label>
       <label class="maly">Ziarno <input type="text" id="ziarno" value="${esc(g.swiat.ziarno)}" /></label>
       <button data-akcja="nowa-gra">Nowa gra</button>
     </div>
@@ -92,6 +95,7 @@ function renderuj(): void {
         <li>Wybierz cel na mapie (kółko myszy przybliża, przeciąganie przesuwa; albo kliknij wiersz tablicy cen) i naciśnij „Leć”. Lot kosztuje paliwo i płace za doby w drodze. Bak to 100 pc: dalsze trasy planuj z tankowaniem po drodze (planety i plemiona), układy przelotowe nie mają nic.</li>
         <li>Raport po locie pokazuje linia po linii, skąd wzięła się zmiana salda. Cel: podwoić wartość firmy w ${g.limitDob} dób.</li>
         <li>Każdy m³, który sprzedasz, obniża cenę na tej planecie. Cywilizacje otwarte (wysoka otwartość) mają głębokie rynki, które NPC szybko odbudowują; zamknięte są płytkie i długo zepsute. Lądowanie u nieznanej cywilizacji odsłania jej rynki.${g.wariantSpreadu !== 'A' ? ` Wariant spreadu <b>${g.wariantSpreadu}</b>: zamiast stałego spreadu obowiązuje pamięć zakupu: odsprzedaż towaru na planecie, gdzie go kupiłeś, jest karana ${Math.round(K.tradeSpread * 100)}% ceny, dopóki nie wykonasz ${P.pamiecZakupuSkokow} skoków${g.spreadPodstawowy > 0 ? `; poza tym spread podstawowy ${Math.round(g.spreadPodstawowy * 100)}%` : '; poza tym kupno i sprzedaż po tej samej cenie, więc handlowiec nie ma na co wpływać'}.` : ''}${g.informacja === 'zasieg' ? ` W trybie <b>zasięg</b> ceny na żywo widzisz tylko w łączności ${K.zasiegLacznosci} pc od statku, a dalej tylko ostatni odczyt z planet, na których byłeś.` : ''}</li>
+        ${g.progresja ? `<li><b>Progresja</b> (horyzont ${g.limitDob} dób): cywilizacja awansuje o tier, gdy dostarczysz jej koszyk kolejnego tieru (T2: elektronika, T3 i T4: elektronika i materiały wybuchowe) kupiony u innej cywilizacji, o wartości ≥ ${P.progresja.progAwansu} × dziennego PKB jej portów; awans mnoży popyt na towary koszyka × ${P.progresja.mnoznikKonsumpcjiAwansu}. W stoczni stolicy kupisz większy kadłub (ładownia i bak × ${P.progresja.mnoznikSzczebla} na szczebel) za ${P.progresja.k} × medianę Twojego zysku na kurs na obecnym szczeblu. Załoga zbiera ${P.progresja.xpNaDobeLotu} XP za dobę lotu i ${P.progresja.xpZaKontakt} XP za kontakt; tiery ${P.progresja.nazwyTierowZalogi.join(' / ')} (${K.tierZalogi.progiXP.join(' / ')} XP) podnoszą umiejętność i płacę.</li>` : ''}
       </ol>
     </details>
     <main>
@@ -281,7 +285,8 @@ app.addEventListener('click', (ev) => {
       const skala = (document.getElementById('skala') as HTMLSelectElement).value as Skala;
       const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
       const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
-      ui = nowaGra(ziarno, skala, informacja, spread);
+      const progresja = (document.getElementById('progresja') as HTMLSelectElement).value === '1';
+      ui = nowaGra(ziarno, skala, informacja, spread, progresja);
       break;
     }
     case 'zoom-plus':
@@ -336,6 +341,9 @@ app.addEventListener('click', (ev) => {
     case 'zwolnij':
       sprobuj(() => g.zwolnij(przycisk.dataset.id!));
       break;
+    case 'kup-szczebel':
+      sprobuj(() => void g.kupSzczebel());
+      break;
     case 'wyczysc-trase':
       ui.trasa = [];
       break;
@@ -373,7 +381,8 @@ app.addEventListener('keydown', (ev) => {
     const skala = (document.getElementById('skala') as HTMLSelectElement).value as Skala;
     const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
     const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
-    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja, spread);
+    const progresja = (document.getElementById('progresja') as HTMLSelectElement).value === '1';
+    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja, spread, progresja);
     renderuj();
   }
 });

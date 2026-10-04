@@ -108,5 +108,36 @@
       "otwartosc": 0.5,
       "ssr": 1.2
     }
+  },
+  "TierCount": 4,
+  "tierZalogi": {
+    "progiXP": [
+      0,
+      500,
+      1500,
+      9999
+    ],
+    "placaKrNaDobe": [
+      [
+        120,
+        180
+      ],
+      [
+        280,
+        450
+      ],
+      [
+        580,
+        900
+      ],
+      [
+        1100,
+        1800
+      ]
+    ]
+  },
+  "drabinaKadlubow": {
+    "szczebli": 6,
+    "status": "proponowane"
   }
 }

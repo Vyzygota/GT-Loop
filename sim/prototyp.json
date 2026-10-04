@@ -35,6 +35,49 @@
     }
   },
   "pamiecZakupuSkokow": 5,
+  "progresja": {
+    "wlaczona": false,
+    "horyzontDob": 1200,
+    "progAwansu": 20.0,
+    "koszyki": [
+      {
+        "tier": 2,
+        "udzialy": {
+          "Electronics": 1.0
+        },
+        "mnoznikProgu": 1.0
+      },
+      {
+        "tier": 3,
+        "udzialy": {
+          "Electronics": 0.5,
+          "Explosives": 0.5
+        },
+        "mnoznikProgu": 1.0
+      },
+      {
+        "tier": 4,
+        "udzialy": {
+          "Electronics": 0.5,
+          "Explosives": 0.5
+        },
+        "mnoznikProgu": 2.0
+      }
+    ],
+    "mnoznikKonsumpcjiAwansu": 1.5,
+    "mnoznikSzczebla": 1.5,
+    "k": 10.0,
+    "minKursowDoWycenySzczebla": 5,
+    "xpNaDobeLotu": 2.0,
+    "xpZaKontakt": 100.0,
+    "xpStartoweKandydata": 0.0,
+    "nazwyTierowZalogi": [
+      "Nowicjusz",
+      "Weteran",
+      "Mistrz",
+      "Legenda"
+    ]
+  },
   "skale": {
     "S": {
       "limitDob": 120,
@@ -743,6 +786,15 @@
     "maxPlanetDystrybucji": 2,
     "planowDoDrugiegoKroku": 5,
     "krokiDrugiegoKroku": 3,
-    "celowDrugiegoKroku": 25
+    "celowDrugiegoKroku": 25,
+    "mnoznikGotowkiNaSzczebel": 1.5,
+    "udzialWPopycieAwansu": 0.25,
+    "horyzontAwansuDob": 600,
+    "maxKosztDobyXpKr": 500,
+    "minSprzedazyDoMarzy": 3,
+    "maxPremiaUlamekCeny": 1.0,
+    "maxStrataNaKoszykUlamek": 0.1,
+    "dobyMiedzyEkspedycjami": 100,
+    "mnoznikGotowkiNaEkspedycje": 2.0
   }
 }

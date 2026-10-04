@@ -85,11 +85,16 @@ export interface Zalogant {
   cywilizacja: string;
   umiejetnosc: number;
   placa: number;
+  /** Progresja: doświadczenie (XP) i talent ∈ [0,1]; tier wynika z progów kanonu, umiejętność i płaca z tieru i talentu. */
+  xp?: number;
+  talent?: number;
 }
 
 export interface PozycjaLadowni {
   m3: number;
   kosztKr: number;
+  /** Pochodzenie: cywilizacja zakupu → m³ (dostawa koszyka awansu liczy tylko towar kupiony gdzie indziej). */
+  pochodzenie: Record<string, number>;
 }
 
 export interface Transakcja {
@@ -160,6 +165,9 @@ export interface Raport {
     sklad: Zalogant[];
   };
   kontakt?: { cywilizacja: string; nazwa: string; opis: string };
+  /** Progresja: awanse tierów cywilizacji w tym okresie i kupiony szczebel kadłuba. */
+  awanse?: { cywilizacja: string; nazwa: string; tier: number }[];
+  kadlub?: { szczebel: number; kwotaKr: number };
   koniecGry: boolean;
 }
 
@@ -215,4 +223,32 @@ export interface OpcjeGry {
   skala?: Skala;
   informacja?: TrybInformacji;
   spread?: WariantSpreadu;
+  /** Progresja (tiery cywilizacji, drabina kadłubów, XP załogi); domyślnie z prototypu. */
+  progresja?: boolean;
+  /** Horyzont dób (domyślnie ze skali, a w progresji z `progresja.horyzontDob`). */
+  limitDob?: number;
+}
+
+/** Postęp awansu cywilizacji na kolejny tier. */
+export interface PostepAwansu {
+  tier: number;
+  nastepny: number | null;
+  /** Dzienny PKB portów cywilizacji (konsumpcja × cena bazowa, WU/dobę). */
+  pkbWU: number;
+  /** Próg wartości koszyka (WU) i potrzebne/dostarczone per towar. */
+  progWU: number;
+  towary: { towar: Towar; potrzebneWU: number; dostarczoneWU: number }[];
+  /** Najmniejszy z udziałów dostarczone/potrzebne (1 = koszyk pełny). */
+  udzial: number;
+}
+
+/** Wycena kolejnego szczebla kadłuba w stoczni. */
+export interface WycenaSzczebla {
+  nastepny: number;
+  kwotaKr: number | null;
+  kursow: number;
+  medianaZyskuKr: number | null;
+  ladowniaM3: number;
+  bakM3: number;
+  powod?: string;
 }

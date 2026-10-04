@@ -9,12 +9,13 @@ import { chromium } from 'playwright';
 import { build, preview } from 'vite';
 import { mkdirSync } from 'node:fs';
 import { Gra } from '../sim/index';
-import { nowyStanBota, wykonaj, zaplanuj } from '../bot/strategia';
+import { inwestuj, nowyStanBota, wykonaj, zaplanuj } from '../bot/strategia';
 
 const ziarno = process.argv[2] ?? '7';
 const skala = (process.argv[4] as 'S' | 'M' | 'L' | undefined) ?? 'M';
 const informacja = (process.argv[5] as 'pelna' | 'zasieg' | undefined) ?? 'pelna';
 const spread = (process.argv[6] as 'A' | 'B' | 'C' | 'D' | 'E' | undefined) ?? 'A';
+const progresja = process.argv[7] === '1';
 const katalogZrzutow = process.argv[3] ?? '';
 const sciezkaChromium = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium';
 
@@ -36,9 +37,9 @@ async function main(): Promise<void> {
   strona.on('requestfailed', (r) => bledy.push(`[request] ${r.url()} ${r.failure()?.errorText}`));
   if (katalogZrzutow) mkdirSync(katalogZrzutow, { recursive: true });
 
-  await strona.goto(`${url}#ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}&szybko=1`);
+  await strona.goto(`${url}#ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}&progresja=${progresja ? 1 : 0}&szybko=1`);
   await strona.waitForSelector('svg.mapa');
-  const blizniak = new Gra(ziarno, { skala, informacja, spread });
+  const blizniak = new Gra(ziarno, { skala, informacja, spread, progresja });
   const stanBota = nowyStanBota();
   const start = Date.now();
   let loty = 0;
@@ -58,12 +59,16 @@ async function main(): Promise<void> {
       }
     }
     // 2. Decyzja bota na bliźniaku, wykonana na nim (łącznie z lotem) i odtworzona w UI.
+    const inwestycje = inwestuj(blizniak);
     const decyzja = zaplanuj(blizniak, stanBota);
     const dobaPrzed = blizniak.stan.doba;
     const { akcje, utknal } = wykonaj(blizniak, decyzja);
     if (utknal) throw new Error('Smoke: bot utknął (bankructwo)');
-    for (const a of akcje) {
+    for (const a of [...inwestycje, ...akcje]) {
       switch (a.typ) {
+        case 'kup-szczebel':
+          await strona.locator('button[data-akcja="kup-szczebel"]').click();
+          break;
         case 'sprzedaj-wszystko':
           await strona.locator(`button[data-akcja="sprzedaj-wszystko"][data-towar="${a.towar}"]`).click();
           break;
@@ -127,7 +132,7 @@ async function main(): Promise<void> {
   await przegladarka.close();
   await serwer.close();
   console.log(
-    `Smoke: skala ${skala}, informacja ${informacja}, spread ${spread}, ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${blizniak.limitDob}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
+    `Smoke: skala ${skala}, informacja ${informacja}, spread ${spread}, progresja ${progresja ? 'wł.' : 'wył.'}, ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${blizniak.limitDob}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
   );
   if (!koniec || !blizniak.stan.koniec) {
     console.error('Smoke: gra nie doszła do końca');

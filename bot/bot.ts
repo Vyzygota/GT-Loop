@@ -102,7 +102,7 @@ export function policzMiary(skala: Skala, informacja: TrybInformacji, spread: Wa
     };
     const marze = wyniki.flatMap((w) => w.marzeNaM3[t]);
     medianaMarzyNaM3[t] = mediana(marze);
-    pcNaTowar[t] = (medianaMarzyNaM3[t] * K.ladownia) / (medianaCenyPaliwa * K.kosztPaliwaNaParsek);
+    pcNaTowar[t] = (medianaMarzyNaM3[t] * K.ladownia) / (medianaCenyPaliwa * K.kosztPaliwaNaParsek); // ładownia BaseShip (szczebel 0)
   }
   const paliwoKr = loty.reduce((s, l) => s + l.paliwoKr, 0);
   const placeKr = loty.reduce((s, l) => s + l.placeKr, 0);
