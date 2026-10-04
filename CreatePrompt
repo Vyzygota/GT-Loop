@@ -1,0 +1,120 @@
+Prompt: prototyp pętli handlu z jednego promptu
+Dla Claude Code (Opus albo Sonnet) w pustym katalogu, bez dostępu do repo GalaxyTrader i bez regulaminu agentów. Skopiuj wszystko od „Zbuduj…” do końca tabeli. Liczby pochodzą z kanon-lustro.json (vault 545e3d4, 30.09) i z assetów SO/Economy/Items.
+Zbuduj grywalny prototyp gry przeglądarkowej „GalaxyTrader: Pętla”. Masz jedną sesję. Pracuj samodzielnie i nie zadawaj pytań. Gdy czegoś brakuje, wybierz najprostsze rozwiązanie i zapisz je w DECYZJE.md.
+Hipoteza zabawy (to sprawdzamy)
+Prowadzisz firmę handlową w żywej galaktyce. Zysk budujesz obsadą załogi i synergią między załogantami, wyborem trasy i poznawaniem cywilizacji, w gospodarce zależnej od populacji i potrzeb każdej z nich. Decyzje zapadają w doku, przed lotem. Lot trwa kilka sekund. Po locie gracz dostaje raport, z którego widać, co dała każda decyzja. Jeśli po raporcie gracz nie umie powiedzieć, dlaczego zarobił albo stracił, prototyp zawiódł.
+Pętla
+1. Dok. Rynek planety (ceny kupna i sprzedaży, zapasy), ładownia, paliwo, załoga, mapa z zasięgiem. Czas stoi.
+2. Decyzje. Co kupić i sprzedać, kogo zatrudnić lub zwolnić, dokąd lecieć (trasa jako ciąg skoków).
+3. Lot. Animacja 3–5 s na mapie. Upływają doby gry, naliczają się paliwo i płace.
+4. Raport po locie. Przychód, koszt towaru, paliwo, płace, a do tego osobne linie: wpływ handlowca na ceny, oszczędność paliwa od nawigatora, efekt synergii i co odblokował kontakt z cywilizacją. Każda linia w kr, a suma równa zmianie salda.
+5. Powrót do punktu 1.
+Świat (z ziarna, deterministyczny)
+• 12 planet na płaszczyźnie o promieniu ok. 150 pc w 3 cywilizacjach oraz 2 punkty tankowania plemion (tylko paliwo, bez rynku). Krawędzie grafu łączą węzły odległe o ≤ skok podstawowy, a graf jest spójny.
+• Każda cywilizacja ma populację, produkcję i potrzeby o innym profilu. Producent i główny odbiorca towaru leżą daleko od siebie, więc marża rośnie z odległością.
+• Jedna cywilizacja jest na starcie nieznana: jej planety widać na mapie, ale rynek jest ukryty. Pierwsza wizyta to kontakt. Odsłania rynek i odblokowuje jej popyt na Elektronikę, czyli nagrodę za eksplorację.
+• Rynek. Każda planeta i każdy towar mają zapas i normę równą 30 dobom konsumpcji. Co dobę produkcja dodaje, a konsumpcja zabiera. Cena bazowa na planecie = BasePrice × nacisk, gdzie nacisk = clamp(max(zapas/norma, StockRatioFloor)^(−StockPriceWeight), StockPressureMin, StockPressureMax). Ten wzór to założenie prototypu, nie kanon. Handel gracza zmienia zapas, więc wożenie w kółko tego samego psuje trasę i gracz ma to zobaczyć.
+• Spread. Kupno = baza × (1 + tradeSpread/2), sprzedaż = baza × (1 − tradeSpread/2). Handlowiec przesuwa cenę wewnątrz tego okna, nigdy poza nie. Niezmiennik: na jednej planecie w tej samej chwili sprzedaż < kupno dla każdego towaru i każdej załogi.
+• Paliwo kupuje się na każdej planecie (BasePrice paliwa × nacisk) i w punktach plemion (po cenie bazowej).
+Statek (jeden, BaseShip)
+Ładownia 480 m³ i maks. 1 440 t ładunku: masa = m³ × gęstość, więc towar ciężki blokuje się masą, a lekki objętością. Bak 100 m³, zużycie 1 m³/pc, prędkość 4 pc/dobę, skok maks. 20 pc. Start: 6 800 000 kr, pełny bak, pusta ładownia, brak załogi.
+Załoga (4 miejsca)
+• Pilot asowy, 800 kr/dobę: prędkość × umiejętność.
+• Nawigator, 400 kr/dobę: zużycie paliwa × (1 − 0,15 × (umiejętność − 0,8) / 0,45), czyli najlepszy daje mnożnik 0,85.
+• Handlowiec, 500 kr/dobę: pozycja w oknie spreadu, im lepszy, tym bliżej korzystnego brzegu.
+• Czwarte miejsce dowolne (drugi handlowiec albo nawigator; efekty tej samej roli nie sumują się ponad pułap).
+• Umiejętność kandydata w zakresie [skillFloor; skillCeiling]. W każdym doku 3 losowych kandydatów, inni na każdej planecie, z różnych cywilizacji.
+• Jedna synergia: pilot i nawigator z tej samej cywilizacji dają „trasę zgraną”, czyli dodatkowo −10% paliwa. Efekty spoza kanonu trzymaj w prototyp.json.
+Cel na ekranie
+Wartość firmy = kr + ładunek po cenie sprzedaży w bieżącym doku. Cel: podwoić ją w 120 dobach. Licznik dób widoczny cały czas.
+Technika
+• TypeScript + Vite, jedna strona, bez backendu. Działa przez npm run dev i jako statyczny build do wysłania testerom.
+• Symulacja w sim/: czysta, deterministyczna z ziarna, bez DOM. UI tylko wywołuje akcje symulacji.
+• Wszystkie liczby w sim/kanon.json (tabela niżej, bez zmian) i sim/prototyp.json (Twoje założenia). Zero literałów liczbowych w logice.
+• Ceny liczone w WU (1 WU = 1 litr wody), wyświetlane w kr przez kurs 10 kr/WU.
+• Bot: npm run bot, headless. Gra 200 ziaren po 120 dób strategią zachłanną (najlepsza marża netto w zasięgu po paliwie i płacach, zatrudnia handlowca i nawigatora, gdy się opłaca). Wypisuje: % ziaren z zyskiem, medianę lotów do pierwszej zyskownej trasy, medianę wartości firmy na koniec, 5 najczęstszych tras i towarów.
+• Testy (vitest): niezmiennik spreadu, limit masy i objętości, paliwo i zasięg, determinizm (to samo ziarno = te same ceny), suma raportu = zmiana salda.
+• UI: czytelne, nie ładne. Mapa w SVG, tabele, raport po locie jako modal. Interfejs po polsku.
+Kryteria ukończenia
+1. npm test zielone.
+2. npm run bot: ≥ 70% ziaren z zyskiem, a pierwsza zyskowna trasa w medianie ≤ 3 loty.
+3. 120 dób da się przejść w przeglądarce bez błędów w konsoli.
+4. README.md: jak uruchomić i jak grać, w 5 zdaniach. DECYZJE.md: każde założenie spoza kanonu i wynik bota.
+Jeśli bot nie spełnia kryterium 2, nie zmieniaj liczb kanonu. Strój tylko profile produkcji i konsumpcji oraz rozmieszczenie planet w prototyp.json, a w DECYZJE.md opisz, co i dlaczego zmieniłeś. Jeśli mimo to się nie da, zapisz, która liczba kanonu blokuje zysk, i skończ. To też jest wynik.
+Czego nie robić
+Bez ras, fabuły, zdarzeń losowych, walki, przemytu, stoczni, zapisu gry, dźwięku i 3D. Żadnej dokumentacji poza README i DECYZJE.
+Liczby kanonu (sim/kanon.json)
+Nazwa
+Wartość
+Jednostka
+kurs
+10
+kr/WU
+BasePrice Food / gęstość
+315 / 0,7
+WU/m³ / t/m³
+BasePrice Minerals / gęstość
+600 / 3,0
+WU/m³ / t/m³
+BasePrice Solvents / gęstość
+1 629 / 1,1
+WU/m³ / t/m³
+BasePrice Explosives / gęstość
+6 276 / 1,5
+WU/m³ / t/m³
+BasePrice Electronics / gęstość
+61 307 / 0,4
+WU/m³ / t/m³
+BasePrice Fuel / gęstość
+1 000 / 1,0
+WU/m³ / t/m³
+ladownia
+480
+m³
+maxMasaLadunku
+1 440
+t
+bak
+100
+m³
+kosztPaliwaNaParsek
+1
+m³/pc
+predkoscNominalna
+4
+pc/doba
+skokPodstawowy
+20
+pc
+startingCredits
+6 800 000
+kr
+tradeSpread
+0,3
+ułamek ceny
+StockPressureMin / Max
+0,45 / 2,5
+mnożnik ceny
+StockPriceWeight
+0,45
+–
+StockRatioFloor
+0,02
+ułamek normy
+normaZapasu
+30
+doby konsumpcji
+skillFloor / skillCeiling
+0,8 / 1,25
+mnożnik
+płaca pilot asowy / nawigator / handlowiec
+800 / 400 / 500
+kr/doba
+miejscaZałogi
+4
+–
+Jak czytać wynik
+• Czas do grywalnej pętli. Zanotuj godziny od wklejenia do spełnienia kryteriów i porównaj z fazą 1 planu (4 tygodnie).
+• DECYZJE.md jako audyt kanonu. Jeśli model musiał stroić świat, żeby zysk w ogóle był możliwy, to wskazówka dla gospodarki w grze. Przykład: pełny skok 20 pc kosztuje 200 000 kr paliwa, a pełna ładownia jedzenia 1 512 000 kr, więc marża na krótkich trasach może nie pokryć paliwa.
+• Test na ludziach od razu. Statyczny build wysyłacie 3–5 osobom i mierzycie progi z sekcji „Miary” w raporcie. Dzięki temu faza 2 może ruszyć w październiku zamiast w listopadzie.
+• Do głównego repo przenosicie projekt pętli, nie kod: co z raportu po locie działało, jakie synergie były czytelne i które liczby trzeba było ruszyć.
