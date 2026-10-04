@@ -7,11 +7,12 @@
 - [x] Faza 5: UI — przełącznik `spread` w nagłówku i adresie, kara i licznik w doku, opis w pomocy; smoke na M w wariancie B: 21 lotów, UI zgodne z symulacją co do 1 kr.
 - [x] Faza 6: pomiary 4 × 3 — 9,5 min; tabela wstawiona do DECYZJE.md (sekcja „Spread: pamięć zakupu”).
 - [x] Faza 7: obliczenie paliwa — przegląd `BasePrice Fuel`/`kosztPaliwaNaParsek` × {1…0} oraz hipotetyczne zmiany pasma nacisku, ładowni, kapitału, prędkości i baku na M (`findings.md`); przegląd paliwa na L (A i B) zapisany w DECYZJE 58.
-- [ ] Faza 8: DECYZJE, push, PR.
+- [x] Faza 8: DECYZJE, push, PR (patrz niżej).
 
 ## v2 promptu (PROMPT-spread_2.md): wariant E
 
 - [x] Model: parametr `obciecie` w `nacisk`/`calkaNacisku`/wycenach (domyślnie włączony, A–D bez zmian); gra niesie `obciecieNacisku`, bot i UI go przekazują.
 - [x] Testy: niezmienniki B/C/D rozszerzone na E, test zakresu nacisku bez obcięcia i całki.
-- [ ] Pomiary 5 × 3 — do uruchomienia.
-- [ ] DECYZJE: tabela 5 × 3 i odpowiedzi z uwzględnieniem E.
+- [x] Pomiary 5 × 3 — 12 min, tabela w DECYZJE.md.
+- [x] DECYZJE: tabela 5 × 3, skrót, odpowiedzi 55–58 z uwzględnieniem E, przegląd paliwa na L.
+- [x] Faza 8: push na gałąź PR #1, opis PR zaktualizowany.

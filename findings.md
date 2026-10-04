@@ -35,3 +35,12 @@ Skala M, 40 ziaren, `informacja = pelna`, miary po trasach wykonanych przez bota
 Wniosek: **żadna pojedyncza liczba kanonu (ani ich łączna zmiana) nie odwraca znaku**. Usunięcie paliwa podnosi medianę wartości (×2,4 → ×3,0) i wydłuża trasy (48 → 55 pc), ale korelacja per dobę zostaje ujemna. DECYZJE 44 wymaga poprawki: paliwo ogranicza, *które* trasy są opłacalne (masowe towary tylko na krótko), ale nie jest przyczyną ujemnej korelacji.
 
 Mechanizm: zysk na kurs jest ograniczony z góry (ładownia × różnica cen w paśmie nacisku 0,45–2,5, kapitał, głębokość portu docelowego), a czas kursu rośnie liniowo z dystansem, więc stopa na dobę ~ marża/dystans maleje z dystansem, chyba że różnica cen rosłaby z dystansem szybciej niż liniowo. Tak nie jest, bo w M terytoria są przyległe i skrajne ceny (Orak, deficyty Corrath) osiąga się już na granicy terytoriów. Do tego dochodzi selekcja: bot wybiera plan o najwyższej stopie, więc długie kursy są wykonywane wtedy, gdy krótkie są wyczerpane, czyli przy niskiej stopie. Dlatego pełny pomiar ma też korelację po **wszystkich dostępnych planach** w dokach (nie tylko wybranych): stopa na dobę vs dystans i zysk na kurs vs dystans.
+
+
+## Faza 6 i v2 (wariant E): co mówią pomiary
+
+- Żaden z wariantów B–E nie odwraca znaku korelacji zysku/dobę z dystansem (lot −0,29…−0,44, trasa −0,33…−0,45). Usunięcie spreadu daje +3…+17% mediany wartości i w M pierwszą zyskowną trasę po 1 locie zamiast 2.
+- Wariant E (nacisk bez obcięcia, do 5,8) podnosi wartość najmocniej (M ×3,03, L ×5,80), ale **koncentruje handel lokalnie**: w M loty wewnątrz cywilizacji 67% (A: 58%), trasy między cywilizacjami 36% (A: 47%). Zdjęcie sufitu nagradza sprzedaż do pustych portów blisko granicy, nie dalekie trasy.
+- Paradoks Simpsona: wewnątrz jednego towaru korelacja na poziomie lotu jest dodatnia (M/A: minerały +0,35, rozpuszczalniki +0,53, materiały wybuchowe +0,79, elektronika +0,49; żywność dopiero po usunięciu spreadu +0,18), ale mieszanka towarów (tania żywność na długich lotach pozycjonujących, drogie towary na krótkich odcinkach dystrybucji) daje ogólną korelację ujemną. Na poziomie całej trasy handlowej korelacja jest ujemna także wewnątrz towaru.
+- Przegląd paliwa na L: zysk na kurs po dostępnych planach przechodzi przez zero między ×0,1 a ×0,03 ceny kanonu (A: −0,16 → +0,07; B: −0,06 → +0,11); zysk na dobę zostaje ujemny (≈ −0,43) nawet przy paliwie 0.
+- Korekta DECYZJE 44: paliwo nie jest przyczyną ujemnej korelacji per dobę.
