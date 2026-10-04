@@ -29,6 +29,15 @@ Pierwszy przegląd `k`/`progAwansu`/`xpNaDobeLotu` (50 ziaren każdy) miał 3–
 
 Po poprawkach: 2 bankructwa na 50 (ziarna 17 i 34, oba po drugiej z rzędu ekspedycji do Duhari, skąd powrót kosztuje więcej niż zostaje w kasie). Mediana wartości końcowej (kr + ładunek) 15,5 mln przy `progAwansu` 20, `k` 10, `xp` 2. Lekcja o kanonie: pusty przelot 700 pc kosztuje ok. 7 mln kr paliwa (1 m³/pc × 10 000 kr u plemion), czyli więcej niż kapitał startowy, a regiony eksportowe (Velhari: elektronika i materiały wybuchowe 2,2–2,4 × potrzeb) nie mają dla samotnego kupca lokalnych tras pokrywających paliwo 7,7 tys. kr/m³ — zarabia się na nich tylko kursem do domu, na który trzeba mieć gotówkę na paliwo **i** ładunek jednocześnie.
 
+## Faza 7b: wynik pomiarów (szczegóły i tabele w DECYZJE, sekcja „Progresja: 1000 dób”)
+
+- **Galaktyka**: 0/50 ziaren z wszystkimi (albo połową) cywilizacji na T4; mediana znanych cywilizacji po 1 200 dobach 4 z 9; pierwsza cywilizacja na T4 w medianie 688 dób przy `progAwansu` 0,25. Objazd 9 stolic = 4 253 pc = 1 063 doby lotu i 42,5 mln kr paliwa; to kanon prędkości, promienia i paliwa, nie próg awansu.
+- **Firma**: szczebel 5 w medianie 1 123 dób (34% do 1 000) przy `k` 5; `k` 1…5 daje te same doby (cena nie jest wąskim gardłem), bez ekspedycji drabina kończy się w ok. 740 dób.
+- **Załoga**: cała czwórka na Legendzie w 972 dób przy `xpNaDobeLotu` 11 (10 → 1 070, 12 → 905); 9 999 XP wymusza ok. 11 XP/dobę lotu.
+- **Gospodarka**: PKB ×1,013 / ×1,007, zapasy ×1,79 / ×0,99, 0 NaN; pozycje na sufitach 20% → 45% → 49% (stan ustalony, nie ucieczka).
+- **Krzywa wartości**: ×1,7 (d100), ×3,0 (d300), ×4,1 (d600), ×5,5 (d1000), ×7,4 (d1200) z kadłubem; gra nie kończy się ekonomicznie wcześniej.
+- Budżet ekspedycji 2 × koszt dawał 8 bankructw na 50 przy `progAwansu` 0,25; 3 × koszt daje 3 i podnosi medianę wartości (kr + ładunek) z 15,5 do 32 mln, przy tej samej liczbie ekspedycji (1,58 na ziarno).
+
 ---
 
 # Archiwum: ustalenia zadania spread

@@ -6,8 +6,8 @@
 - [x] Faza 4: bot — ładownia/bak z gry, graf tankowania per szczebel, `inwestuj()` (szczebel przy 1,5 × ceny w stolicy), premia perspektywiczna za dostawy koszyka (własne marże bota, pułap 1 × cena bazowa/m³, strażnik 10% gotówki), polityka załogi „zatrudniaj i trzymaj” (tolerancja 500 kr/dobę), ekspedycje co 100 dób do najbliższej nieznanej cywilizacji przy gotówce ≥ 2 × koszt.
 - [x] Faza 5: testy — 66 zielonych (55 dotychczasowych + 11 nowych w `tests/progresja.test.ts`).
 - [x] Faza 6: UI (przełącznik, stocznia, tiery i koszyki, XP) i smoke z parametrem progresji.
-- [ ] Faza 7: pomiary i przegląd parametrów.
-- [ ] Faza 8: DECYZJE, push, opis PR.
+- [x] Faza 7: pomiary — pierwszy przegląd (6–10 bankructw na 50) → pięć poprawek bota (`findings.md`, faza 7a) → przeglądy `progAwansu`/`k`/`xpNaDobeLotu` po 50 ziaren, sonda drabiny (20 ziaren × 5 wariantów reguł), pomiar główny 50 ziaren przy `progAwansu` 0,25, `k` 5, `xpNaDobeLotu` 11 (3 bankructwa na 50).
+- [x] Faza 8: sekcja „Progresja: 1000 dób” w DECYZJE.md (założenia 59–68, tabele, odpowiedzi 69–74), push, opis PR.
 
 ---
 
