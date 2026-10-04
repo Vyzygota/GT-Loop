@@ -188,7 +188,7 @@ app.addEventListener('click', (ev) => {
       });
       break;
     case 'tankuj':
-      sprobuj(() => g.tankuj(ilosc('Fuel')));
+      sprobuj(() => g.tankuj(Math.max(0, Number(ui.ilosci.Fuel ?? 0))));
       break;
     case 'tankuj-pelny':
       sprobuj(() => {

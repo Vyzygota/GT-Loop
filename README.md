@@ -1,2 +1,5 @@
-# GT-Loop
-Prototyp of GalaxyTrader
+# GalaxyTrader: Pętla — prototyp
+
+Grywalny prototyp gry handlowej w przeglądarce: w doku kupujesz, sprzedajesz, tankujesz i dobierasz załogę, potem lecisz kilka sekund po mapie, a po locie dostajesz raport, z którego widać, co dała każda decyzja.
+
+**Uruchomienie:** `npm install`, potem `npm run dev` (serwer deweloperski) albo `npm run build` i wyślij testerom katalog `dist/` (statyczna strona, bez backendu). **Testy i narzędzia:** `npm test` (vitest), `npm run bot` (200 ziaren × 120 dób strategią zachłanną, wynik w `DECYZJE.md`), `npm run smoke` (buduje grę i przegrywa 120 dób w headless Chromium decyzjami bota, sprawdzając konsolę i zgodność UI z symulacją). **Jak grać:** zaczynasz na Zielnej z 6 800 000 kr, pełnym bakiem i pustą ładownią; tablica cen na dole pokazuje, gdzie towar jest tani (nadwyżka), a gdzie drogi (brak), więc kup tanio, kliknij planetę docelową na mapie lub w tablicy i naciśnij „Leć”. Zatrudnij handlowca (lepsze ceny), nawigatora (mniej paliwa) i pilota (krótszy lot), a pilot i nawigator z tej samej cywilizacji dają dodatkową oszczędność; każdy sprzedany m³ obniża cenę na planecie, więc szukaj nowych tras, a lądowanie u nieznanej cywilizacji odsłania jej rynek i budzi popyt na elektronikę. Cel: podwoić wartość firmy (kr + ładunek po cenach sprzedaży w doku) w 120 dób; ziarno świata zmienisz w nagłówku, a ten sam napis daje zawsze tę samą galaktykę.

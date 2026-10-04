@@ -147,23 +147,38 @@ function lepszy(a: Plan, b: Plan | null): boolean {
   return a.naDobe > b.naDobe;
 }
 
+export interface Decyzja {
+  plan: Plan | null;
+  opcja: OpcjaZalogi;
+}
+
+/** Konkretna akcja wykonana w doku; smoke test odtwarza je w UI jeden do jednego. */
+export type Akcja =
+  | { typ: 'zwolnij'; id: string }
+  | { typ: 'zatrudnij'; id: string }
+  | { typ: 'tankuj'; m3: number }
+  | { typ: 'kup'; towar: Towar; m3: number }
+  | { typ: 'lec'; trasa: string[] };
+
 export interface KrokBota {
   plan: Plan;
   opcja: OpcjaZalogi;
   sprzedano: { towar: Towar; m3: number; kwotaKr: number }[];
+  akcje: Akcja[];
 }
 
-/** Jeden obrót pętli: sprzedaj wszystko, dobierz załogę i trasę, zatankuj, kup, leć. */
-export function krokBota(gra: Gra): KrokBota {
-  const tu = gra.stan.pozycja;
+export function sprzedajWszystko(gra: Gra): KrokBota['sprzedano'] {
   const sprzedano: KrokBota['sprzedano'] = [];
-  if (gra.rynekZnany(tu)) {
-    for (const t of TOWARY) {
-      const m3 = gra.stan.ladownia[t].m3;
-      if (m3 > 0) sprzedano.push({ towar: t, m3, kwotaKr: gra.sprzedaj(t, m3).kwotaKr });
-    }
+  if (!gra.rynekZnany(gra.stan.pozycja)) return sprzedano;
+  for (const t of TOWARY) {
+    const m3 = gra.stan.ladownia[t].m3;
+    if (m3 > 0) sprzedano.push({ towar: t, m3, kwotaKr: gra.sprzedaj(t, m3).kwotaKr });
   }
+  return sprzedano;
+}
 
+/** Wybór załogi i planu bez mutacji stanu (po sprzedaży ładunku). */
+export function zaplanuj(gra: Gra): Decyzja {
   let najlepszyPlan: Plan | null = null;
   let najlepszaOpcja: OpcjaZalogi | null = null;
   for (const opcja of opcjeZalogi(gra)) {
@@ -174,41 +189,74 @@ export function krokBota(gra: Gra): KrokBota {
       }
     }
   }
-  if (!najlepszyPlan || !najlepszaOpcja) {
+  return { plan: najlepszyPlan, opcja: najlepszaOpcja ?? { zaloga: [...gra.stan.zaloga], zatrudnij: [], zwolnij: [] } };
+}
+
+/** Ilości paliwa w pełnych dziesiątych m³, żeby UI (pole liczbowe) odtworzyło je bez reszty. */
+function zaokrPaliwo(m3: number): number {
+  return Math.floor(m3 * 10) / 10;
+}
+
+/** Wykonuje decyzję: załoga, tankowanie, zakupy, lot. Zwraca dziennik konkretnych akcji. */
+export function wykonaj(gra: Gra, d: Decyzja): { plan: Plan; akcje: Akcja[] } {
+  const tu = gra.stan.pozycja;
+  const akcje: Akcja[] = [];
+  const tankuj = (m3: number) => {
+    const ile = zaokrPaliwo(Math.min(m3, K.bak - gra.stan.paliwo, gra.maxPaliwo()));
+    if (ile > 0) {
+      gra.tankuj(ile);
+      akcje.push({ typ: 'tankuj', m3: ile });
+    }
+  };
+
+  if (!d.plan) {
     // Nic w zasięgu: skocz do najbliższego sąsiada, żeby świat poszedł do przodu.
     const sasiad = gra.graf.sasiedzi(tu).sort((a, b) => a.dystans - b.dystans)[0];
-    const paliwo = gra.potrzebnePaliwo(sasiad.dystans);
-    if (paliwo > gra.stan.paliwo) {
-      const ile = Math.min(K.bak - gra.stan.paliwo, gra.maxPaliwo());
-      if (ile > 1e-6) gra.tankuj(ile);
-    }
+    const potrzebne = gra.potrzebnePaliwo(sasiad.dystans);
+    if (potrzebne > gra.stan.paliwo) tankuj(Math.ceil(potrzebne - gra.stan.paliwo));
     const plan: Plan = { cel: sasiad.id, trasa: [tu, sasiad.id], dystans: sasiad.dystans, doby: 0, zakupy: [], paliwoDoKupienia: 0, kosztPaliwaKr: 0, placeKr: 0, zyskNetto: 0, naDobe: 0, eksploracja: false };
     gra.lec(plan.trasa);
-    return { plan, opcja: { zaloga: gra.stan.zaloga, zatrudnij: [], zwolnij: [] }, sprzedano };
+    akcje.push({ typ: 'lec', trasa: plan.trasa });
+    return { plan, akcje };
   }
 
-  for (const id of najlepszaOpcja.zwolnij) gra.zwolnij(id);
-  for (const id of najlepszaOpcja.zatrudnij) gra.zatrudnij(id);
+  for (const id of d.opcja.zwolnij) {
+    gra.zwolnij(id);
+    akcje.push({ typ: 'zwolnij', id });
+  }
+  for (const id of d.opcja.zatrudnij) {
+    gra.zatrudnij(id);
+    akcje.push({ typ: 'zatrudnij', id });
+  }
 
-  if (najlepszyPlan.paliwoDoKupienia > 0) gra.tankuj(Math.min(najlepszyPlan.paliwoDoKupienia, gra.maxPaliwo()));
-  const rezerwa = najlepszyPlan.placeKr;
-  for (const z of najlepszyPlan.zakupy) {
-    const m3 = Math.min(z.m3, gra.maxKupno(z.towar, gra.stan.kr - rezerwa));
-    if (m3 > 0) gra.kup(z.towar, m3);
+  const plan = d.plan;
+  const rezerwa = plan.placeKr;
+  if (plan.paliwoDoKupienia > 0) tankuj(Math.ceil(plan.paliwoDoKupienia * 10) / 10);
+  for (const z of plan.zakupy) {
+    const m3 = Math.floor(Math.min(z.m3, gra.maxKupno(z.towar, gra.stan.kr - rezerwa)));
+    if (m3 > 0) {
+      gra.kup(z.towar, m3);
+      akcje.push({ typ: 'kup', towar: z.towar, m3 });
+    }
   }
   // Tanie paliwo: dotankuj do pełna, jeśli cena poniżej progu i zostaje gotówka.
   if (gra.cenaPaliwa(tu) <= P.bot.tankujGdyCenaPonizejBazyRazy * K.kurs * K.towary.Fuel.basePrice) {
-    const ile = Math.min(K.bak - gra.stan.paliwo, gra.maxPaliwo(gra.stan.kr - rezerwa));
-    if (ile > 1e-6) gra.tankuj(ile);
+    tankuj(Math.min(K.bak - gra.stan.paliwo, gra.maxPaliwo(gra.stan.kr - rezerwa)));
   }
   // Paliwo na trasę mogło zjeść gotówkę przeznaczoną na towar; upewnij się, że wystarczy na lot.
-  const potrzebne = gra.potrzebnePaliwo(najlepszyPlan.dystans);
-  if (potrzebne > gra.stan.paliwo + 1e-9) {
-    const brak = potrzebne - gra.stan.paliwo;
-    gra.tankuj(Math.min(brak, gra.maxPaliwo()));
-  }
-  gra.lec(najlepszyPlan.trasa);
-  return { plan: najlepszyPlan, opcja: najlepszaOpcja, sprzedano };
+  const potrzebne = gra.potrzebnePaliwo(plan.dystans);
+  if (potrzebne > gra.stan.paliwo + 1e-9) tankuj(Math.ceil((potrzebne - gra.stan.paliwo) * 10) / 10);
+  gra.lec(plan.trasa);
+  akcje.push({ typ: 'lec', trasa: plan.trasa });
+  return { plan, akcje };
+}
+
+/** Jeden obrót pętli: sprzedaj wszystko, dobierz załogę i trasę, zatankuj, kup, leć. */
+export function krokBota(gra: Gra): KrokBota {
+  const sprzedano = sprzedajWszystko(gra);
+  const decyzja = zaplanuj(gra);
+  const { plan, akcje } = wykonaj(gra, decyzja);
+  return { plan, opcja: decyzja.opcja, sprzedano, akcje };
 }
 
 export interface WynikZiarna {

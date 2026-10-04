@@ -5,6 +5,8 @@ import { kolorCywilizacji } from './mapa';
 export function panelTrasy(gra: Gra, trasa: string[]): string {
   const s = gra.sprawdzTrase(trasa);
   const nazwy = trasa.map((id) => `<span class="skok">${esc(gra.wezel(id).nazwa)}</span>`).join(' → ');
+  const osiagalneZaWszystko = gra.zasieg(gra.stan.paliwo + gra.maxPaliwo()).size;
+  const bankrut = !gra.stan.koniec && osiagalneZaWszystko <= 1 && gra.wartoscLadowni() <= 0;
   const szczegoly =
     trasa.length > 1
       ? `${trasa.length - 1} skok(i), ${pc(s.dystans)}, ${doby(s.doby)}, paliwo ${m3(s.paliwo)} z ${m3(gra.stan.paliwo)} w baku${s.paliwo <= gra.stan.paliwo ? ` (zostanie ${m3(gra.stan.paliwo - s.paliwo)})` : ''}`
@@ -14,6 +16,7 @@ export function panelTrasy(gra: Gra, trasa: string[]): string {
     <div class="skoki">${nazwy || '<span class="szary">brak</span>'}</div>
     <div class="maly">${szczegoly}</div>
     ${s.blad && trasa.length > 1 ? `<div class="blad maly">${esc(s.blad)}</div>` : ''}
+    ${bankrut ? '<div class="blad"><b>Bankructwo.</b> Nawet po wydaniu całej gotówki na paliwo nie dolecisz do żadnego sąsiada, a ładownia jest pusta. Zacznij nową grę przyciskiem w nagłówku.</div>' : ''}
     <div style="margin-top:6px; display:flex; gap:8px; align-items:center">
       <button class="glowny" data-akcja="lec" ${s.blad ? 'disabled' : ''}>Leć</button>
       <button data-akcja="wyczysc-trase" ${trasa.length <= 1 ? 'disabled' : ''}>Wyczyść trasę</button>
