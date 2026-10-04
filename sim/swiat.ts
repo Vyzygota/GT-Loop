@@ -328,6 +328,7 @@ function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
   lista.sort((a, b) => b.T - a.T || a.i - b.i);
   const terytoria: Terytorium[] = [];
   const srodki: { sektor: number; x: number; y: number }[] = [];
+  const zajeteUklady: number[] = [];
   for (const c of lista) {
     const wSektorze = () => uklady.map((_, i) => i).filter((i) => wlasciciel[i] === null && uklady[i].sektor === c.sektor);
     const wolne = () => uklady.map((_, i) => i).filter((i) => wlasciciel[i] === null);
@@ -339,18 +340,21 @@ function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
     if (inniWSektorze.length === 0) {
       zalazek = rng.wybierz(pula);
     } else {
+      // Kolejna cywilizacja w sektorze: przy granicy poprzednich (sąsiedztwo = krótkie trasy międzycywilizacyjne)
+      // albo najdalej od nich, zależnie od ustawienia.
       zalazek = pula[0];
-      let najdalej = -1;
+      let najlepiej = G.sasiedztwoTerytoriow ? Infinity : -1;
       for (const i of pula) {
-        const d = Math.min(...inniWSektorze.map((s) => Math.hypot(s.x - uklady[i].x, s.y - uklady[i].y)));
-        if (d > najdalej) {
-          najdalej = d;
+        const d = Math.min(...zajeteUklady.map((j) => odleglosc(uklady[j], uklady[i])));
+        if (G.sasiedztwoTerytoriow ? d < najlepiej : d > najlepiej) {
+          najlepiej = d;
           zalazek = i;
         }
       }
     }
     const czlonkowie = [zalazek];
     wlasciciel[zalazek] = c.id;
+    zajeteUklady.push(zalazek);
     let sx = uklady[zalazek].x;
     let sy = uklady[zalazek].y;
     while (czlonkowie.length < c.T) {
@@ -370,6 +374,7 @@ function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
       }
       czlonkowie.push(najblizszy);
       wlasciciel[najblizszy] = c.id;
+      zajeteUklady.push(najblizszy);
       sx += uklady[najblizszy].x;
       sy += uklady[najblizszy].y;
     }

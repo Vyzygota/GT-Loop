@@ -126,24 +126,25 @@
     "jitterPrzelotuPc": 1.5,
     "rozrzutTerytorium": 1.5,
     "wykladnikWagiUkladu": 0.5,
-    "specjalizacjaMnoznik": 2.0,
-    "specjalizacjaReszta": 0.8,
+    "specjalizacjaMnoznik": 1.2,
+    "specjalizacjaReszta": 0.95,
     "portNaUkladM3NaDobe": {
-      "Food": 8.0,
-      "Minerals": 3.0,
-      "Solvents": 1.0,
-      "Explosives": 0.15,
-      "Electronics": 0.03,
-      "Fuel": 3.0
+      "Food": 48.0,
+      "Minerals": 18.0,
+      "Solvents": 6.0,
+      "Explosives": 0.9,
+      "Electronics": 0.18,
+      "Fuel": 12.0
     },
-    "tempoWymianyNPC": 0.03,
+    "tempoWymianyNPC": 0.04,
     "mnoznikSufituNPC": 1.0,
-    "glebokoscPortuMin": 0.15,
+    "glebokoscPortuMin": 0.35,
     "glebokoscPortuMax": 1.0,
     "zapasStartowyUlamekNormy": 1.0,
     "zapasStartowyJitter": 0.2,
-    "dobyRozruchuRynku": 60,
-    "maxProbUkladu": 20
+    "dobyRozruchuRynku": 180,
+    "maxProbUkladu": 20,
+    "sasiedztwoTerytoriow": true
   },
   "cywilizacjeKanonu": {
     "ludzie": {
@@ -171,10 +172,10 @@
       },
       "produkcjaDoPotrzeb": {
         "Minerals": 0.6,
-        "Solvents": 0.4,
-        "Explosives": 0.7,
-        "Electronics": 1.6,
-        "Fuel": 1.1
+        "Solvents": 0.6,
+        "Explosives": 0.8,
+        "Electronics": 1.4,
+        "Fuel": 2.0
       }
     },
     "vreth": {
@@ -205,7 +206,7 @@
         "Solvents": 0.3,
         "Explosives": 0.3,
         "Electronics": 0.3,
-        "Fuel": 1.2
+        "Fuel": 2.0
       }
     },
     "corrath": {
@@ -233,10 +234,10 @@
       },
       "produkcjaDoPotrzeb": {
         "Minerals": 0.3,
-        "Solvents": 2.4,
-        "Explosives": 2.2,
-        "Electronics": 0.5,
-        "Fuel": 0.9
+        "Solvents": 1.7,
+        "Explosives": 1.7,
+        "Electronics": 0.8,
+        "Fuel": 2.0
       }
     },
     "orak": {
@@ -267,7 +268,7 @@
         "Solvents": 0.2,
         "Explosives": 0.4,
         "Electronics": 0.0,
-        "Fuel": 1.0
+        "Fuel": 2.0
       }
     },
     "szkarni": {
@@ -298,7 +299,7 @@
         "Solvents": 0.4,
         "Explosives": 2.6,
         "Electronics": 0.4,
-        "Fuel": 1.1
+        "Fuel": 2.0
       }
     },
     "ai": {
@@ -329,7 +330,7 @@
         "Solvents": 1.1,
         "Explosives": 0.6,
         "Electronics": 4.0,
-        "Fuel": 1.0
+        "Fuel": 2.0
       }
     },
     "planta": {
@@ -360,7 +361,7 @@
         "Solvents": 2.6,
         "Explosives": 0.3,
         "Electronics": 0.5,
-        "Fuel": 1.1
+        "Fuel": 2.0
       }
     },
     "duhari": {
@@ -391,7 +392,7 @@
         "Solvents": 0.4,
         "Explosives": 0.4,
         "Electronics": 0.5,
-        "Fuel": 1.1
+        "Fuel": 2.0
       }
     },
     "velhari": {
@@ -422,7 +423,7 @@
         "Solvents": 1.0,
         "Explosives": 2.4,
         "Electronics": 2.2,
-        "Fuel": 1.0
+        "Fuel": 2.0
       }
     }
   },
@@ -702,6 +703,13 @@
     "najlepszychCelowDoOcenyZalogi": 4,
     "eksplorujMaxPc": 260,
     "eksplorujDoUlamkaHoryzontu": 0.6,
-    "premiaEksploracjiKr": 400000
+    "premiaEksploracjiKr": 800000,
+    "karaPrzystankuPc": 80,
+    "rezerwaPaliwaOdcinkaM3": 1.0,
+    "promienDystrybucjiPc": 70,
+    "maxPlanetDystrybucji": 2,
+    "planowDoDrugiegoKroku": 5,
+    "krokiDrugiegoKroku": 3,
+    "celowDrugiegoKroku": 25
   }
 }

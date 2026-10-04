@@ -5,26 +5,20 @@
  * Kończy się błędem, gdy w konsoli pojawi się błąd albo UI rozjedzie się z symulacją.
  * Uruchomienie: npm run smoke [ziarno] [katalog-zrzutów]
  */
-import { chromium, type Page } from 'playwright';
+import { chromium } from 'playwright';
 import { build, preview } from 'vite';
 import { mkdirSync } from 'node:fs';
 import { Gra } from '../sim/index';
-import { sprzedajWszystko, wykonaj, zaplanuj } from '../bot/strategia';
+import { nowyStanBota, wykonaj, zaplanuj } from '../bot/strategia';
 
 const ziarno = process.argv[2] ?? '7';
+const skala = (process.argv[4] as 'S' | 'M' | 'L' | undefined) ?? 'M';
+const informacja = (process.argv[5] as 'pelna' | 'zasieg' | undefined) ?? 'pelna';
 const katalogZrzutow = process.argv[3] ?? '';
 const sciezkaChromium = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium';
 
 function liczbaZTekstu(t: string): number {
   return Number(t.replace(/[^\d,-]/g, '').replace(',', '.'));
-}
-
-async function kliknijWszystkie(strona: Page, selektor: string): Promise<void> {
-  for (let i = 0; i < 20; i++) {
-    const b = strona.locator(selektor).first();
-    if (!(await b.count())) break;
-    await b.click();
-  }
 }
 
 async function main(): Promise<void> {
@@ -41,17 +35,15 @@ async function main(): Promise<void> {
   strona.on('requestfailed', (r) => bledy.push(`[request] ${r.url()} ${r.failure()?.errorText}`));
   if (katalogZrzutow) mkdirSync(katalogZrzutow, { recursive: true });
 
-  await strona.goto(`${url}#ziarno=${encodeURIComponent(ziarno)}&szybko=1`);
+  await strona.goto(`${url}#ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&szybko=1`);
   await strona.waitForSelector('svg.mapa');
-  const blizniak = new Gra(ziarno);
+  const blizniak = new Gra(ziarno, { skala, informacja });
+  const stanBota = nowyStanBota();
   const start = Date.now();
   let loty = 0;
   let zrzutRaportu = false;
 
   while (!blizniak.stan.koniec && loty < 200) {
-    // 1. Sprzedaj wszystko (bliźniak i UI).
-    sprzedajWszystko(blizniak);
-    await kliknijWszystkie(strona, 'button[data-akcja="sprzedaj-wszystko"]:not([disabled])');
     // Ręczna transakcja przez pole ilości, żeby przećwiczyć wycenę: kup 3 m³ pierwszego dostępnego towaru i od razu sprzedaj.
     if (loty % 5 === 1 && blizniak.rynekZnany(blizniak.stan.pozycja)) {
       const towar = (['Food', 'Minerals'] as const).find((t) => blizniak.maxKupno(t) >= 3);
@@ -65,11 +57,19 @@ async function main(): Promise<void> {
       }
     }
     // 2. Decyzja bota na bliźniaku, wykonana na nim (łącznie z lotem) i odtworzona w UI.
-    const decyzja = zaplanuj(blizniak);
+    const decyzja = zaplanuj(blizniak, stanBota);
     const dobaPrzed = blizniak.stan.doba;
-    const { akcje } = wykonaj(blizniak, decyzja);
+    const { akcje, utknal } = wykonaj(blizniak, decyzja);
+    if (utknal) throw new Error('Smoke: bot utknął (bankructwo)');
     for (const a of akcje) {
       switch (a.typ) {
+        case 'sprzedaj-wszystko':
+          await strona.locator(`button[data-akcja="sprzedaj-wszystko"][data-towar="${a.towar}"]`).click();
+          break;
+        case 'sprzedaj':
+          await strona.locator(`input[data-ilosc="${a.towar}"]`).fill(String(a.m3));
+          await strona.locator(`button[data-akcja="sprzedaj"][data-towar="${a.towar}"]`).click();
+          break;
         case 'zwolnij':
           await strona.locator(`button[data-akcja="zwolnij"][data-id="${a.id}"]`).click();
           break;
@@ -86,11 +86,15 @@ async function main(): Promise<void> {
           break;
         case 'lec': {
           const cel = a.trasa[a.trasa.length - 1];
-          // Co trzeci lot buduj trasę skok po skoku na mapie, inaczej kliknij wiersz tablicy cen (najkrótsza ścieżka).
-          if (loty % 3 === 2 || blizniak.wezel(cel).typ === 'tankowanie') {
+          // Co trzeci lot buduj trasę skok po skoku na mapie; inaczej kliknij cel na mapie (najkrótsza ścieżka),
+          // a gdy cel jest w widocznej tablicy cen, co szósty lot kliknij jej wiersz.
+          const wiersz = strona.locator(`tr[data-cel="${cel}"]`);
+          if (loty % 3 === 2) {
             for (const id of a.trasa.slice(1)) await strona.locator(`svg.mapa g.wezel[data-wezel="${id}"]`).dispatchEvent('click');
+          } else if (loty % 6 === 1 && (await wiersz.count())) {
+            await wiersz.click();
           } else {
-            await strona.locator(`tr[data-cel="${cel}"]`).click();
+            await strona.locator(`svg.mapa g.wezel[data-wezel="${cel}"]`).dispatchEvent('click');
           }
           const skoki = await strona.locator('.trasa-panel .skok').allInnerTexts();
           const oczekiwane = a.trasa.map((id) => blizniak.wezel(id).nazwa);
@@ -122,7 +126,7 @@ async function main(): Promise<void> {
   await przegladarka.close();
   await serwer.close();
   console.log(
-    `Smoke: ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${blizniak.limitDob}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
+    `Smoke: skala ${skala}, informacja ${informacja}, ziarno ${ziarno}, lotów ${loty}, doba ${blizniak.stan.doba.toFixed(1)} / ${blizniak.limitDob}, wartość firmy w UI ${wartoscUI.toLocaleString('pl-PL')} kr (symulacja ${blizniak.wartoscFirmy().toLocaleString('pl-PL')} kr), ekran końca: ${koniec ? 'tak' : 'nie'}, ${((Date.now() - start) / 1000).toFixed(1)} s`,
   );
   if (!koniec || !blizniak.stan.koniec) {
     console.error('Smoke: gra nie doszła do końca');

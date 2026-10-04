@@ -29,7 +29,10 @@ export function panelRynku(gra: Gra, ilosci: Record<string, number>): string {
   const tu = gra.stan.pozycja;
   const w = gra.wezel(tu);
   const cyw = gra.swiat.cywilizacje.find((c) => c.id === w.cywilizacja);
-  const naglowek = `<h2>Dok: ${esc(w.nazwa)} <span class="szary maly">${w.typ === 'tankowanie' ? 'punkt tankowania plemion' : `${esc(cyw?.nazwa ?? '')}, ${w.populacjaMln} mln mieszkańców`}</span></h2>`;
+  const naglowek = `<h2>Dok: ${esc(w.nazwa)} <span class="szary maly">${w.typ === 'tankowanie' ? 'układ plemion (tylko paliwo)' : w.typ === 'przelot' ? 'układ przelotowy' : `${esc(cyw?.nazwa ?? '')}, ${(w.populacjaMln ?? 0).toLocaleString('pl-PL')} mln mieszkańców${w.sektor !== undefined ? `, sektor ${w.sektor + 1}` : ''}`}</span></h2>`;
+  if (w.typ === 'przelot') {
+    return `<div class="panel rynek">${naglowek}<p class="szary">Układ przelotowy: ani rynku, ani paliwa. Służy tylko do przelotu.</p></div>`;
+  }
   if (!gra.rynekZnany(tu)) {
     return `<div class="panel rynek">${naglowek}<p class="szary">Tu nie ma rynku towarów. Paliwo po cenie bazowej.</p>${wierszPaliwa(gra, ilosci)}</div>`;
   }
@@ -144,51 +147,63 @@ export function panelCywilizacji(gra: Gra): string {
     .map((c) => {
       const znana = gra.stan.znaneCywilizacje[c.id];
       const kolor = kolorCywilizacji(gra, c.id);
-      const planety = c.planety.map((id) => esc(gra.wezel(id).nazwa)).join(', ');
+      const sektor = c.sektor !== undefined ? `sektor ${c.sektor + 1} · ` : '';
+      const planety = c.planety.length <= 6 ? c.planety.map((id) => esc(gra.wezel(id).nazwa)).join(', ') : `${c.planety.length} planet, stolica ${esc(gra.wezel(c.stolica).nazwa)}`;
       if (!znana) {
         return `<div class="cyw" style="border-color:${kolor}"><b>${esc(c.nazwa)}</b> <span class="szary">— cywilizacja nieznana</span>
-          <div class="maly">Planety: ${planety}. Rynek ukryty. Pierwsze lądowanie to kontakt: odsłoni rynek i obudzi popyt.</div></div>`;
+          <div class="maly">${sektor}${c.planety.length} planet na mapie. Rynek, otwartość i potrzeby nieznane. Pierwsze lądowanie to kontakt: odsłoni rynki i obudzi popyt.</div></div>`;
       }
       const produkuje = TOWARY_I_PALIWO.filter((t) => c.produkcjaM3NaDobe[t] > c.potrzebyM3NaDobe[t] * P.ui.progBilansu);
       const potrzebuje = TOWARY_I_PALIWO.filter((t) => c.potrzebyM3NaDobe[t] > c.produkcjaM3NaDobe[t] * P.ui.progBilansu);
       const opis = (lista: typeof produkuje) =>
         lista.length ? lista.map((t) => `${nazwaTowaru(t)} (${liczba1(Math.abs(c.produkcjaM3NaDobe[t] - c.potrzebyM3NaDobe[t]))} m³/dobę)`).join(', ') : 'nic znaczącego';
-      return `<div class="cyw" style="border-color:${kolor}"><b>${esc(c.nazwa)}</b> <span class="szary">${c.populacjaMln} mln</span>
-        <div class="maly">Planety: ${planety}</div>
-        <div class="maly"><span class="zysk">Nadwyżka:</span> ${opis(produkuje)}</div>
-        <div class="maly"><span class="strata">Brakuje:</span> ${opis(potrzebuje)}</div></div>`;
+      const otwartosc = c.otwartosc > 0 ? `otwartość handlowa ${liczba2(c.otwartosc)} (sufit wymiany NPC: ${procent(c.otwartosc)} dziennej konsumpcji portu)` : 'bez wymiany NPC';
+      return `<div class="cyw" style="border-color:${kolor}"><b>${esc(c.nazwa)}</b> <span class="szary">${sektor}${c.populacjaMln.toLocaleString('pl-PL')} mln</span>
+        <div class="maly">${planety}</div>
+        <div class="maly">${otwartosc} · samowystarczalność żywnościowa SSR ${liczba2(c.ssr)} (${c.ssr >= 1 ? 'eksporter' : 'importer'} żywności)</div>
+        <div class="maly"><span class="zysk">Nadwyżka portów:</span> ${opis(produkuje)}</div>
+        <div class="maly"><span class="strata">Brakuje w portach:</span> ${opis(potrzebuje)}</div></div>`;
     })
     .join('');
-  return `<div class="panel cywilizacje"><h2>Cywilizacje <span class="szary maly">bilans produkcji i potrzeb</span></h2>${bloki}</div>`;
+  return `<div class="panel cywilizacje"><h2>Cywilizacje <span class="szary maly">otwartość, SSR i bilans portów</span></h2>${bloki}</div>`;
 }
 
-export function tablicaCen(gra: Gra): string {
+export function tablicaCen(gra: Gra, pokazWszystkie: boolean): string {
   const tu = gra.stan.pozycja;
   const d = gra.graf.dijkstra(tu);
   const zasieg = gra.zasieg();
   const planety = gra.swiat.wezly
-    .filter((w) => w.typ === 'planeta')
-    .map((w) => ({ w, d: d.get(w.id)! }))
+    .filter((w) => w.typ === 'planeta' && (w.id === tu || gra.informacjaORynku(w.id) !== null))
+    .map((w) => ({ w, d: d.get(w.id)!, info: gra.informacjaORynku(w.id) }))
     .sort((a, b) => a.d.dystans - b.d.dystans);
-  const wiersze = planety
-    .map(({ w, d }) => {
-      const znany = gra.rynekZnany(w.id);
+  const limit = P.ui.tablicaCenWierszy;
+  const widoczne = pokazWszystkie ? planety : planety.slice(0, limit);
+  const ukryte = gra.swiat.wezly.filter((w) => w.typ === 'planeta').length - planety.length;
+  const wiersze = widoczne
+    .map(({ w, d, info }) => {
       const komorki = TOWARY.map((t: Towar) => {
-        if (!znany) return '<td class="szary">?</td>';
-        const c = gra.ceny(w.id, t)!;
+        const c = gra.ceny(w.id, t);
+        if (!c) return '<td class="szary">?</td>';
         const moj = gra.stan.ladownia[t].m3 > 0;
         return `<td><span class="${moj ? 'pogrubienie' : ''}">${Math.round(c.sprzedazKr).toLocaleString('pl-PL')}</span><span class="szary"> / ${Math.round(c.kupnoKr).toLocaleString('pl-PL')}</span><div class="szary maly">n ${liczba2(c.nacisk)}</div></td>`;
       }).join('');
       const wZasiegu = zasieg.has(w.id);
-      return `<tr class="przycisk-wiersz" data-cel="${w.id}" title="Kliknij, aby ustawić trasę">
-        <td class="lewo"><span class="kropka" style="background:${kolorCywilizacji(gra, w.cywilizacja)}"></span>${esc(w.nazwa)}${w.id === tu ? ' <span class="szary">(tu)</span>' : ''}</td>
-        <td>${w.id === tu ? '—' : `${pc(d.dystans)}, ${d.skoki} sk.`}${wZasiegu || w.id === tu ? '' : '<div class="strata maly">poza zasięgiem</div>'}</td>
+      const odczyt = info && info.tryb === 'odczyt' ? `<div class="szary maly">odczyt sprzed ${liczba1(info.wiekDob)} dób</div>` : '';
+      const paliwo = gra.cenaPaliwa(w.id);
+      return `<tr class="przycisk-wiersz ${info?.tryb === 'odczyt' ? 'odczyt' : ''}" data-cel="${w.id}" title="Kliknij, aby ustawić trasę">
+        <td class="lewo"><span class="kropka" style="background:${kolorCywilizacji(gra, w.cywilizacja)}"></span>${esc(w.nazwa)}${w.id === tu ? ' <span class="szary">(tu)</span>' : ''}${odczyt}</td>
+        <td>${w.id === tu ? '—' : `${pc(d.dystans)}, ${d.skoki} sk.`}${wZasiegu || w.id === tu ? '' : '<div class="strata maly">poza zasięgiem baku</div>'}</td>
         ${komorki}
-        <td>${gra.cenaPaliwa(w.id) === null ? '?' : Math.round(gra.cenaPaliwa(w.id)!).toLocaleString('pl-PL')}</td>
+        <td>${paliwo === null ? '?' : Math.round(paliwo).toLocaleString('pl-PL')}</td>
       </tr>`;
     })
     .join('');
-  return `<div class="panel kolumna-szeroka"><h2>Tablica cen znanych planet <span class="szary maly">sprzedaż / kupno w kr/m³ przy obecnej załodze · n = nacisk · pogrubione: masz ten towar</span></h2>
-    <table><thead><tr><th>Planeta</th><th>Odległość</th>${TOWARY.map((t) => `<th>${nazwaTowaru(t)}</th>`).join('')}<th>Paliwo</th></tr></thead><tbody>${wiersze}</tbody></table>
+  const stopka =
+    planety.length > limit
+      ? `<div style="margin-top:6px"><button data-akcja="przelacz-tablice">${pokazWszystkie ? `Pokaż tylko ${limit} najbliższych` : `Pokaż wszystkie (${planety.length})`}</button></div>`
+      : '';
+  const uwaga = gra.informacja === 'zasieg' ? ` · tryb <b>zasięg</b>: na żywo w łączności ${K.zasiegLacznosci} pc, poza nią ostatni odczyt z odwiedzonych planet${ukryte > 0 ? `; ${ukryte} planet bez informacji` : ''}` : '';
+  return `<div class="panel kolumna-szeroka"><h2>Tablica cen <span class="szary maly">sprzedaż / kupno w kr/m³ przy obecnej załodze · n = nacisk · pogrubione: masz ten towar${uwaga}</span></h2>
+    <table><thead><tr><th>Planeta</th><th>Odległość</th>${TOWARY.map((t) => `<th>${nazwaTowaru(t)}</th>`).join('')}<th>Paliwo</th></tr></thead><tbody>${wiersze}</tbody></table>${stopka}
   </div>`;
 }

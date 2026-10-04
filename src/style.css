@@ -53,7 +53,18 @@ main { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(640px, 1.
 .panel h2 .szary { font-weight: 400; }
 .kolumna-szeroka { grid-column: 1 / -1; }
 
-svg.mapa { width: 100%; height: auto; max-height: 80vh; background: #0e1420; border-radius: 4px; display: block; }
+svg.mapa { width: 100%; height: auto; max-height: 78vh; background: #0e1420; border-radius: 4px; display: block; cursor: grab; user-select: none; }
+svg.mapa:active { cursor: grabbing; }
+svg.mapa .granice .rdzen { stroke: #5a2d2d; }
+svg.mapa .granice .strefa { stroke: #2f4a3a; stroke-dasharray: 4 4; }
+svg.mapa .granice .sektor { stroke: #3d4a60; }
+svg.mapa .etykieta-sektora { fill: #4d5a70; }
+svg.mapa .lacznosc { fill: rgba(124, 198, 127, 0.05); stroke: #7cc67f; }
+svg.mapa .wezel.typ-przelot { cursor: pointer; }
+.mapa-przyciski { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.mapa-przyciski button { min-width: 28px; }
+tr.odczyt td { color: #5c5c58; font-style: italic; }
+header select { font: inherit; padding: 1px 2px; }
 svg.mapa .krawedz { stroke: #3a4658; }
 svg.mapa .wezel { cursor: pointer; }
 svg.mapa .wezel.poza-zasiegiem { opacity: 0.45; }

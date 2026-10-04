@@ -107,6 +107,7 @@ export interface Prototyp {
     zapasStartowyJitter: number;
     dobyRozruchuRynku: number;
     maxProbUkladu: number;
+    sasiedztwoTerytoriow: boolean;
   };
   cywilizacjeKanonu: Record<string, CywilizacjaKanonuProfil>;
   swiatS: {
@@ -153,6 +154,13 @@ export interface Prototyp {
     eksplorujMaxPc: number;
     eksplorujDoUlamkaHoryzontu: number;
     premiaEksploracjiKr: number;
+    karaPrzystankuPc: number;
+    rezerwaPaliwaOdcinkaM3: number;
+    promienDystrybucjiPc: number;
+    maxPlanetDystrybucji: number;
+    planowDoDrugiegoKroku: number;
+    krokiDrugiegoKroku: number;
+    celowDrugiegoKroku: number;
   };
 }
 
