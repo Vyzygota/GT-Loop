@@ -17,6 +17,18 @@
 - **Załoga.** Przy `xpNaDobeLotu` = 2 wszyscy czterej załoganci kończą 1 200 dób z ok. 2 300–2 400 XP (tier Mistrz od ok. 760. doby); Legenda (9 999 XP) wymagałaby ok. 5 000 dób lotu. Bot nie zatrudnia pilotów: nowicjusz ma umiejętność 0,80–0,91, więc spowalnia statek o 9–20%, a tolerancja kosztu dnia XP (500 kr) tego nie pokrywa; zatrudnia nawigatorów i handlowców (w B handlowiec nic nie daje, ale nie szkodzi).
 - **Pierwsze pomiary (3 ziarna, `progAwansu` 20):** udział pozycji rynku na sufitach (zapas 0 albo 6 norm) rośnie z 19% w dobie 0 do 45% w dobie 600 i 47% w dobie 1 200, bez NaN; dzienny PKB portów stały (bez awansów), wartość zapasów ×1,79 w d0–600 i ×0,99 w d600–1200.
 
+## Faza 7a: bankructwa bota w pierwszym przeglądzie (6–10 ziaren na 50) i ich przyczyny
+
+Pierwszy przegląd `k`/`progAwansu`/`xpNaDobeLotu` (50 ziaren każdy) miał 3–10 ziaren „utknął” na konfigurację. Ślady ostatnich lotów pokazały pięć osobnych mechanizmów, każdy naprawiony regułą bota (nie zmianą świata):
+
+1. **Kadłub kupiony w trakcie ekspedycji** (ziarno 29: szczebel 1 za 13,1 mln w stolicy Velhari, potem 740 pc pustego lotu z 5,9 mln) → `inwestuj` nie kupuje, gdy trwa ekspedycja; po drodze bot sprawdza na każdym przystanku, czy gotówka pokrywa 1,3 × resztę drogi, inaczej przerywa ekspedycję.
+2. **„Dotankuj do pełna, gdy cena ≤ bazowa” z bakiem 338 m³** (ziarno 8: 191 m³ po 10 000 kr u plemion = cała gotówka, ładunek elektroniki za 3,8 mln nie do sprzedania u plemion) → w progresji dotankowanie zostawia rezerwę na paliwo i płace całej trasy.
+3. **Plany, na które nie starcza gotówki** (przychód w celu miał zapłacić za paliwo po drodze) → plan z ujemną gotówką po sprzedaży tutaj i kosztach trasy jest odrzucany. Przy okazji wycena paliwa odcinek po odcinku (znana cena w węźle startu odcinka zamiast ceny bazowej dla wszystkich dalszych), bo cena bazowa zawyżała dwukrotnie koszt tras przez planety (4 500 kr/m³ w regionie startowym) i odcinała ucieczkę z ubogich regionów.
+4. **Premia awansu za częściowe dostawy przy nieosiągalnym koszyku** (ziarno 44: w Duhari przy `progAwansu` 20 bot kupował elektronikę po 220 tys. kr straty, żeby dostać 700 tys. „premii” za 1% koszyka) → premia tylko, gdy reszta koszyka po cenie bazowej ≤ 2 × majątek bota.
+5. **Wyprawa do stoczni w regionie bez zyskownych tras** (ziarno 19: po dotarciu do Velhari z 7,8 mln bot pojechał do jej stolicy i kupił szczebel 2 za 3,7 mln; powrót do Vreth kosztował 5,7 mln paliwa, więc został i krążył po Velhari po −30 tys. kr/dobę) → kadłub tylko, gdy po zakupie zostaje budżet wyjścia (pusty lot do stolicy innej cywilizacji); odwrót do najbliższej stolicy innej cywilizacji już po pierwszym doku bez dodatniego planu, z pierwszeństwem przed wyprawą do stoczni.
+
+Po poprawkach: 2 bankructwa na 50 (ziarna 17 i 34, oba po drugiej z rzędu ekspedycji do Duhari, skąd powrót kosztuje więcej niż zostaje w kasie). Mediana wartości końcowej (kr + ładunek) 15,5 mln przy `progAwansu` 20, `k` 10, `xp` 2. Lekcja o kanonie: pusty przelot 700 pc kosztuje ok. 7 mln kr paliwa (1 m³/pc × 10 000 kr u plemion), czyli więcej niż kapitał startowy, a regiony eksportowe (Velhari: elektronika i materiały wybuchowe 2,2–2,4 × potrzeb) nie mają dla samotnego kupca lokalnych tras pokrywających paliwo 7,7 tys. kr/m³ — zarabia się na nich tylko kursem do domu, na który trzeba mieć gotówkę na paliwo **i** ładunek jednocześnie.
+
 ---
 
 # Archiwum: ustalenia zadania spread
