@@ -795,6 +795,9 @@
     "maxPremiaUlamekCeny": 1.0,
     "maxStrataNaKoszykUlamek": 0.1,
     "dobyMiedzyEkspedycjami": 100,
-    "mnoznikGotowkiNaEkspedycje": 2.0
+    "mnoznikGotowkiNaEkspedycje": 2.0,
+    "mnoznikGotowkiNaKontynuacje": 1.3,
+    "slabychDokowDoOdwrotu": 1,
+    "maxResztaKoszykaKrotnoscMajatku": 2.0
   }
 }

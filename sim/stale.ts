@@ -217,6 +217,8 @@ export interface Prototyp {
     minSprzedazyDoMarzy: number;
     /** Progresja: pułap premii awansu na m³ dostawy (ułamek ceny bazowej). */
     maxPremiaUlamekCeny: number;
+    /** Progresja: premia awansu liczy się tylko, gdy reszta koszyka (po cenie bazowej) ≤ krotność majątku bota (gotówka + ładunek). */
+    maxResztaKoszykaKrotnoscMajatku: number;
     /** Progresja: największa strata gotówki (ułamek kasy) na kurs, przy której premia awansu jeszcze się liczy. */
     maxStrataNaKoszykUlamek: number;
     /** Progresja: tolerowany koszt dnia (kr/dobę) zatrudnienia załoganta dla XP. */
@@ -225,6 +227,10 @@ export interface Prototyp {
     dobyMiedzyEkspedycjami: number;
     /** Progresja: ekspedycja rusza, gdy gotówka z ładunkiem ≥ mnożnik × szacowany koszt paliwa i płac. */
     mnoznikGotowkiNaEkspedycje: number;
+    /** Progresja: ekspedycja trwa, dopóki gotówka z ładunkiem ≥ mnożnik × koszt reszty drogi; inaczej bot ją przerywa. */
+    mnoznikGotowkiNaKontynuacje: number;
+    /** Progresja: po tylu kolejnych dokach bez dodatniego planu bot wraca do najbliższej stolicy innej cywilizacji. */
+    slabychDokowDoOdwrotu: number;
   };
 }
 

@@ -59,7 +59,7 @@ async function main(): Promise<void> {
       }
     }
     // 2. Decyzja bota na bliźniaku, wykonana na nim (łącznie z lotem) i odtworzona w UI.
-    const inwestycje = inwestuj(blizniak);
+    const inwestycje = inwestuj(blizniak, stanBota);
     const decyzja = zaplanuj(blizniak, stanBota);
     const dobaPrzed = blizniak.stan.doba;
     const { akcje, utknal } = wykonaj(blizniak, decyzja);
