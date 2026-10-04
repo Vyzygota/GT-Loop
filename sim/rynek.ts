@@ -42,13 +42,17 @@ export function calkaNacisku(r0: number, r1: number): number {
   return suma;
 }
 
-/** Mnożnik okna spreadu przy kupnie przez gracza; udział ∈ [0,1) to pozycja handlowca. */
-export function mnoznikKupna(udzialHandlowca: number): number {
-  return 1 + (K.tradeSpread / 2) * (1 - udzialHandlowca);
+/**
+ * Mnożnik okna spreadu przy kupnie przez gracza; udział ∈ [0,1) to pozycja handlowca.
+ * `spread` to spread podstawowy wariantu (A: tradeSpread na każdej transakcji; B/D: 0; C: 0,10).
+ */
+export function mnoznikKupna(udzialHandlowca: number, spread = K.tradeSpread): number {
+  return 1 + (spread / 2) * (1 - udzialHandlowca);
 }
 
-export function mnoznikSprzedazy(udzialHandlowca: number): number {
-  return 1 - (K.tradeSpread / 2) * (1 - udzialHandlowca);
+/** Mnożnik sprzedaży: okno spreadu podstawowego, a na to kara za odsprzedaż w miejscu zakupu (ułamek ceny). */
+export function mnoznikSprzedazy(udzialHandlowca: number, spread = K.tradeSpread, kara = 0): number {
+  return (1 - (spread / 2) * (1 - udzialHandlowca)) * (1 - kara);
 }
 
 export function cenaBazowaWU(basePrice: number, poz: PozycjaRynku): number {
@@ -56,15 +60,15 @@ export function cenaBazowaWU(basePrice: number, poz: PozycjaRynku): number {
 }
 
 /** Łączna kwota w WU za kupno m3 (zapas spada z z do z − m3). */
-export function kwotaKupnaWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number): number {
+export function kwotaKupnaWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread): number {
   const n = poz.norma;
-  return basePrice * mnoznikKupna(udzial) * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n);
+  return basePrice * mnoznikKupna(udzial, spread) * n * calkaNacisku((poz.zapas - m3) / n, poz.zapas / n);
 }
 
 /** Łączna kwota w WU za sprzedaż m3 (zapas rośnie z z do z + m3). */
-export function kwotaSprzedazyWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number): number {
+export function kwotaSprzedazyWU(basePrice: number, poz: PozycjaRynku, m3: number, udzial: number, spread = K.tradeSpread, kara = 0): number {
   const n = poz.norma;
-  return basePrice * mnoznikSprzedazy(udzial) * n * calkaNacisku(poz.zapas / n, (poz.zapas + m3) / n);
+  return basePrice * mnoznikSprzedazy(udzial, spread, kara) * n * calkaNacisku(poz.zapas / n, (poz.zapas + m3) / n);
 }
 
 /** Paliwo na planecie: BasePrice × nacisk, bez spreadu. */

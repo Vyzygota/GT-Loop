@@ -4,6 +4,7 @@ export type Rola = 'pilot' | 'nawigator' | 'handlowiec';
 export type TypWezla = 'planeta' | 'tankowanie' | 'przelot';
 export type Skala = 'S' | 'M' | 'L';
 export type TrybInformacji = 'pelna' | 'zasieg';
+export type WariantSpreadu = 'A' | 'B' | 'C' | 'D';
 
 export const TOWARY: Towar[] = ['Food', 'Minerals', 'Solvents', 'Explosives', 'Electronics'];
 export const TOWARY_I_PALIWO: TowarLubPaliwo[] = [...TOWARY, 'Fuel'];
@@ -98,6 +99,8 @@ export interface Transakcja {
   m3: number;
   kwotaKr: number;
   kwotaBezHandlowcaKr: number;
+  /** Kwota bez handlowca i bez kary za odsprzedaż w miejscu zakupu. */
+  kwotaBezKaryKr: number;
   cenaJednPrzedKr: number;
   cenaJednPoKr: number;
   naciskPrzed: number;
@@ -183,6 +186,9 @@ export interface Ceny {
   bilansNaDobe: number;
   informacja: 'zywa' | 'odczyt';
   wiekDob: number;
+  /** Kara za odsprzedaż w miejscu zakupu (ułamek ceny) i licznik skoków pamięci. */
+  kara: number;
+  licznikPamieci: number;
 }
 
 export interface Wycena {
@@ -194,6 +200,8 @@ export interface Wycena {
   naciskPrzed: number;
   naciskPo: number;
   kwotaBezHandlowcaKr: number;
+  kwotaBezKaryKr: number;
+  kara: number;
 }
 
 export interface Osiagalny {
@@ -206,4 +214,5 @@ export interface Osiagalny {
 export interface OpcjeGry {
   skala?: Skala;
   informacja?: TrybInformacji;
+  spread?: WariantSpreadu;
 }

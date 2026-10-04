@@ -31,6 +31,7 @@ import {
   type Towar,
   type Transakcja,
   type TrybInformacji,
+  type WariantSpreadu,
   type Wezel,
   type Wycena,
   type WynikHandlowy,
@@ -57,6 +58,8 @@ export interface Stan {
   wizyty: Record<string, number>;
   /** Ostatnie odczyty rynków odwiedzonych planet (tryb informacji `zasieg`). */
   odczyty: Record<string, Odczyt>;
+  /** Pamięć zakupu: klucz „planeta|towar” → licznik skoków (bez ceny kupna). */
+  pamiecZakupu: Record<string, number>;
   numerLotu: number;
   koniec: boolean;
   raporty: Raport[];
@@ -88,6 +91,9 @@ export class Gra {
   readonly skala: Skala;
   readonly informacja: TrybInformacji;
   readonly limitDob: number;
+  readonly wariantSpreadu: WariantSpreadu;
+  /** Spread podstawowy wariantu: A = tradeSpread na każdej transakcji, B/D = 0, C = 0,10. */
+  readonly spreadPodstawowy: number;
   private okres!: Okres;
   private readonly rng: Losowosc;
 
@@ -95,6 +101,9 @@ export class Gra {
     this.skala = opcje.skala ?? P.skala;
     this.informacja = opcje.informacja ?? P.informacja;
     this.limitDob = P.skale[this.skala].limitDob;
+    this.wariantSpreadu = opcje.spread ?? P.spread;
+    const konfig = P.wariantySpreadu[this.wariantSpreadu];
+    this.spreadPodstawowy = konfig.tryb === 'staly' ? K.tradeSpread : (konfig.spreadPodstawowy ?? 0);
     const { swiat, rynki } = generujSwiat(ziarno, this.skala);
     this.swiat = swiat;
     this.graf = new Graf(swiat.wezly, swiat.krawedzie);
@@ -115,6 +124,7 @@ export class Gra {
       znaneCywilizacje: znane,
       wizyty: {},
       odczyty: {},
+      pamiecZakupu: {},
       numerLotu: 0,
       koniec: false,
       raporty: [],
@@ -174,15 +184,39 @@ export class Gra {
     return efektyZalogi(zaloga);
   }
 
+  private kluczPamieci(idWezla: string, towar: Towar): string {
+    return `${idWezla}|${towar}`;
+  }
+
+  /** Licznik pamięci zakupu pary (planeta, towar) po `skokiWPrzod` kolejnych skokach. */
+  licznikPamieci(idWezla: string, towar: Towar, skokiWPrzod = 0): number {
+    return Math.max(0, (this.stan.pamiecZakupu[this.kluczPamieci(idWezla, towar)] ?? 0) - skokiWPrzod);
+  }
+
+  /**
+   * Kara za odsprzedaż w miejscu zakupu (ułamek ceny sprzedaży): wariant A nie ma kary (spread stały),
+   * schodek = pełne tradeSpread dopóki licznik > 0, liniowy = tradeSpread × licznik / pamiecZakupuSkokow.
+   */
+  karaSprzedazy(idWezla: string, towar: Towar, skokiWPrzod = 0): number {
+    const konfig = P.wariantySpreadu[this.wariantSpreadu];
+    if (konfig.tryb !== 'pamiec') return 0;
+    const licznik = this.licznikPamieci(idWezla, towar, skokiWPrzod);
+    if (licznik <= 0) return 0;
+    return konfig.kara === 'liniowy' ? (K.tradeSpread * licznik) / P.pamiecZakupuSkokow : K.tradeSpread;
+  }
+
   /** Ceny jednostkowe towaru (kr/m³) według tego, co gracz wie o planecie. */
-  ceny(idWezla: string, towar: Towar, udzial = this.efekty().udzialHandlowca): Ceny | null {
+  ceny(idWezla: string, towar: Towar, udzial = this.efekty().udzialHandlowca, skokiWPrzod = 0): Ceny | null {
     const info = this.informacjaORynku(idWezla);
     if (!info) return null;
     const poz = info.rynek[towar];
     const baza = cenaBazowaWU(K.towary[towar].basePrice, poz);
+    const kara = this.karaSprzedazy(idWezla, towar, skokiWPrzod);
     return {
-      kupnoKr: kr(baza * mnoznikKupna(udzial)),
-      sprzedazKr: kr(baza * mnoznikSprzedazy(udzial)),
+      kupnoKr: kr(baza * mnoznikKupna(udzial, this.spreadPodstawowy)),
+      sprzedazKr: kr(baza * mnoznikSprzedazy(udzial, this.spreadPodstawowy, kara)),
+      kara,
+      licznikPamieci: this.licznikPamieci(idWezla, towar, skokiWPrzod),
       bazowaKr: kr(baza),
       nacisk: nacisk(poz.zapas / poz.norma),
       zapasM3: poz.zapas,
@@ -212,13 +246,15 @@ export class Gra {
 
   // ---------- Wyceny (bez mutacji) ----------
 
-  private wycenaNaRynku(towar: Towar, m3: number, rodzaj: 'kupno' | 'sprzedaz', udzial: number, rynek: Rynek[Towar]): Wycena {
+  private wycenaNaRynku(towar: Towar, m3: number, rodzaj: 'kupno' | 'sprzedaz', udzial: number, rynek: Rynek[Towar], kara = 0): Wycena {
     const base = K.towary[towar].basePrice;
+    const sp = this.spreadPodstawowy;
     const znak = rodzaj === 'kupno' ? -1 : 1;
     const po = { ...rynek, zapas: rynek.zapas + znak * m3 };
-    const kwotaWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, udzial) : kwotaSprzedazyWU(base, rynek, m3, udzial);
-    const kwotaBezWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, 0) : kwotaSprzedazyWU(base, rynek, m3, 0);
-    const mn = rodzaj === 'kupno' ? mnoznikKupna(udzial) : mnoznikSprzedazy(udzial);
+    const kwotaWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, udzial, sp) : kwotaSprzedazyWU(base, rynek, m3, udzial, sp, kara);
+    const kwotaBezWU = rodzaj === 'kupno' ? kwotaKupnaWU(base, rynek, m3, 0, sp) : kwotaSprzedazyWU(base, rynek, m3, 0, sp, kara);
+    const kwotaBezKaryWU = rodzaj === 'kupno' ? kwotaBezWU : kwotaSprzedazyWU(base, rynek, m3, 0, sp, 0);
+    const mn = rodzaj === 'kupno' ? mnoznikKupna(udzial, sp) : mnoznikSprzedazy(udzial, sp, kara);
     const kwotaKr = zaokr(kr(kwotaWU));
     return {
       m3,
@@ -229,6 +265,8 @@ export class Gra {
       naciskPrzed: nacisk(rynek.zapas / rynek.norma),
       naciskPo: nacisk(po.zapas / po.norma),
       kwotaBezHandlowcaKr: zaokr(kr(kwotaBezWU)),
+      kwotaBezKaryKr: zaokr(kr(kwotaBezKaryWU)),
+      kara,
     };
   }
 
@@ -246,16 +284,17 @@ export class Gra {
     return this.wycenaNaRynku(towar, m3, 'kupno', udzial, this.rynekDoWyceny(idWezla)[towar]);
   }
 
-  wycenaSprzedazy(towar: Towar, m3: number, idWezla = this.stan.pozycja, udzial = this.efekty().udzialHandlowca): Wycena {
-    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, this.rynekDoWyceny(idWezla)[towar]);
+  /** Wycena sprzedaży tutaj albo na innej planecie; `skokiWPrzod` to skoki do wykonania przed sprzedażą (licznik pamięci maleje). */
+  wycenaSprzedazy(towar: Towar, m3: number, idWezla = this.stan.pozycja, udzial = this.efekty().udzialHandlowca, skokiWPrzod = 0): Wycena {
+    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, this.rynekDoWyceny(idWezla)[towar], this.karaSprzedazy(idWezla, towar, skokiWPrzod));
   }
 
   /** Wycena sprzedaży na planecie za `doby` dób: odczyt na żywo rzutowany w przód, stary odczyt bez rzutowania. */
-  wycenaSprzedazyZa(towar: Towar, m3: number, idWezla: string, doby: number, udzial = this.efekty().udzialHandlowca): Wycena {
+  wycenaSprzedazyZa(towar: Towar, m3: number, idWezla: string, doby: number, udzial = this.efekty().udzialHandlowca, skokiWPrzod = 0): Wycena {
     const info = idWezla === this.stan.pozycja ? ({ tryb: 'zywa', rynek: this.rynekDoWyceny(idWezla), wiekDob: 0 } as InformacjaORynku) : this.informacjaORynku(idWezla);
     if (!info) throw new Error('Brak informacji o tym rynku');
     const rynek = info.tryb === 'zywa' ? zapasPo(info.rynek[towar], doby) : info.rynek[towar];
-    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, rynek);
+    return this.wycenaNaRynku(towar, m3, 'sprzedaz', udzial, rynek, this.karaSprzedazy(idWezla, towar, skokiWPrzod));
   }
 
   wycenaPaliwa(m3: number, idWezla = this.stan.pozycja): { m3: number; kwotaKr: number; cenaSredniaKr: number } {
@@ -358,6 +397,8 @@ export class Gra {
     const l = this.stan.ladownia[towar];
     l.m3 += m3;
     l.kosztKr += w.kwotaKr;
+    // Pamięć zakupu: (towar, planeta, licznik skoków) bez ceny kupna.
+    this.stan.pamiecZakupu[this.kluczPamieci(tu, towar)] = P.pamiecZakupuSkokow;
     const t: Transakcja = {
       rodzaj: 'kupno',
       planeta: tu,
@@ -365,6 +406,7 @@ export class Gra {
       m3,
       kwotaKr: w.kwotaKr,
       kwotaBezHandlowcaKr: w.kwotaBezHandlowcaKr,
+      kwotaBezKaryKr: w.kwotaBezKaryKr,
       cenaJednPrzedKr: w.cenaJednPrzedKr,
       cenaJednPoKr: w.cenaJednPoKr,
       naciskPrzed: w.naciskPrzed,
@@ -398,6 +440,7 @@ export class Gra {
       m3,
       kwotaKr: w.kwotaKr,
       kwotaBezHandlowcaKr: w.kwotaBezHandlowcaKr,
+      kwotaBezKaryKr: w.kwotaBezKaryKr,
       cenaJednPrzedKr: w.cenaJednPrzedKr,
       cenaJednPoKr: w.cenaJednPoKr,
       naciskPrzed: w.naciskPrzed,
@@ -494,6 +537,13 @@ export class Gra {
     for (const rynek of Object.values(this.stan.rynki)) {
       for (const t of TOWARY_I_PALIWO) krokRynku(rynek[t], s.doby);
     }
+    // Pamięć zakupu: każdy wykonany skok zmniejsza wszystkie liczniki o 1.
+    const skoki = trasa.length - 1;
+    for (const klucz of Object.keys(this.stan.pamiecZakupu)) {
+      const nowy = this.stan.pamiecZakupu[klucz] - skoki;
+      if (nowy > 0) this.stan.pamiecZakupu[klucz] = nowy;
+      else delete this.stan.pamiecZakupu[klucz];
+    }
 
     // Przylot, kontakt, nowi kandydaci.
     this.stan.pozycja = cel;
@@ -504,7 +554,8 @@ export class Gra {
     // Raport: linie sumują się do zmiany salda.
     const sprzedaze = okres.transakcje.filter((t) => t.rodzaj === 'sprzedaz');
     const zakupy = okres.transakcje.filter((t) => t.rodzaj === 'kupno');
-    const sprzedazBaza = sprzedaze.reduce((a, t) => a + t.kwotaBezHandlowcaKr, 0);
+    const sprzedazBaza = sprzedaze.reduce((a, t) => a + t.kwotaBezKaryKr, 0);
+    const karaOdsprzedazy = sprzedaze.reduce((a, t) => a + (t.kwotaBezKaryKr - t.kwotaBezHandlowcaKr), 0);
     const sprzedazHandlowiec = sprzedaze.reduce((a, t) => a + (t.kwotaKr - t.kwotaBezHandlowcaKr), 0);
     const zakupBaza = zakupy.reduce((a, t) => a + t.kwotaBezHandlowcaKr, 0);
     const zakupHandlowiec = zakupy.reduce((a, t) => a + (t.kwotaBezHandlowcaKr - t.kwotaKr), 0);
@@ -515,7 +566,8 @@ export class Gra {
     const nazwaZ = this.wezel(z).nazwa;
 
     const linie: LiniaRaportu[] = [];
-    linie.push({ klucz: 'sprzedaz', etykieta: `Sprzedaż towarów w ${nazwaZ} (ceny bez handlowca)`, kr: sprzedazBaza });
+    linie.push({ klucz: 'sprzedaz', etykieta: `Sprzedaż towarów w ${nazwaZ} (ceny bez handlowca${karaOdsprzedazy !== 0 ? ' i bez kary' : ''})`, kr: sprzedazBaza });
+    if (karaOdsprzedazy !== 0) linie.push({ klucz: 'kara_odsprzedazy', etykieta: 'Kara za odsprzedaż w miejscu zakupu', kr: -karaOdsprzedazy, opis: `pamięć zakupu: ${Math.round(K.tradeSpread * 100)}% ceny, dopóki od zakupu nie minie ${P.pamiecZakupuSkokow} skoków` });
     if (ef.najlepszy.handlowiec || sprzedazHandlowiec !== 0) linie.push({ klucz: 'handlowiec_sprzedaz', etykieta: 'Handlowiec: lepsze ceny sprzedaży', kr: sprzedazHandlowiec, opis: `pozycja w oknie spreadu ${Math.round(ef.udzialHandlowca * 100)}%` });
     linie.push({ klucz: 'zakup', etykieta: `Zakup towarów w ${nazwaZ} (ceny bez handlowca)`, kr: -zakupBaza });
     if (ef.najlepszy.handlowiec || zakupHandlowiec !== 0) linie.push({ klucz: 'handlowiec_zakup', etykieta: 'Handlowiec: niższe ceny zakupu', kr: zakupHandlowiec });

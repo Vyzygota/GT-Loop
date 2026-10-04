@@ -23,6 +23,7 @@ import {
 interface Odcinek {
   do: string;
   dystans: number;
+  skoki: number;
 }
 
 const cacheGrafow = new Map<string, Map<string, Odcinek[]>>();
@@ -44,7 +45,7 @@ function grafTankowania(gra: Gra): Map<string, Odcinek[]> {
     for (const [id, wpis] of d) {
       if (id === w.id) continue;
       if (gra.wezel(id).typ === 'przelot') continue;
-      lista.push({ do: id, dystans: wpis.dystans });
+      lista.push({ do: id, dystans: wpis.dystans, skoki: wpis.skoki });
     }
     odcinki.set(w.id, lista);
   }
@@ -55,6 +56,8 @@ function grafTankowania(gra: Gra): Map<string, Odcinek[]> {
 export interface Dojazd {
   dystans: number;
   odcinki: string[];
+  /** Liczba skoków (krawędzi) na całej trasie; licznik pamięci zakupu maleje o skok. */
+  skoki: number;
 }
 
 /** Najkrótsze dojazdy z bieżącej pozycji do węzłów z paliwem, odcinkami ≤ zasięg baku przy danej załodze. */
@@ -68,6 +71,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[]): 
   // Odcinek musi zostawić rezerwę: bak tankuje się w krokach, a zużycie nie może przekroczyć stanu baku.
   const zasiegOdcinka = (K.bak - P.bot.rezerwaPaliwaOdcinkaM3) / (K.kosztPaliwaNaParsek * mnoznik);
   const dystans = new Map<string, number>([[start, 0]]);
+  const skokiDo = new Map<string, number>([[start, 0]]);
   const poprzednik = new Map<string, string | null>([[start, null]]);
   const odwiedzone = new Set<string>();
   // Prosty Dijkstra po grafie tankowania (kilkaset węzłów).
@@ -91,6 +95,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[]): 
       if (nowy < (dystans.get(o.do) ?? Infinity)) {
         dystans.set(o.do, nowy);
         poprzednik.set(o.do, biezacy);
+        skokiDo.set(o.do, (skokiDo.get(biezacy) ?? 0) + o.skoki);
       }
     }
   }
@@ -103,7 +108,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[]): 
       odc.unshift(x);
       x = poprzednik.get(x) ?? null;
     }
-    wynik.set(id, { dystans: d - odc.length * P.bot.karaPrzystankuPc, odcinki: odc });
+    wynik.set(id, { dystans: d - odc.length * P.bot.karaPrzystankuPc, odcinki: odc, skoki: skokiDo.get(id) ?? 0 });
   }
   return wynik;
 }
@@ -124,6 +129,7 @@ export interface Plan {
   pierwszyOdcinek: string;
   odcinki: string[];
   dystans: number;
+  skoki: number;
   doby: number;
   /** Ile sprzedać w tym doku (reszta ładunku leci do celu). */
   sprzedaze: { towar: Towar; m3: number }[];
@@ -211,17 +217,21 @@ export class Kontekst {
    * Przychód ze sprzedaży m3 w klastrze celu: ilość dzielona proporcjonalnie do norm rynków.
    * Zwraca kwotę i odległość objazdu potrzebną, by sprzedać część poza celem (0, gdy wszystko w celu).
    */
-  przychodSprzedazy(cel: string, towar: Towar, m3: number, doby: number, udzial: number, zKlastrem = true): { kwota: number; objazd: number } | null {
+  /**
+   * Przychód ze sprzedaży m3 w klastrze celu po `skoki` skokach: ilość dzielona proporcjonalnie do norm rynków,
+   * z karą pamięci zakupu tam, gdzie licznik jeszcze nie zgaśnie (bot zna regułę).
+   */
+  przychodSprzedazy(cel: string, towar: Towar, m3: number, doby: number, udzial: number, zKlastrem = true, skoki = 0): { kwota: number; objazd: number } | null {
     if (m3 <= 0) return { kwota: 0, objazd: 0 };
     const klaster = zKlastrem ? this.klaster(cel) : [{ id: cel, odleglosc: 0 }];
-    const pozycje: { poz: PozycjaRynku; odleglosc: number }[] = [];
+    const pozycje: { id: string; poz: PozycjaRynku; odleglosc: number }[] = [];
     for (const k of klaster) {
       const poz = this.rynekZa(k.id, towar, doby);
       if (!poz) {
         if (k.id === cel) return null;
         continue;
       }
-      pozycje.push({ poz, odleglosc: k.odleglosc });
+      pozycje.push({ id: k.id, poz, odleglosc: k.odleglosc });
     }
     const sumaNorm = pozycje.reduce((s, p) => s + p.poz.norma, 0);
     if (!(sumaNorm > 0)) return { kwota: 0, objazd: 0 };
@@ -230,29 +240,30 @@ export class Kontekst {
     for (const p of pozycje) {
       const czesc = (m3 * p.poz.norma) / sumaNorm;
       if (czesc <= 0) continue;
-      kwota += Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, p.poz, czesc, udzial)));
+      kwota += Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, p.poz, czesc, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(p.id, towar, skoki))));
       objazd = Math.max(objazd, p.odleglosc);
     }
     return { kwota, objazd };
   }
 
-  /** Przychód ze sprzedaży tutaj (rynek na żywo). */
+  /** Przychód ze sprzedaży tutaj (rynek na żywo, kara pamięci zakupu bez skoków w przód). */
   przychodTutaj(towar: Towar, m3: number, udzial: number): number {
     if (m3 <= 0) return 0;
-    const poz = this.gra.stan.rynki[this.gra.stan.pozycja][towar];
-    return Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, poz, m3, udzial)));
+    const tu = this.gra.stan.pozycja;
+    const poz = this.gra.stan.rynki[tu][towar];
+    return Math.round(kr(kwotaSprzedazyWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy, this.gra.karaSprzedazy(tu, towar, 0))));
   }
 
   kosztKupnaTutaj(towar: Towar, m3: number, udzial: number): number {
     const poz = this.gra.stan.rynki[this.gra.stan.pozycja][towar];
-    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, m3, udzial)));
+    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, m3, udzial, this.gra.spreadPodstawowy)));
   }
 
   /** Koszt kupna na innej planecie za `doby` dób (rzut rynku), null bez informacji. */
   kosztKupnaNa(id: string, towar: Towar, m3: number, doby: number, udzial: number): number | null {
     const poz = this.rynekZa(id, towar, doby);
     if (!poz) return null;
-    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, Math.min(m3, poz.zapas), udzial)));
+    return Math.round(kr(kwotaKupnaWU(K.towary[towar].basePrice, poz, Math.min(m3, poz.zapas), udzial, this.gra.spreadPodstawowy)));
   }
 }
 
@@ -274,7 +285,7 @@ function maxKupnoPrzy(ctx: Kontekst, towar: Towar, gotowka: number, objetosc: nu
  * Najlepszy dokupiony ładunek do `cel` ponad to, co już wieziemy (`bazowe`): do dwóch towarów,
  * ilość dobrana w krokach do głębokości rynku docelowego.
  */
-function dobierzLadunek(ctx: Kontekst, cel: string, doby: number, gotowka: number, udzial: number, bazowe: Record<Towar, number>, objetosc: number, masa: number): Zakup[] {
+function dobierzLadunek(ctx: Kontekst, cel: string, doby: number, gotowka: number, udzial: number, bazowe: Record<Towar, number>, objetosc: number, masa: number, skoki = 0): Zakup[] {
   const gra = ctx.gra;
   if (!gra.rynekZnany(gra.stan.pozycja)) return [];
   const zakupy: Zakup[] = [];
@@ -285,13 +296,13 @@ function dobierzLadunek(ctx: Kontekst, cel: string, doby: number, gotowka: numbe
       if (uzyte.has(t)) continue;
       const max = maxKupnoPrzy(ctx, t, gotowka, objetosc, masa, udzial);
       if (max <= 0) continue;
-      const przychodBazy = ctx.przychodSprzedazy(cel, t, bazowe[t], doby, udzial);
+      const przychodBazy = ctx.przychodSprzedazy(cel, t, bazowe[t], doby, udzial, true, skoki);
       if (przychodBazy === null) break;
       for (let k = 1; k <= P.bot.krokiIlosci; k++) {
         const m3 = Math.floor((max * k) / P.bot.krokiIlosci);
         if (m3 <= 0) continue;
         const koszt = ctx.kosztKupnaTutaj(t, m3, udzial);
-        const przychod = ctx.przychodSprzedazy(cel, t, bazowe[t] + m3, doby, udzial)!.kwota - przychodBazy.kwota;
+        const przychod = ctx.przychodSprzedazy(cel, t, bazowe[t] + m3, doby, udzial, true, skoki)!.kwota - przychodBazy.kwota;
         const marza = przychod - koszt;
         if (marza > 0 && (!najlepszy || marza > najlepszy.przychodKr - najlepszy.kosztKr)) najlepszy = { towar: t, m3, kosztKr: koszt, przychodKr: przychod };
       }
@@ -350,7 +361,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     const place = Math.round(ef.placeNaDobe * doby);
     const koszty = kosztPaliwa + place;
     const pierwszy = d.odcinki[0];
-    const wspolne = { cel, pierwszyOdcinek: pierwszy, odcinki: d.odcinki, dystans: d.dystans, doby, kosztPaliwaKr: kosztPaliwa, placeKr: place };
+    const wspolne = { cel, pierwszyOdcinek: pierwszy, odcinki: d.odcinki, dystans: d.dystans, skoki: d.skoki, doby, kosztPaliwaKr: kosztPaliwa, placeKr: place };
 
     if (eksploracja) {
       if (filtr.tylkoDalej && filtr.cele && !filtr.cele.has(cel)) continue;
@@ -377,7 +388,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
         if (q > 0 && (!rynekTu || filtr.tylkoDalej)) continue;
         const tuKwota = ctx.przychodTutaj(t, q, ef.udzialHandlowca);
         // Wieziony ładunek wyceniany jest tylko na samym celu: obietnica „rozwiozę po sąsiadach” realizuje się dopiero tam.
-        const dalej = ctx.przychodSprzedazy(cel, t, h - q, doby, ef.udzialHandlowca, false);
+        const dalej = ctx.przychodSprzedazy(cel, t, h - q, doby, ef.udzialHandlowca, false, d.skoki);
         if (!dalej) {
           znanyCel = false;
           break;
@@ -396,11 +407,11 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     if (!znanyCel) continue;
 
     const gotowka = gra.stan.kr + przychodTu - koszty;
-    const zakupy = rynekTu && !filtr.tylkoDalej && gotowka > 0 ? dobierzLadunek(ctx, cel, doby, gotowka, ef.udzialHandlowca, zostaje, objetosc, masa) : rynekTu && gotowka > 0 ? dobierzLadunek(ctx, cel, doby, gotowka, ef.udzialHandlowca, zostaje, objetosc, masa) : [];
+    const zakupy = rynekTu && gotowka > 0 ? dobierzLadunek(ctx, cel, doby, gotowka, ef.udzialHandlowca, zostaje, objetosc, masa, d.skoki) : [];
     const marza = zakupy.reduce((s, z) => s + z.przychodKr - z.kosztKr, 0);
     // Objazd po klastrze, gdy część ładunku sprzeda się poza celem.
     for (const z of zakupy) {
-      const r = ctx.przychodSprzedazy(cel, z.towar, zostaje[z.towar] + z.m3, doby, ef.udzialHandlowca);
+      const r = ctx.przychodSprzedazy(cel, z.towar, zostaje[z.towar] + z.m3, doby, ef.udzialHandlowca, true, d.skoki);
       if (r) objazd = Math.max(objazd, r.objazd);
     }
     const dobyObjazdu = objazd / ef.predkosc;
@@ -443,7 +454,7 @@ function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zy
         if (m3 <= 0) continue;
         const koszt = ctx.kosztKupnaNa(plan.cel, t, m3, plan.doby, ef.udzialHandlowca);
         if (koszt === null || koszt > plan.gotowkaPo) continue;
-        const r = ctx.przychodSprzedazy(cel2, t, m3, plan.doby + doby2, ef.udzialHandlowca);
+        const r = ctx.przychodSprzedazy(cel2, t, m3, plan.doby + doby2, ef.udzialHandlowca, true, plan.skoki + d.skoki);
         if (!r) continue;
         const zysk = r.kwota - koszt - koszty;
         if (zysk > najlepszy.zysk) najlepszy = { zysk, doby: doby2 };
@@ -683,7 +694,11 @@ export interface LotBota {
   skoki: number;
   zyskWartosci: number;
   towary: Towar[];
+  /** Dominujący towar trasy handlowej, do której należy lot. */
+  towar?: Towar;
   eksploracja: boolean;
+  paliwoKr: number;
+  placeKr: number;
 }
 
 /** Cała trasa handlowa bota: od zakupu (albo decyzji) do przylotu do celu planu, przez przystanki. */
@@ -695,6 +710,8 @@ export interface TrasaBota {
   zyskWartosci: number;
   miedzyCyw: boolean;
   eksploracja: boolean;
+  /** Dominujący towar (największy koszt zakupu na starcie trasy, inaczej największy w ładowni). */
+  towar?: Towar;
 }
 
 export interface WynikZiarna {
@@ -706,6 +723,10 @@ export interface WynikZiarna {
   pierwszyZyskownyLot: number | null;
   kontaktDoba: number | null;
   utknal: boolean;
+  /** Marża na m³ (przychód − koszt zakupu) z każdej sprzedaży, per towar. */
+  marzeNaM3: Record<Towar, number[]>;
+  /** Ceny zapłacone za paliwo (kr/m³) przy każdym tankowaniu w doku. */
+  cenyPaliwa: number[];
 }
 
 export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna {
@@ -717,9 +738,13 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
   let utknal = false;
   const stanBota = nowyStanBota();
   let biezaca: (TrasaBota & { cywStart?: string; wartoscStart: number }) | null = null;
+  const marzeNaM3 = {} as Record<Towar, number[]>;
+  for (const t of TOWARY) marzeNaM3[t] = [];
+  const cenyPaliwa: number[] = [];
   while (!gra.stan.koniec) {
     const pozycjaPrzed = gra.stan.pozycja;
     const cywPrzed = gra.wezel(pozycjaPrzed).cywilizacja;
+    const ladowniaPrzed = TOWARY.map((t) => ({ t, m3: gra.stan.ladownia[t].m3 })).sort((a, b) => b.m3 - a.m3)[0];
     const krok = krokBota(gra, stanBota);
     if (krok.utknal) {
       utknal = true;
@@ -729,8 +754,12 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
     // Trasa handlowa: zaczyna się, gdy bot wybiera cel; kończy przylotem do celu.
     if (krok.plan && (!biezaca || biezaca.cel !== krok.plan.cel)) {
       if (biezaca && biezaca.loty > 0) trasy.push(biezaca);
-      biezaca = { cel: krok.plan.cel, dystans: 0, doby: 0, loty: 0, zyskWartosci: 0, miedzyCyw: cywPrzed !== gra.wezel(krok.plan.cel).cywilizacja, eksploracja: krok.plan.eksploracja, cywStart: cywPrzed, wartoscStart: raport.wartoscPrzed };
+      const najdrozszy = [...krok.plan.zakupy].sort((a, b) => b.kosztKr - a.kosztKr)[0];
+      const towar = najdrozszy?.towar ?? (ladowniaPrzed && ladowniaPrzed.m3 > 0 ? ladowniaPrzed.t : undefined);
+      biezaca = { cel: krok.plan.cel, dystans: 0, doby: 0, loty: 0, zyskWartosci: 0, miedzyCyw: cywPrzed !== gra.wezel(krok.plan.cel).cywilizacja, eksploracja: krok.plan.eksploracja, towar, cywStart: cywPrzed, wartoscStart: raport.wartoscPrzed };
     }
+    for (const w of raport.wynikHandlowy) if (w.m3 > 0) marzeNaM3[w.towar].push(w.zyskKr / w.m3);
+    if (raport.paliwo.kupionoM3 > 0) cenyPaliwa.push(raport.paliwo.kosztZakupuKr / raport.paliwo.kupionoM3);
     if (biezaca) {
       biezaca.dystans += raport.dystansPc;
       biezaca.doby += raport.doby;
@@ -751,14 +780,17 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
       skoki: raport.trasa.length - 1,
       zyskWartosci: raport.wartoscPo - raport.wartoscPrzed,
       towary: krok.plan?.zakupy.map((z) => z.towar) ?? [],
+      towar: biezaca?.towar,
       eksploracja: krok.plan?.eksploracja ?? false,
+      paliwoKr: raport.paliwo.kosztZakupuKr,
+      placeKr: Math.round(raport.zaloga.placeNaDobe * raport.doby),
     });
     if (pierwszy === null && raport.wartoscPo > raport.wartoscPrzed) pierwszy = raport.numerLotu;
     if (raport.kontakt && kontaktDoba === null) kontaktDoba = raport.dobaKoniec;
   }
   if (biezaca && biezaca.loty > 0) trasy.push(biezaca);
   const wartosc = gra.wartoscFirmy();
-  return { ziarno, wartoscKoncowa: wartosc, zysk: wartosc > K.startingCredits, loty, trasy, pierwszyZyskownyLot: pierwszy, kontaktDoba, utknal };
+  return { ziarno, wartoscKoncowa: wartosc, zysk: wartosc > K.startingCredits, loty, trasy, pierwszyZyskownyLot: pierwszy, kontaktDoba, utknal, marzeNaM3, cenyPaliwa };
 }
 
 export { Graf };

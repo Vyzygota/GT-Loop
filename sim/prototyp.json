@@ -2,6 +2,32 @@
   "_opis": "Założenia prototypu spoza kanonu. Każdy wpis opisany w DECYZJE.md.",
   "skala": "M",
   "informacja": "pelna",
+  "spread": "A",
+  "wariantySpreadu": {
+    "A": {
+      "tryb": "staly",
+      "opis": "stały spread 0,3 na każdej transakcji (punkt odniesienia)"
+    },
+    "B": {
+      "tryb": "pamiec",
+      "spreadPodstawowy": 0.0,
+      "kara": "schodek",
+      "opis": "pamięć zakupu, spread podstawowy 0, kara schodkowa"
+    },
+    "C": {
+      "tryb": "pamiec",
+      "spreadPodstawowy": 0.1,
+      "kara": "schodek",
+      "opis": "pamięć zakupu, spread podstawowy 0,10, kara schodkowa"
+    },
+    "D": {
+      "tryb": "pamiec",
+      "spreadPodstawowy": 0.0,
+      "kara": "liniowy",
+      "opis": "pamięć zakupu, spread podstawowy 0, kara liniowa 0,3 × licznik / 5"
+    }
+  },
+  "pamiecZakupuSkokow": 5,
   "skale": {
     "S": {
       "limitDob": 120,

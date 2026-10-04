@@ -1,6 +1,6 @@
 import kanonJson from './kanon.json';
 import prototypJson from './prototyp.json';
-import type { Rola, Skala, TowarLubPaliwo, TrybInformacji } from './typy';
+import type { Rola, Skala, TowarLubPaliwo, TrybInformacji, WariantSpreadu } from './typy';
 
 export interface Kanon {
   kurs: number;
@@ -76,9 +76,19 @@ export interface CywilizacjaKanonuProfil {
   produkcjaDoPotrzeb: Partial<Record<TowarLubPaliwo, number>>;
 }
 
+export interface KonfiguracjaSpreadu {
+  tryb: 'staly' | 'pamiec';
+  spreadPodstawowy?: number;
+  kara?: 'schodek' | 'liniowy';
+  opis?: string;
+}
+
 export interface Prototyp {
   skala: Skala;
   informacja: TrybInformacji;
+  spread: WariantSpreadu;
+  wariantySpreadu: Record<WariantSpreadu, KonfiguracjaSpreadu>;
+  pamiecZakupuSkokow: number;
   skale: Record<Skala, KonfiguracjaSkali>;
   celMnoznikWartosci: number;
   nawigatorMaxRedukcjaPaliwa: number;

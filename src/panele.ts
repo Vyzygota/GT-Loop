@@ -55,7 +55,7 @@ export function panelRynku(gra: Gra, ilosci: Record<string, number>): string {
     return `<tr data-towar="${t}">
       <td class="lewo"><b>${nazwaTowaru(t)}</b><div class="szary maly">${liczba1(K.towary[t].gestosc)} t/m³${l.m3 > 0 ? ` · w ładowni ${liczba1(l.m3)} m³ (śr. koszt ${kr(l.kosztKr / l.m3)})` : ''}</div></td>
       <td>${kr(c.kupnoKr)}</td>
-      <td>${kr(c.sprzedazKr)}</td>
+      <td>${kr(c.sprzedazKr)}${c.kara > 0 ? `<div class="strata maly" title="Pamięć zakupu: kupiłeś ten towar tutaj; kara zgaśnie po ${c.licznikPamieci} skokach">kara ${Math.round(c.kara * 100)}% (jeszcze ${c.licznikPamieci} sk.)</div>` : ''}</td>
       <td>${liczba1(c.zapasM3)} m³ (${zapasDoby})<div class="szary maly">${bilans >= 0 ? '+' : ''}${liczba1(bilans)}/dobę · nacisk ${liczba2(c.nacisk)}</div></td>
       <td class="ilosc"><input type="number" min="0" step="1" value="${il || ''}" data-ilosc="${t}" placeholder="m³" /></td>
       <td class="akcje">
@@ -69,7 +69,7 @@ export function panelRynku(gra: Gra, ilosci: Record<string, number>): string {
       <thead><tr><th>Towar</th><th>Kupno kr/m³</th><th>Sprzedaż kr/m³</th><th>Zapas planety</th><th>Ilość</th><th></th></tr></thead>
       <tbody>${wiersze}</tbody>
     </table>
-    <div class="szary maly" style="margin-top:4px">Cena krańcowa: każdy kolejny m³ wyceniany jest przy zapasie po poprzednim. Handlowiec (pozycja ${procent(ef.udzialHandlowca)} okna spreadu) przesuwa obie ceny ku środkowi okna.</div>
+    <div class="szary maly" style="margin-top:4px">Cena krańcowa: każdy kolejny m³ wyceniany jest przy zapasie po poprzednim. Handlowiec (pozycja ${procent(ef.udzialHandlowca)} okna spreadu${gra.spreadPodstawowy > 0 ? ` ${Math.round(gra.spreadPodstawowy * 100)}%` : ''}) ${gra.spreadPodstawowy > 0 ? 'przesuwa obie ceny ku środkowi okna' : 'nie ma na co wpływać: spread podstawowy wynosi 0'}.${gra.wariantSpreadu !== 'A' ? ` Wariant ${gra.wariantSpreadu}: odsprzedaż w miejscu zakupu karana ${Math.round(K.tradeSpread * 100)}% przez ${P.pamiecZakupuSkokow} skoków.` : ''}</div>
     ${wierszPaliwa(gra, ilosci)}
   </div>`;
 }

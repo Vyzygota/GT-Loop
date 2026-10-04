@@ -1,4 +1,4 @@
-import { Gra, K, P, type Raport, type Skala, type Towar, type TrybInformacji } from '../sim/index';
+import { Gra, K, P, type Raport, type Skala, type Towar, type TrybInformacji, type WariantSpreadu } from '../sim/index';
 import { esc, kr, liczba1 } from './format';
 import { animujLot, poziomMapy, renderujMape, warstwaTrasy, widokCalosci, widokStatku, type Widok } from './mapa';
 import { panelCywilizacji, panelLadowni, panelRynku, panelTrasy, panelZalogi, tablicaCen } from './panele';
@@ -19,8 +19,9 @@ interface StanUI {
 const app = document.getElementById('app')!;
 const SKALE: Skala[] = ['S', 'M', 'L'];
 const TRYBY: TrybInformacji[] = ['pelna', 'zasieg'];
+const WARIANTY: WariantSpreadu[] = ['A', 'B', 'C', 'D'];
 
-function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; szybko: boolean } {
+function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; szybko: boolean } {
   const h = location.hash;
   const wez = (k: string) => {
     const m = new RegExp(`${k}=([^&]+)`).exec(h);
@@ -28,10 +29,12 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
   };
   const skala = wez('skala');
   const informacja = wez('informacja');
+  const spread = wez('spread');
   return {
     ziarno: wez('ziarno') ?? String(P.bot.pierwszeZiarno),
     skala: SKALE.includes(skala as Skala) ? (skala as Skala) : P.skala,
     informacja: TRYBY.includes(informacja as TrybInformacji) ? (informacja as TrybInformacji) : P.informacja,
+    spread: WARIANTY.includes(spread as WariantSpreadu) ? (spread as WariantSpreadu) : P.spread,
     szybko: wez('szybko') === '1',
   };
 }
@@ -39,11 +42,11 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
 /** Flaga #szybko=1 skraca animację lotu (używa jej smoke test). */
 const szybko = parametryZAdresu().szybko;
 
-let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja);
+let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja, parametryZAdresu().spread);
 
-function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji): StanUI {
-  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}${szybko ? '&szybko=1' : ''}`;
-  const gra = new Gra(ziarno, { skala, informacja });
+function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji, spread: WariantSpreadu): StanUI {
+  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}${szybko ? '&szybko=1' : ''}`;
+  const gra = new Gra(ziarno, { skala, informacja, spread });
   return { gra, trasa: [], ilosci: {}, raport: null, wLocie: false, komunikat: '', ekranKonca: false, widok: widokStartowy(gra), pokazWszystkieCeny: false };
 }
 
@@ -70,6 +73,7 @@ function naglowek(): string {
     <div class="ziarno">
       <label class="maly">Skala <select id="skala">${opcje(SKALE, g.skala)}</select></label>
       <label class="maly">Informacja <select id="informacja">${opcje(TRYBY, g.informacja)}</select></label>
+      <label class="maly" title="${esc(P.wariantySpreadu[g.wariantSpreadu].opis ?? '')}">Spread <select id="spread">${opcje(WARIANTY, g.wariantSpreadu)}</select></label>
       <label class="maly">Ziarno <input type="text" id="ziarno" value="${esc(g.swiat.ziarno)}" /></label>
       <button data-akcja="nowa-gra">Nowa gra</button>
     </div>
@@ -87,7 +91,7 @@ function renderuj(): void {
         <li>Zatrudniaj załogę: handlowiec poprawia ceny, nawigator oszczędza paliwo, pilot skraca lot. Pilot i nawigator z tej samej cywilizacji dają synergię.</li>
         <li>Wybierz cel na mapie (kółko myszy przybliża, przeciąganie przesuwa; albo kliknij wiersz tablicy cen) i naciśnij „Leć”. Lot kosztuje paliwo i płace za doby w drodze. Bak to 100 pc: dalsze trasy planuj z tankowaniem po drodze (planety i plemiona), układy przelotowe nie mają nic.</li>
         <li>Raport po locie pokazuje linia po linii, skąd wzięła się zmiana salda. Cel: podwoić wartość firmy w ${g.limitDob} dób.</li>
-        <li>Każdy m³, który sprzedasz, obniża cenę na tej planecie. Cywilizacje otwarte (wysoka otwartość) mają głębokie rynki, które NPC szybko odbudowują; zamknięte są płytkie i długo zepsute. Lądowanie u nieznanej cywilizacji odsłania jej rynki.${g.informacja === 'zasieg' ? ` W trybie <b>zasięg</b> ceny na żywo widzisz tylko w łączności ${K.zasiegLacznosci} pc od statku, a dalej tylko ostatni odczyt z planet, na których byłeś.` : ''}</li>
+        <li>Każdy m³, który sprzedasz, obniża cenę na tej planecie. Cywilizacje otwarte (wysoka otwartość) mają głębokie rynki, które NPC szybko odbudowują; zamknięte są płytkie i długo zepsute. Lądowanie u nieznanej cywilizacji odsłania jej rynki.${g.wariantSpreadu !== 'A' ? ` Wariant spreadu <b>${g.wariantSpreadu}</b>: zamiast stałego spreadu obowiązuje pamięć zakupu: odsprzedaż towaru na planecie, gdzie go kupiłeś, jest karana ${Math.round(K.tradeSpread * 100)}% ceny, dopóki nie wykonasz ${P.pamiecZakupuSkokow} skoków${g.spreadPodstawowy > 0 ? `; poza tym spread podstawowy ${Math.round(g.spreadPodstawowy * 100)}%` : '; poza tym kupno i sprzedaż po tej samej cenie, więc handlowiec nie ma na co wpływać'}.` : ''}${g.informacja === 'zasieg' ? ` W trybie <b>zasięg</b> ceny na żywo widzisz tylko w łączności ${K.zasiegLacznosci} pc od statku, a dalej tylko ostatni odczyt z planet, na których byłeś.` : ''}</li>
       </ol>
     </details>
     <main>
@@ -276,7 +280,8 @@ app.addEventListener('click', (ev) => {
       const ziarno = (document.getElementById('ziarno') as HTMLInputElement).value.trim() || String(P.bot.pierwszeZiarno);
       const skala = (document.getElementById('skala') as HTMLSelectElement).value as Skala;
       const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
-      ui = nowaGra(ziarno, skala, informacja);
+      const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
+      ui = nowaGra(ziarno, skala, informacja, spread);
       break;
     }
     case 'zoom-plus':
@@ -367,7 +372,8 @@ app.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && pole.id === 'ziarno') {
     const skala = (document.getElementById('skala') as HTMLSelectElement).value as Skala;
     const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
-    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja);
+    const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
+    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja, spread);
     renderuj();
   }
 });
