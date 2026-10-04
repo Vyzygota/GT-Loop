@@ -13,3 +13,25 @@
 - Pamięć zakupu jest ustawiana także w wariancie A (tanio, nie zmienia zachowania: w A kara zawsze 0), dzięki czemu kod ma jedną ścieżkę.
 - Bot zna regułę: licznik pamięci jest rzutowany w przód o liczbę skoków trasy (`Dojazd.skoki` z grafu tankowania), więc plan powrotu na planetę zakupu w ciągu 5 skoków dostaje cenę z karą. W planach z klastrem dystrybucji wszystkie planety klastra dostają ten sam rzut skoków (przybliżenie).
 - Przy spreadzie podstawowym 0 handlowiec nie zmienia żadnej ceny (test): rola traci sens ekonomiczny w wariantach B i D; w C działa w oknie 0,10 (najlepszy przesuwa cenę o 80% połowy okna, czyli 4%).
+
+## Faza 7: co blokuje dodatnią korelację zysku/dobę z dystansem (eksperymenty w procesie, bez zmiany kanonu w repo)
+
+Skala M, 40 ziaren, `informacja = pelna`, miary po trasach wykonanych przez bota (lot / cała trasa handlowa):
+
+| Zmiana liczby kanonu (hipotetyczna) | A: lot / trasa | B: lot / trasa |
+|---|---|---|
+| kanon bez zmian | −0,34 / −0,38 | −0,36 / −0,40 |
+| BasePrice Fuel × 0,5 | −0,34 / −0,44 | −0,37 / −0,42 |
+| BasePrice Fuel × 0,1 | −0,42 / −0,52 | −0,41 / −0,46 |
+| BasePrice Fuel = 0 (paliwo za darmo) | −0,37 / −0,48 | −0,35 / −0,46 |
+| kosztPaliwaNaParsek = 0 | −0,38 / −0,51 | −0,39 / −0,48 |
+| nacisk 0,2–5,0 zamiast 0,45–2,5 | | −0,37 / −0,38 |
+| ładownia ×3 (i masa ×3) | | −0,34 / −0,39 |
+| kapitał startowy ×3 | | −0,36 / −0,40 |
+| prędkość nominalna ×2 | | −0,33 / −0,36 |
+| bak ×3 | | −0,34 / −0,38 |
+| paliwo 0 + nacisk 0,2–5 + ładownia ×3 + kapitał ×3 | | −0,36 / −0,45 |
+
+Wniosek: **żadna pojedyncza liczba kanonu (ani ich łączna zmiana) nie odwraca znaku**. Usunięcie paliwa podnosi medianę wartości (×2,4 → ×3,0) i wydłuża trasy (48 → 55 pc), ale korelacja per dobę zostaje ujemna. DECYZJE 44 wymaga poprawki: paliwo ogranicza, *które* trasy są opłacalne (masowe towary tylko na krótko), ale nie jest przyczyną ujemnej korelacji.
+
+Mechanizm: zysk na kurs jest ograniczony z góry (ładownia × różnica cen w paśmie nacisku 0,45–2,5, kapitał, głębokość portu docelowego), a czas kursu rośnie liniowo z dystansem, więc stopa na dobę ~ marża/dystans maleje z dystansem, chyba że różnica cen rosłaby z dystansem szybciej niż liniowo. Tak nie jest, bo w M terytoria są przyległe i skrajne ceny (Orak, deficyty Corrath) osiąga się już na granicy terytoriów. Do tego dochodzi selekcja: bot wybiera plan o najwyższej stopie, więc długie kursy są wykonywane wtedy, gdy krótkie są wyczerpane, czyli przy niskiej stopie. Dlatego pełny pomiar ma też korelację po **wszystkich dostępnych planach** w dokach (nie tylko wybranych): stopa na dobę vs dystans i zysk na kurs vs dystans.

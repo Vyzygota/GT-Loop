@@ -59,6 +59,10 @@ export interface Miary {
   pcNaTowar: Record<Towar, number>;
   medianaCenyPaliwa: number;
   medianaMarzyNaM3: Record<Towar, number>;
+  /** Struktura gospodarki niezależnie od wyboru bota: korelacje po wszystkich planach dostępnych w dokach. */
+  korelacjaPlanowNaDobe: number;
+  korelacjaPlanowZysk: number;
+  liczbaPlanow: number;
   medianaWartosci: number;
   medianaLotow: number;
   utknelo: number;
@@ -102,7 +106,17 @@ export function policzMiary(skala: Skala, informacja: TrybInformacji, spread: Wa
   }
   const paliwoKr = loty.reduce((s, l) => s + l.paliwoKr, 0);
   const placeKr = loty.reduce((s, l) => s + l.placeKr, 0);
+  const plany = wyniki.flatMap((w) => w.plany);
   return {
+    korelacjaPlanowNaDobe: korelacja(
+      plany.map((p) => p.dystans),
+      plany.map((p) => p.naDobe),
+    ),
+    korelacjaPlanowZysk: korelacja(
+      plany.map((p) => p.dystans),
+      plany.map((p) => p.zysk),
+    ),
+    liczbaPlanow: plany.length,
     skala,
     informacja,
     spread,
@@ -181,6 +195,8 @@ export function tabelaMiar(lista: Miary[]): string {
     ['Mediana liczby lotów', (m) => f1(m.medianaLotow)],
     ['Ziarna, w których bot utknął', (m) => (m.utknelo ? `${m.utknelo} (${m.ziarnaUtkniete.slice(0, 5).join(', ')})` : '0')],
     ['Czas bota', (m) => `${f1(m.sekundy)} s`],
+    ['Korelacja po wszystkich dostępnych planach: stopa/dobę vs dystans', (m) => `${f2(m.korelacjaPlanowNaDobe)} (${m.liczbaPlanow} planów)`],
+    ['  …zysk netto na kurs vs dystans', (m) => f2(m.korelacjaPlanowZysk)],
     ['Udział paliwa w kosztach lotów (paliwo / (paliwo + płace))', (m) => `${f1(m.udzialPaliwa)}%`],
     ['Mediana dystansu zyskownej trasy między cywilizacjami', (m) => `${f1(m.medianaDystansuZyskownejMiedzyCyw)} pc`],
     ['Mediana ceny paliwa zapłaconej w dokach', (m) => fkr(m.medianaCenyPaliwa)],

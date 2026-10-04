@@ -517,8 +517,11 @@ export interface KrokBota {
   utknal: boolean;
 }
 
+/** Obserwator planów dostępnych w doku (do miar struktury gospodarki, niezależnych od wyboru bota). */
+export type ObserwatorPlanow = (plany: Plan[]) => void;
+
 /** Wybór załogi i planu bez mutacji stanu gry; aktualizuje zobowiązanie w stanie bota. */
-export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota()): Decyzja {
+export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwator?: ObserwatorPlanow): Decyzja {
   const ctx = new Kontekst(gra);
   const bezZmian: OpcjaZalogi = { zaloga: [...gra.stan.zaloga], zatrudnij: [], zwolnij: [] };
   const maLadunek = TOWARY.some((t) => gra.stan.ladownia[t].m3 > 0);
@@ -544,6 +547,7 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota()): Decyzja
   // 1. Plany dla obecnej załogi; 2. dla najlepszych z nich dolicz najlepszy kurs powrotny z celu (dwa kroki);
   // 3. dla wybranego celu sprawdź warianty załogi.
   const wstepne = planyDlaZalogi(gra, bezZmian.zaloga, ctx);
+  obserwator?.(wstepne);
   wstepne.sort((a, b) => b.naDobe - a.naDobe);
   let najlepszyPlan: Plan | null = null;
   let najlepszaOcena = -Infinity;
@@ -674,8 +678,8 @@ export function wykonaj(gra: Gra, d: Decyzja): { akcje: Akcja[]; utknal: boolean
 }
 
 /** Jeden obrót pętli: zaplanuj i wykonaj. */
-export function krokBota(gra: Gra, stanBota: StanBota = nowyStanBota()): KrokBota {
-  const decyzja = zaplanuj(gra, stanBota);
+export function krokBota(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwator?: ObserwatorPlanow): KrokBota {
+  const decyzja = zaplanuj(gra, stanBota, obserwator);
   const { akcje, utknal } = wykonaj(gra, decyzja);
   return { plan: decyzja.plan, opcja: decyzja.opcja, akcje, utknal };
 }
@@ -727,6 +731,8 @@ export interface WynikZiarna {
   marzeNaM3: Record<Towar, number[]>;
   /** Ceny zapłacone za paliwo (kr/m³) przy każdym tankowaniu w doku. */
   cenyPaliwa: number[];
+  /** Plany dostępne w dokach (bez eksploracji): dystans, zysk netto na kurs, stopa na dobę. */
+  plany: { dystans: number; zysk: number; naDobe: number }[];
 }
 
 export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna {
@@ -741,11 +747,15 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
   const marzeNaM3 = {} as Record<Towar, number[]>;
   for (const t of TOWARY) marzeNaM3[t] = [];
   const cenyPaliwa: number[] = [];
+  const plany: WynikZiarna['plany'] = [];
+  const obserwator: ObserwatorPlanow = (lista) => {
+    for (const p of lista) if (!p.eksploracja && p.doby > 0) plany.push({ dystans: p.dystans, zysk: p.zyskNetto, naDobe: p.naDobe });
+  };
   while (!gra.stan.koniec) {
     const pozycjaPrzed = gra.stan.pozycja;
     const cywPrzed = gra.wezel(pozycjaPrzed).cywilizacja;
     const ladowniaPrzed = TOWARY.map((t) => ({ t, m3: gra.stan.ladownia[t].m3 })).sort((a, b) => b.m3 - a.m3)[0];
-    const krok = krokBota(gra, stanBota);
+    const krok = krokBota(gra, stanBota, obserwator);
     if (krok.utknal) {
       utknal = true;
       break;
@@ -790,7 +800,7 @@ export function zagrajZiarno(ziarno: string, opcje: OpcjeGry = {}): WynikZiarna 
   }
   if (biezaca && biezaca.loty > 0) trasy.push(biezaca);
   const wartosc = gra.wartoscFirmy();
-  return { ziarno, wartoscKoncowa: wartosc, zysk: wartosc > K.startingCredits, loty, trasy, pierwszyZyskownyLot: pierwszy, kontaktDoba, utknal, marzeNaM3, cenyPaliwa };
+  return { ziarno, wartoscKoncowa: wartosc, zysk: wartosc > K.startingCredits, loty, trasy, pierwszyZyskownyLot: pierwszy, kontaktDoba, utknal, marzeNaM3, cenyPaliwa, plany };
 }
 
 export { Graf };
