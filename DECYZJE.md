@@ -355,6 +355,11 @@ Korelacje per towar (M, trasa handlowa, wariant A → B): Żywność −0,41 →
 | A | 0,1 | −0,45 / −0,54 | −0,45 / −0,16 | ×4,97 | 59% |
 | A | 0,03 | −0,40 / −0,57 | −0,43 / **+0,07** | ×4,94 | 34% |
 | A | 0 | −0,40 / −0,58 | −0,43 / **+0,16** | ×4,99 | 0% |
-<!-- PRZEGLAD-L-B -->
+| B | 1 (kanon) | −0,37 / −0,45 | −0,55 / −0,92 | ×4,46 | 94% |
+| B | 0,5 | −0,43 / −0,49 | −0,50 / −0,73 | ×4,94 | 89% |
+| B | 0,25 | −0,46 / −0,52 | −0,47 / −0,41 | ×5,16 | 81% |
+| B | 0,1 | −0,47 / −0,53 | −0,44 / −0,06 | ×5,31 | 69% |
+| B | 0,03 | −0,42 / −0,55 | −0,43 / **+0,11** | ×5,50 | 46% |
+| B | 0 | −0,41 / −0,55 | −0,42 / **+0,20** | ×5,42 | 0% |
 
-Wniosek liczbowy: zysk **na kurs** z dostępnych planów przestaje maleć z dystansem dopiero, gdy `BasePrice Fuel` spada do ok. 3% kanonu (ok. 30 WU/m³ zamiast 1 000, czyli ok. 300 kr za parsek zamiast 10 000); wtedy dalekie cele oferują więcej na kurs niż bliskie. Zysk **na dobę** (miara z promptu) pozostaje ujemnie skorelowany z dystansem przy każdej cenie paliwa, także zerowej (−0,40…−0,45 po wykonanych lotach, −0,43 po dostępnych planach), bo czas kursu rośnie z dystansem, a marża na kurs nie rośnie szybciej niż liniowo. Żadna wartość `BasePrice Fuel` ani `kosztPaliwaNaParsek` nie daje więc korelacji zysku na dobę ≥ 0; daje ją tylko zmiana reguły, nie liczby.
+Wniosek liczbowy: zysk **na kurs** z dostępnych planów przestaje maleć z dystansem dopiero, gdy `BasePrice Fuel` spada do ok. 3–5% kanonu (w B zero korelacji wypada między ×0,1 a ×0,03, czyli ok. 50 WU/m³ zamiast 1 000, ok. 500 kr za parsek zamiast 10 000); wtedy dalekie cele oferują więcej na kurs niż bliskie, a bez spreadu (B) efekt jest nieco silniejszy niż w A (+0,20 vs +0,16 przy paliwie 0). Zysk **na dobę** (miara z promptu) pozostaje ujemnie skorelowany z dystansem przy każdej cenie paliwa, także zerowej (−0,40…−0,45 po wykonanych lotach, −0,43 po dostępnych planach), bo czas kursu rośnie z dystansem, a marża na kurs nie rośnie szybciej niż liniowo. Żadna wartość `BasePrice Fuel` ani `kosztPaliwaNaParsek` nie daje więc korelacji zysku na dobę ≥ 0; daje ją tylko zmiana reguły, nie liczby.

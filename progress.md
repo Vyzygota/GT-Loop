@@ -6,7 +6,7 @@
 - [x] Faza 4: testy — 47 zielonych (28 dotychczasowych w A + 19 nowych: brak zysku z odsprzedaży dla każdego towaru i załogi w S i M, kara po 5 skokach = 0 i kształt kary po 2 skokach, pamięć bez ceny, determinizm, linia kary w raporcie, handlowiec tylko w oknie spreadu podstawowego).
 - [x] Faza 5: UI — przełącznik `spread` w nagłówku i adresie, kara i licznik w doku, opis w pomocy; smoke na M w wariancie B: 21 lotów, UI zgodne z symulacją co do 1 kr.
 - [x] Faza 6: pomiary 4 × 3 — 9,5 min; tabela wstawiona do DECYZJE.md (sekcja „Spread: pamięć zakupu”).
-- [x] Faza 7: obliczenie paliwa — przegląd `BasePrice Fuel`/`kosztPaliwaNaParsek` × {1…0} oraz hipotetyczne zmiany pasma nacisku, ładowni, kapitału, prędkości i baku na M (`findings.md`); przegląd paliwa na L w toku.
+- [x] Faza 7: obliczenie paliwa — przegląd `BasePrice Fuel`/`kosztPaliwaNaParsek` × {1…0} oraz hipotetyczne zmiany pasma nacisku, ładowni, kapitału, prędkości i baku na M (`findings.md`); przegląd paliwa na L (A i B) zapisany w DECYZJE 58.
 - [ ] Faza 8: DECYZJE, push, PR.
 
 ## v2 promptu (PROMPT-spread_2.md): wariant E
