@@ -1,0 +1,28 @@
+{
+  "kurs": 10,
+  "towary": {
+    "Food":        { "basePrice": 315,   "gestosc": 0.7 },
+    "Minerals":    { "basePrice": 600,   "gestosc": 3.0 },
+    "Solvents":    { "basePrice": 1629,  "gestosc": 1.1 },
+    "Explosives":  { "basePrice": 6276,  "gestosc": 1.5 },
+    "Electronics": { "basePrice": 61307, "gestosc": 0.4 },
+    "Fuel":        { "basePrice": 1000,  "gestosc": 1.0 }
+  },
+  "ladownia": 480,
+  "maxMasaLadunku": 1440,
+  "bak": 100,
+  "kosztPaliwaNaParsek": 1,
+  "predkoscNominalna": 4,
+  "skokPodstawowy": 20,
+  "startingCredits": 6800000,
+  "tradeSpread": 0.3,
+  "StockPressureMin": 0.45,
+  "StockPressureMax": 2.5,
+  "StockPriceWeight": 0.45,
+  "StockRatioFloor": 0.02,
+  "normaZapasu": 30,
+  "skillFloor": 0.8,
+  "skillCeiling": 1.25,
+  "placa": { "pilot": 800, "nawigator": 400, "handlowiec": 500 },
+  "miejscaZalogi": 4
+}

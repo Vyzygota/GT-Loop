@@ -1,0 +1,271 @@
+{
+  "_opis": "Założenia prototypu spoza kanonu. Każdy wpis opisany w DECYZJE.md.",
+  "dobyGry": 120,
+  "celMnoznikWartosci": 2,
+  "nawigatorMaxRedukcjaPaliwa": 0.15,
+  "synergiaRedukcjaPaliwa": 0.1,
+  "handlowiecMaxUdzialPolspreadu": 0.8,
+  "liczbaKandydatow": 3,
+  "umiejetnoscMiejscaDziesietne": 2,
+  "maxZapasWNormach": 6,
+  "dobyRozruchuRynku": 40,
+  "zapasStartowyUlamekNormy": 1.0,
+  "zapasStartowyJitter": 0.2,
+  "kontaktZapasElektronikiUlamekNormy": 0.05,
+  "uklad": {
+    "promienGalaktykiPc": 100,
+    "promienHubaPc": 11,
+    "odlegloscTankowaniaPc": 28,
+    "krokRamieniaPc": 16,
+    "jitterPc": 2.5,
+    "jitterKatStopnie": 10,
+    "katMiedzyRamionamiStopnie": [
+      150,
+      210
+    ],
+    "minOdstepPc": 8,
+    "maxProb": 200
+  },
+  "cywilizacje": [
+    {
+      "id": "agraria",
+      "nazwa": "Agraria",
+      "rola": "ramie",
+      "znanaNaStarcie": true,
+      "start": true,
+      "planety": [
+        {
+          "nazwa": "Zielna",
+          "populacjaMln": 12,
+          "specjalizacja": {
+            "Food": 1.6,
+            "Minerals": 0.4
+          }
+        },
+        {
+          "nazwa": "Kamieniec",
+          "populacjaMln": 8,
+          "specjalizacja": {
+            "Food": 0.5,
+            "Minerals": 2.2
+          }
+        },
+        {
+          "nazwa": "Łęg",
+          "populacjaMln": 5,
+          "specjalizacja": {
+            "Food": 1.3
+          }
+        },
+        {
+          "nazwa": "Przysiek",
+          "populacjaMln": 3,
+          "specjalizacja": {
+            "Minerals": 1.5
+          }
+        }
+      ],
+      "potrzebyM3NaMlnNaDobe": {
+        "Food": 0.8,
+        "Minerals": 0.24,
+        "Solvents": 0.08,
+        "Explosives": 0.012,
+        "Electronics": 0.0024,
+        "Fuel": 0.3
+      },
+      "produkcjaM3NaMlnNaDobe": {
+        "Food": 1.04,
+        "Minerals": 0.36,
+        "Solvents": 0.048,
+        "Explosives": 0.008,
+        "Electronics": 0.0016,
+        "Fuel": 0.36
+      }
+    },
+    {
+      "id": "kuznia",
+      "nazwa": "Kuźnia",
+      "rola": "hub",
+      "znanaNaStarcie": true,
+      "start": false,
+      "planety": [
+        {
+          "nazwa": "Młot",
+          "populacjaMln": 15,
+          "specjalizacja": {
+            "Solvents": 1.4,
+            "Electronics": 0.6
+          }
+        },
+        {
+          "nazwa": "Tygiel",
+          "populacjaMln": 10,
+          "specjalizacja": {
+            "Explosives": 1.8,
+            "Solvents": 0.7
+          }
+        },
+        {
+          "nazwa": "Iskra",
+          "populacjaMln": 7,
+          "specjalizacja": {
+            "Electronics": 2.2,
+            "Solvents": 0.6
+          }
+        },
+        {
+          "nazwa": "Żużel",
+          "populacjaMln": 4,
+          "specjalizacja": {
+            "Solvents": 1.2,
+            "Explosives": 1.2
+          }
+        }
+      ],
+      "potrzebyM3NaMlnNaDobe": {
+        "Food": 0.72,
+        "Minerals": 0.36,
+        "Solvents": 0.16,
+        "Explosives": 0.04,
+        "Electronics": 0.008,
+        "Fuel": 0.4
+      },
+      "produkcjaM3NaMlnNaDobe": {
+        "Food": 0.48,
+        "Minerals": 0.24,
+        "Solvents": 0.208,
+        "Explosives": 0.048,
+        "Electronics": 0.0112,
+        "Fuel": 0.34
+      }
+    },
+    {
+      "id": "cisi",
+      "nazwa": "Cisi",
+      "rola": "ramie",
+      "znanaNaStarcie": false,
+      "start": false,
+      "planety": [
+        {
+          "nazwa": "Milczek",
+          "populacjaMln": 9,
+          "specjalizacja": {
+            "Minerals": 1.5
+          }
+        },
+        {
+          "nazwa": "Szept",
+          "populacjaMln": 6,
+          "specjalizacja": {
+            "Food": 1.6
+          }
+        },
+        {
+          "nazwa": "Cień",
+          "populacjaMln": 4,
+          "specjalizacja": {
+            "Minerals": 1.2,
+            "Food": 0.8
+          }
+        },
+        {
+          "nazwa": "Echo",
+          "populacjaMln": 3,
+          "specjalizacja": {
+            "Food": 1.2
+          }
+        }
+      ],
+      "potrzebyM3NaMlnNaDobe": {
+        "Food": 0.72,
+        "Minerals": 0.32,
+        "Solvents": 0.08,
+        "Explosives": 0.02,
+        "Electronics": 0.004,
+        "Fuel": 0.3
+      },
+      "produkcjaM3NaMlnNaDobe": {
+        "Food": 0.96,
+        "Minerals": 0.48,
+        "Solvents": 0.04,
+        "Explosives": 0.012,
+        "Electronics": 0.0,
+        "Fuel": 0.4
+      }
+    }
+  ],
+  "punktyTankowania": [
+    {
+      "nazwa": "Obóz Wędrowców"
+    },
+    {
+      "nazwa": "Ognisko Plemion"
+    }
+  ],
+  "nazwyTowarow": {
+    "Food": "Żywność",
+    "Minerals": "Minerały",
+    "Solvents": "Rozpuszczalniki",
+    "Explosives": "Materiały wybuchowe",
+    "Electronics": "Elektronika",
+    "Fuel": "Paliwo"
+  },
+  "nazwyRol": {
+    "pilot": "Pilot asowy",
+    "nawigator": "Nawigator",
+    "handlowiec": "Handlowiec"
+  },
+  "imiona": [
+    "Ada",
+    "Bron",
+    "Cyra",
+    "Dag",
+    "Ewa",
+    "Fil",
+    "Gaja",
+    "Hal",
+    "Ida",
+    "Jor",
+    "Kaja",
+    "Lew",
+    "Mira",
+    "Nil",
+    "Ola",
+    "Pax",
+    "Rea",
+    "Sol",
+    "Tora",
+    "Uri",
+    "Wera",
+    "Zan"
+  ],
+  "nazwiska": [
+    "Kord",
+    "Sokół",
+    "Wrzos",
+    "Grań",
+    "Mróz",
+    "Żar",
+    "Pył",
+    "Step",
+    "Brzask",
+    "Fala",
+    "Krzem",
+    "Luft"
+  ],
+  "ui": {
+    "lotMinSek": 3,
+    "lotMaxSek": 5,
+    "lotSekNaDobe": 0.6
+  },
+  "bot": {
+    "liczbaZiaren": 200,
+    "pierwszeZiarno": 1,
+    "maxSkokowTrasy": 6,
+    "minZyskNettoKr": 0,
+    "tankujGdyCenaPonizejBazyRazy": 1.0,
+    "eksplorujDoDoby": 80,
+    "eksplorujMaxSkokow": 3,
+    "topN": 5
+  }
+}
