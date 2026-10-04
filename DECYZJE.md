@@ -108,7 +108,7 @@ Kryterium 2 spełnione: ≥ 70% ziaren z zyskiem, pierwsza zyskowna trasa w medi
 42. **Dwa kroki.** Dla `planowDoDrugiegoKroku` = 5 najlepszych planów bot dolicza najlepszy pojedynczy kurs powrotny z celu (jeden towar, jeden z `celowDrugiegoKroku` = 25 najbliższych celów) i wybiera plan o najwyższej stopie na dobę z obu kroków. Bez tego w pierwszym doku żaden plan nie był dodatni (żywność z Ludzi do Corrath nie pokrywa paliwa), a opłacalność bierze się z pętli: żywność i elektronika w jedną stronę, rozpuszczalniki i materiały wybuchowe z powrotem.
 43. **Eksploracja** to plan do najbliższej nieznanej planety w zasięgu `eksplorujMaxPc` = 260 pc, do `eksplorujDoUlamkaHoryzontu` = 0,6 horyzontu, o wartości `premiaEksploracjiKr` = 0,8 mln minus koszty; konkuruje z handlem na równych prawach (stopa na dobę). Loty eksploracyjne są wyłączone z korelacji zysku z dystansem, bo ich premia jest fikcyjna.
 44. **Czego nie da się osiągnąć bez zmiany kanonu: dodatniej korelacji zysku na dobę z dystansem.** Blokują ją `kosztPaliwaNaParsek` = 1 m³/pc i `BasePrice Fuel` = 1 000 WU (10 000 kr/pc, u plemion; ok. 4 500 kr/pc na planetach z nadwyżką) wobec wartości ładunku (pełna ładownia żywności to 151 200 WU, czyli paliwo na ok. 150 pc; minerałów na ok. 290 pc) oraz `bak` = 100 m³ wymuszający przystanki. Przy promieniu galaktyki 1 257 pc i układach co ok. 40 pc masowe towary nie mogą opłacalnie przebyć odległości między cywilizacjami; zysk powstaje przez pozycjonowanie (długi lot z tanią żywnością do producenta rozpuszczalników, który sam w sobie prawie nic nie daje) i jest realizowany na krótkich odcinkach dystrybucji. Dlatego zarówno korelacja na poziomie lotu, jak i całej trasy handlowej (zakup → cel) wychodzi ujemna we wszystkich przebadanych wariantach profili i rozmieszczenia (12 wariantów głębokości portu, tempa NPC i specjalizacji; 6 wariantów specjalizacji × tempa × głębokości). Strojenie w `prototyp.json` zmienia pozostałe miary, nie znak korelacji. Marża **na lot** rośnie z odległością (dalekie kursy wiozą droższe towary), ale nie marża **na dobę**.
-45. **Strojenie M (historia).** Porty ×1 (jak S) → wszystkie plany ujemne, bot bankrutował; porty ×3 i cywilizacje przyległe → ×4,65; porty ×2, tempo NPC 0,04 → ok. ×1,8–2,6 zależnie od wariantu; głębsze porty zamkniętych cywilizacji (0,5) i tempo 0,05 podnoszą zysk i udział lotów wewnątrz cywilizacji (61%), więc zostało 0,35 i 0,04. Udział lotów wewnątrz jednej cywilizacji (ok. 54%) to w większości odcinki dystrybucji i tranzytu przez własne terytorium (promień terytorium ok. 110–130 pc przy odcinku ≤ 99 pc), nie wahadło między dwiema planetami: 5 najczęstszych tras to poniżej 3% lotów.
+45. **Strojenie M (historia).** Porty ×1 (jak S) → wszystkie plany ujemne, bot bankrutował; porty ×3 i cywilizacje przyległe → ×4,65; porty ×2, tempo NPC 0,04 → ok. ×1,8–2,6 zależnie od wariantu; głębsze porty zamkniętych cywilizacji (0,5) i tempo 0,05 podnoszą zysk i udział lotów wewnątrz cywilizacji (61%), więc zostało 0,35 i 0,04. Udział lotów wewnątrz jednej cywilizacji (ok. 58%) to w większości odcinki dystrybucji i tranzytu przez własne terytorium (promień terytorium ok. 110–130 pc przy odcinku ≤ 99 pc), nie wahadło między dwiema planetami: 5 najczęstszych tras to poniżej 1% lotów.
 
 ## Wynik bota (`npm run bot`)
 
@@ -119,53 +119,54 @@ Pełny przebieg (`npm run bot`, S i M po 200 ziaren, L po 50; czas na jednym rdz
 Bot zachłanny, horyzont dób: S 120, M 240, L 480
 Miara                                                       |  S/pelna (200 z.) | S/zasieg (200 z.) |  M/pelna (200 z.) | M/zasieg (200 z.) |   L/pelna (50 z.) |  L/zasieg (50 z.)
 ------------------------------------------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+------------------
-Ziarna z zyskiem (próg M ≥ 70%)                             |            100.0% |            100.0% |             98.0% |             99.5% |             96.0% |            100.0%
-Ziarna z podwojeniem wartości                               |             21.5% |             21.5% |             73.5% |             71.5% |             96.0% |             96.0%
-Pierwsza zyskowna trasa, mediana lotów (≤ 3)                |               3.0 |               3.0 |               3.0 |               3.0 |               2.0 |               2.0
-Udział 5 najczęstszych tras (≤ 25%)                         |             35.0% |             35.0% |              0.6% |              0.7% |              1.6% |              1.4%
-Loty wewnątrz jednej cywilizacji (≤ 50%)                    |             38.9% |             38.9% |             54.8% |             54.3% |             60.3% |             58.6%
+Ziarna z zyskiem (próg M ≥ 70%)                             |            100.0% |            100.0% |             99.5% |             98.5% |            100.0% |            100.0%
+Ziarna z podwojeniem wartości                               |             21.5% |             21.5% |             65.0% |             63.5% |             98.0% |             98.0%
+Pierwsza zyskowna trasa, mediana lotów (≤ 3)                |               3.0 |               3.0 |               2.0 |               2.0 |               2.0 |               2.0
+Udział 5 najczęstszych tras (≤ 25%)                         |             35.0% |             35.0% |              0.6% |              0.6% |              1.4% |              1.6%
+Loty wewnątrz jednej cywilizacji (≤ 50%)                    |             39.0% |             39.0% |             58.0% |             57.7% |             59.3% |             59.2%
 Mediana skoków zyskownego lotu (≥ 2)                        |               2.0 |               2.0 |               3.0 |               3.0 |               3.0 |               3.0
-Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji) |             -0.34 |             -0.34 |             -0.32 |             -0.29 |             -0.32 |             -0.28
-  loty eksploracyjne                                        |              7.8% |              7.8% |              8.2% |              8.2% |              0.1% |              0.1%
-  …z dystansem całej trasy handlowej (zakup → cel)          |             -0.34 |             -0.34 |             -0.41 |             -0.40 |             -0.49 |             -0.45
-  trasy handlowe między cywilizacjami                       |             57.8% |             57.8% |             55.0% |             54.9% |             51.9% |             52.3%
-  mediana dystansu trasy handlowej                          |           33.0 pc |           33.0 pc |           46.2 pc |           45.6 pc |           47.8 pc |           48.7 pc
-Kontakt z nieznaną cywilizacją (≥ 50%)                      |            100.0% |            100.0% |             74.0% |             74.0% |              4.0% |              4.0%
-Mediana wartości firmy na koniec                            |     12 655 385 kr |     12 655 385 kr |     16 705 443 kr |     16 321 518 kr |     24 461 546 kr |     25 037 184 kr
-Mediana liczby lotów                                        |              14.0 |              14.0 |              19.0 |              19.5 |              38.0 |              38.0
-Ziarna, w których bot utknął                                |                 0 |                 0 |                 0 |                 0 |        2 (27, 40) |                 0
-Czas bota                                                   |            12.0 s |            11.3 s |            39.8 s |            35.6 s |            74.2 s |            75.1 s
-S/pelna: najczęstsze trasy: mlot → zielna (217); milczek → iskra (214); zielna → milczek (187); milczek → szept (173); zielna → kamieniec (166)
-S/pelna: najczęstsze towary: Żywność (849); Minerały (686); Elektronika (674); Materiały wybuchowe (664); Rozpuszczalniki (649)
-S/zasieg: najczęstsze trasy: mlot → zielna (217); milczek → iskra (214); zielna → milczek (187); milczek → szept (173); zielna → kamieniec (166)
-S/zasieg: najczęstsze towary: Żywność (849); Minerały (686); Elektronika (674); Materiały wybuchowe (664); Rozpuszczalniki (649)
-M/pelna: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); vreth-gorrukdr → corrath-ithircor (5); corrath-kelumdra → orak-morak (5); orak-dzdzul → ludzie-dormiven (5); ludzie-kador → ludzie-selterno (4)
-M/pelna: najczęstsze towary: Minerały (849); Elektronika (570); Żywność (551); Rozpuszczalniki (541); Materiały wybuchowe (466)
-M/zasieg: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); ludzie-kador → ludzie-selterno (5); vreth-gorrukdr → corrath-ithircor (5); corrath-kelumdra → orak-morak (5); orak-dzdzul → ludzie-dormiven (5)
-M/zasieg: najczęstsze towary: Minerały (896); Elektronika (610); Żywność (580); Rozpuszczalniki (541); Materiały wybuchowe (464)
-L/pelna: najczęstsze trasy: vreth-akokruk → ludzie-lunlunter (6); vreth-ethvr → vreth-gorruketh (6); vreth-vrokmal → vreth-malthuruk (6); vreth-malthuruk → vreth-drak (6); vreth-drdrvr → vreth-maldrthu (5)
-L/pelna: najczęstsze towary: Elektronika (470); Materiały wybuchowe (415); Minerały (364); Żywność (111); Rozpuszczalniki (58)
-L/zasieg: najczęstsze trasy: vreth-okak → vreth-thuzan (6); vreth-akokruk → ludzie-lunlunter (5); vreth-vrok → vreth-akthu (5); vreth-drdrvr → vreth-maldrthu (5); vreth-drdr → vreth-akak (5)
-L/zasieg: najczęstsze towary: Elektronika (470); Materiały wybuchowe (409); Minerały (397); Żywność (134); Rozpuszczalniki (76)
+Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji) |             -0.33 |             -0.33 |             -0.32 |             -0.31 |             -0.34 |             -0.34
+  loty eksploracyjne                                        |              7.8% |              7.8% |              5.4% |              5.3% |              0.2% |              0.1%
+  …z dystansem całej trasy handlowej (zakup → cel)          |             -0.34 |             -0.34 |             -0.34 |             -0.34 |             -0.41 |             -0.41
+  trasy handlowe między cywilizacjami                       |             57.7% |             57.7% |             47.1% |             47.0% |             50.1% |             49.1%
+  mediana dystansu trasy handlowej                          |           32.9 pc |           32.9 pc |           44.7 pc |           44.4 pc |           47.8 pc |           46.8 pc
+Kontakt z nieznaną cywilizacją (≥ 50%)                      |            100.0% |            100.0% |             56.5% |             56.0% |              6.0% |              2.0%
+Mediana wartości firmy na koniec                            |     12 655 385 kr |     12 655 385 kr |     15 548 746 kr |     15 534 888 kr |     25 466 664 kr |     24 768 273 kr
+Mediana liczby lotów                                        |              14.0 |              14.0 |              19.0 |              19.0 |              38.0 |              38.5
+Ziarna, w których bot utknął                                |                 0 |                 0 |                 0 |                 0 |                 0 |                 0
+Czas bota                                                   |            11.8 s |            11.8 s |            43.4 s |            37.4 s |            79.0 s |            77.6 s
+S/pelna: najczęstsze trasy: mlot → zielna (216); milczek → iskra (214); zielna → milczek (187); milczek → szept (175); zielna → kamieniec (165)
+S/pelna: najczęstsze towary: Żywność (847); Minerały (686); Elektronika (673); Materiały wybuchowe (663); Rozpuszczalniki (650)
+S/zasieg: najczęstsze trasy: mlot → zielna (216); milczek → iskra (214); zielna → milczek (187); milczek → szept (175); zielna → kamieniec (165)
+S/zasieg: najczęstsze towary: Żywność (847); Minerały (686); Elektronika (673); Materiały wybuchowe (663); Rozpuszczalniki (650)
+M/pelna: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); ludzie-dorvano → ludzie-nonova (5); orak-dzdzul → ludzie-dormiven (5); corrath-umrathcor → orak-ummorul (4); orak-ummorul → orak-dzgrum (4)
+M/pelna: najczęstsze towary: Minerały (877); Żywność (670); Elektronika (597); Rozpuszczalniki (590); Materiały wybuchowe (347)
+M/zasieg: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); ludzie-dorvano → ludzie-nonova (5); orak-dzdzul → ludzie-dormiven (5); ludzie-kador → ludzie-selterno (4); corrath-umrathcor → orak-ummorul (4)
+M/zasieg: najczęstsze towary: Minerały (888); Żywność (694); Elektronika (623); Rozpuszczalniki (599); Materiały wybuchowe (355)
+L/pelna: najczęstsze trasy: vreth-thuvrmal → vreth-vrmalzan (6); vreth-ethvr → vreth-gorruketh (6); vreth-vrok → vreth-akthu (5); velhari-ienha → vreth-ethrukgor (5); vreth-malmal → vreth-thuvr (5)
+L/pelna: najczęstsze towary: Elektronika (483); Materiały wybuchowe (417); Minerały (395); Żywność (121); Rozpuszczalniki (82)
+L/zasieg: najczęstsze trasy: vreth-ethvr → vreth-gorruketh (7); vreth-thuvrmal → vreth-vrmalzan (6); vreth-okmal → vreth-zangorok (6); vreth-zangorok → vreth-okakok (6); vreth-vrok → vreth-akthu (5)
+L/zasieg: najczęstsze towary: Elektronika (481); Minerały (415); Materiały wybuchowe (413); Żywność (138); Rozpuszczalniki (83)
 S: informacja=zasieg vs pelna: mediana wartości firmy 12 655 385 kr vs 12 655 385 kr (0.0%)
-M: informacja=zasieg vs pelna: mediana wartości firmy 16 321 518 kr vs 16 705 443 kr (-2.3%)
-L: informacja=zasieg vs pelna: mediana wartości firmy 25 037 184 kr vs 24 461 546 kr (2.4%)
+M: informacja=zasieg vs pelna: mediana wartości firmy 15 534 888 kr vs 15 548 746 kr (-0.1%)
+L: informacja=zasieg vs pelna: mediana wartości firmy 24 768 273 kr vs 25 466 664 kr (-2.7%)
 ```
 <!-- TABELA-KONIEC -->
 
-### Ocena progów na M (kolumna M/pelna)
+### Ocena progów na M (kolumna M/pelna, 200 ziaren)
 
 | Miara | Próg | Wynik | |
 |---|---|---|---|
-| Ziarna z zyskiem | ≥ 70% | 98,0% | spełnione |
-| Pierwsza zyskowna trasa, mediana | ≤ 3 loty | 3,0 | spełnione |
-| Udział 5 najczęstszych tras | ≤ 25% | 0,6% | spełnione (w S było 35–40%) |
-| Loty wewnątrz jednej cywilizacji | ≤ 50% | 54,8% | **nie**: to odcinki dystrybucji i tranzytu przez własne terytorium (promień terytorium 110–130 pc, odcinek ≤ 99 pc); trasy handlowe między cywilizacjami to 55% |
+| Ziarna z zyskiem | ≥ 70% | 99,5% | spełnione |
+| Pierwsza zyskowna trasa, mediana | ≤ 3 loty | 2,0 | spełnione |
+| Udział 5 najczęstszych tras | ≤ 25% | 0,6% | spełnione (w S 35%) |
+| Loty wewnątrz jednej cywilizacji | ≤ 50% | 58,0% | **nie**: to odcinki dystrybucji ładunku po planetach cywilizacji docelowej i tranzyt przez własne terytorium (promień terytorium 110–130 pc, odcinek ≤ 99 pc), nie wahadło między dwiema planetami (5 najczęstszych tras to 0,6% lotów); trasy handlowe (zakup → cel) między cywilizacjami to 47% |
 | Mediana długości zyskownego lotu | ≥ 2 skoki | 3 | spełnione |
-| Zysk na dobę: korelacja z dystansem | dodatnia | −0,32 (lot), −0,41 (cała trasa) | **nie**: blokują liczby kanonu paliwa i baku, patrz 44 |
-| Kontakt z nieznaną cywilizacją | ≥ 50% ziaren | 74% | spełnione |
-| `zasieg` vs `pelna`: mediana wartości | pomiar | −2,3% (M), 0,0% (S), +2,4% (L, 50 ziaren, w granicach szumu) | informacja o cenach jest warta niewiele, bo bot i tak handluje w promieniu łączności, a odczyty z odwiedzonych planet starzeją się wolno (rynki zamkniętych cywilizacji stoją na skrajach) |
-| Czas bota, 200 ziaren | ≤ 120 s | 40 s | spełnione |
+| Zysk na dobę: korelacja z dystansem | dodatnia | −0,32 (lot), −0,34 (cała trasa handlowa) | **nie**: blokują liczby kanonu paliwa i baku, patrz 44 |
+| Kontakt z nieznaną cywilizacją | ≥ 50% ziaren | 56,5% | spełnione |
+| `zasieg` vs `pelna`: mediana wartości firmy | pomiar | −0,1% (M), 0,0% (S), −2,7% (L, 50 ziaren) | informacja o cenach jest warta niewiele: bot i tak handluje głównie w promieniu łączności, a odczyty z odwiedzonych planet starzeją się wolno, bo rynki zamkniętych cywilizacji stoją na skrajach; w S cały świat mieści się w łączności |
+| Czas bota, 200 ziaren | ≤ 120 s | 43 s | spełnione |
 
-Uwagi: podwojenie osiąga 73% ziaren na M (mediana ×2,46 w 240 dób), więc cel ×2 jest dla gracza osiągalny, ale nie darmowy; w L bot kończy z medianą ×3,6 w 480 dób i prawie nie eksploruje (4%), bo nieznane cywilizacje leżą dalej niż `eksplorujMaxPc` od szlaków Ludzie–Vreth–Corrath; w L zostały 2 ziarna z utknięciem bota (patrz 46). Wynik S zmienił się względem pierwszego prototypu (mediana 12,7 mln zamiast 11,8 mln, top-5 tras 35% zamiast 40%), bo zmienił się bot (dwa kroki, sprzedaż częściowa), nie świat S.
+Uwagi: podwojenie osiąga 65% ziaren na M (mediana ×2,29 w 240 dób), więc cel ×2 jest dla gracza osiągalny, ale nie darmowy. W L bot kończy z medianą ×3,7 w 480 dób i prawie nie eksploruje (6%), bo nieznane cywilizacje leżą dalej niż `eksplorujMaxPc` od szlaków Ludzie–Vreth–Corrath; L nie ma progów w prompcie. Wynik S zmienił się względem pierwszego prototypu (mediana 12,7 mln zamiast 11,8 mln, top-5 tras 35% zamiast 40%), bo zmienił się bot (dwa kroki, sprzedaż częściowa), nie świat S.
 
+46. **Rezerwa na paliwo u plemion.** W L bot bankrutował w 2 z 50 ziaren w połowie długiej trasy: rezerwował gotówkę na paliwo po cenie z planety startowej (ok. 4 500 kr/m³), a u plemion paliwo kosztuje cenę bazową (10 000). Teraz pierwszy odcinek liczy po cenie lokalnej, dalsze po maksimum z ceny lokalnej i bazowej; po poprawce żadne ziarno nie utyka.
