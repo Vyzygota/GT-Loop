@@ -188,9 +188,161 @@ Uwagi: podwojenie osiąga 65% ziaren na M (mediana ×2,29 w 240 dób), więc cel
 ## Wynik (4 warianty × 3 skale, `informacja = pelna`, S i M po 200 ziaren, L po 50)
 
 <!-- TABELA-SPREAD-START -->
-(w przygotowaniu)
+```
+Bot zachłanny, horyzont dób: S 120, M 240, L 480; warianty spreadu: A, B, C, D
+
+Miara                                                                       | S/pelna/A (200 z.) | S/pelna/B (200 z.) | S/pelna/C (200 z.) | S/pelna/D (200 z.)
+----------------------------------------------------------------------------+--------------------+--------------------+--------------------+-------------------
+Ziarna z zyskiem (próg M ≥ 70%)                                             |             100.0% |             100.0% |             100.0% |             100.0%
+Ziarna z podwojeniem wartości                                               |              21.5% |              82.0% |              62.5% |              82.0%
+Pierwsza zyskowna trasa, mediana lotów (≤ 3)                                |                3.0 |                3.0 |                3.0 |                3.0
+Udział 5 najczęstszych tras (≤ 25%)                                         |              35.0% |              34.1% |              33.5% |              34.1%
+Loty wewnątrz jednej cywilizacji (≤ 50%)                                    |              39.0% |              41.4% |              39.2% |              41.2%
+Mediana skoków zyskownego lotu (≥ 2)                                        |                2.0 |                2.0 |                2.0 |                2.0
+Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji)                 |              -0.33 |              -0.39 |              -0.35 |              -0.39
+  loty eksploracyjne                                                        |               7.8% |               6.9% |               7.6% |               6.9%
+  …z dystansem całej trasy handlowej (zakup → cel)                          |              -0.34 |              -0.39 |              -0.35 |              -0.39
+  trasy handlowe między cywilizacjami                                       |              57.7% |              55.5% |              57.5% |              55.8%
+  mediana dystansu trasy handlowej                                          |            32.9 pc |            32.5 pc |            32.8 pc |            32.5 pc
+Kontakt z nieznaną cywilizacją (≥ 50%)                                      |             100.0% |              96.0% |              99.5% |              96.0%
+Mediana wartości firmy na koniec                                            |      12 655 385 kr |      14 692 925 kr |      13 962 175 kr |      14 704 605 kr
+Mediana liczby lotów                                                        |               14.0 |               14.0 |               14.0 |               14.0
+Ziarna, w których bot utknął                                                |                  0 |                  0 |                  0 |                  0
+Czas bota                                                                   |             10.8 s |             13.4 s |             12.5 s |             13.6 s
+Korelacja po wszystkich dostępnych planach: stopa/dobę vs dystans           | -0.36 (29245 planów) | -0.39 (30265 planów) | -0.39 (29633 planów) | -0.39 (30202 planów)
+  …zysk netto na kurs vs dystans                                            |              -0.57 |              -0.52 |              -0.55 |              -0.52
+Udział paliwa w kosztach lotów (paliwo / (paliwo + płace))                  |              96.7% |              97.6% |              96.7% |              97.6%
+Mediana dystansu zyskownej trasy między cywilizacjami                       |            49.3 pc |            49.0 pc |            49.3 pc |            48.9 pc
+Mediana ceny paliwa zapłaconej w dokach                                     |          10 051 kr |          10 028 kr |          10 052 kr |          10 035 kr
+Korelacja per towar, Żywność: lot / trasa (n tras)                          |    — / -0.13 (552) |    — / -0.29 (565) |    — / -0.22 (542) |    — / -0.32 (571)
+Korelacja per towar, Minerały: lot / trasa (n tras)                         |     — / 0.00 (508) |    — / -0.04 (603) |     — / 0.03 (520) |    — / -0.06 (611)
+Korelacja per towar, Rozpuszczalniki: lot / trasa (n tras)                  |    — / -0.27 (665) |    — / -0.33 (624) |    — / -0.24 (662) |    — / -0.33 (618)
+Korelacja per towar, Materiały wybuchowe: lot / trasa (n tras)              |    — / -0.47 (217) |    — / -0.53 (263) |    — / -0.46 (237) |    — / -0.53 (258)
+Korelacja per towar, Elektronika: lot / trasa (n tras)                      |    — / -0.27 (580) |    — / -0.45 (628) |    — / -0.39 (605) |    — / -0.46 (620)
+Pc paliwa z mediany marży pełnej ładowni, Żywność (marża kr/m³)             |  113.0 pc (2366.5) |  113.9 pc (2380.2) |  116.0 pc (2429.0) |  114.0 pc (2384.1)
+Pc paliwa z mediany marży pełnej ładowni, Minerały (marża kr/m³)            |  269.9 pc (5651.7) |  280.4 pc (5857.0) |  284.7 pc (5961.5) |  282.9 pc (5915.1)
+Pc paliwa z mediany marży pełnej ładowni, Rozpuszczalniki (marża kr/m³)     |  411.7 pc (8621.4) |  408.0 pc (8524.0) |  425.5 pc (8909.9) |  407.2 pc (8513.0)
+Pc paliwa z mediany marży pełnej ładowni, Materiały wybuchowe (marża kr/m³) | 1472.3 pc (30828.0) | 1595.3 pc (33328.5) | 1606.8 pc (33650.0) | 1588.1 pc (33201.4)
+Pc paliwa z mediany marży pełnej ładowni, Elektronika (marża kr/m³)         | 14420.6 pc (301949.0) | 14994.5 pc (313255.0) | 14880.4 pc (311620.8) | 14972.0 pc (313016.8)
+
+Miara                                                                       | M/pelna/A (200 z.) | M/pelna/B (200 z.) | M/pelna/C (200 z.) | M/pelna/D (200 z.)
+----------------------------------------------------------------------------+--------------------+--------------------+--------------------+-------------------
+Ziarna z zyskiem (próg M ≥ 70%)                                             |              99.5% |             100.0% |             100.0% |             100.0%
+Ziarna z podwojeniem wartości                                               |              65.0% |              77.5% |              69.0% |              77.0%
+Pierwsza zyskowna trasa, mediana lotów (≤ 3)                                |                2.0 |                1.0 |                1.0 |                1.0
+Udział 5 najczęstszych tras (≤ 25%)                                         |               0.6% |               0.5% |               0.5% |               0.5%
+Loty wewnątrz jednej cywilizacji (≤ 50%)                                    |              58.0% |              58.6% |              58.5% |              58.3%
+Mediana skoków zyskownego lotu (≥ 2)                                        |                3.0 |                3.0 |                3.0 |                3.0
+Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji)                 |              -0.32 |              -0.34 |              -0.29 |              -0.33
+  loty eksploracyjne                                                        |               5.4% |               2.0% |               2.6% |               2.0%
+  …z dystansem całej trasy handlowej (zakup → cel)                          |              -0.34 |              -0.36 |              -0.33 |              -0.36
+  trasy handlowe między cywilizacjami                                       |              47.1% |              47.7% |              47.1% |              48.2%
+  mediana dystansu trasy handlowej                                          |            44.7 pc |            47.5 pc |            46.4 pc |            47.6 pc
+Kontakt z nieznaną cywilizacją (≥ 50%)                                      |              56.5% |              28.5% |              34.5% |              29.5%
+Mediana wartości firmy na koniec                                            |      15 548 746 kr |      16 316 860 kr |      15 997 289 kr |      16 403 773 kr
+Mediana liczby lotów                                                        |               19.0 |               19.0 |               19.5 |               19.0
+Ziarna, w których bot utknął                                                |                  0 |                  0 |                  0 |                  0
+Czas bota                                                                   |             37.7 s |             48.4 s |             49.5 s |             50.6 s
+Korelacja po wszystkich dostępnych planach: stopa/dobę vs dystans           | -0.36 (140004 planów) | -0.36 (125258 planów) | -0.37 (131257 planów) | -0.36 (124677 planów)
+  …zysk netto na kurs vs dystans                                            |              -0.57 |              -0.52 |              -0.55 |              -0.52
+Udział paliwa w kosztach lotów (paliwo / (paliwo + płace))                  |              92.7% |              94.8% |              92.7% |              94.7%
+Mediana dystansu zyskownej trasy między cywilizacjami                       |            85.1 pc |            92.2 pc |            89.9 pc |            93.2 pc
+Mediana ceny paliwa zapłaconej w dokach                                     |            4502 kr |            4503 kr |            4503 kr |            4503 kr
+Korelacja per towar, Żywność: lot / trasa (n tras)                          | -0.18 / -0.39 (616) | 0.18 / -0.41 (628) | 0.06 / -0.36 (699) | 0.19 / -0.42 (608)
+Korelacja per towar, Minerały: lot / trasa (n tras)                         | 0.35 / -0.34 (884) | 0.20 / -0.35 (578) | 0.48 / -0.30 (686) | 0.21 / -0.34 (586)
+Korelacja per towar, Rozpuszczalniki: lot / trasa (n tras)                  | 0.53 / -0.29 (1100) | 0.51 / -0.27 (1147) | 0.63 / -0.27 (1209) | 0.59 / -0.27 (1133)
+Korelacja per towar, Materiały wybuchowe: lot / trasa (n tras)              |  0.79 / -0.21 (67) |    — / -0.41 (225) |  0.87 / -0.26 (58) |    — / -0.39 (226)
+Korelacja per towar, Elektronika: lot / trasa (n tras)                      | 0.49 / -0.37 (538) | 0.35 / -0.46 (707) | 0.55 / -0.45 (667) | 0.38 / -0.45 (713)
+Pc paliwa z mediany marży pełnej ładowni, Żywność (marża kr/m³)             |    94.0 pc (882.1) |    81.1 pc (761.1) |    79.2 pc (742.8) |    81.5 pc (764.2)
+Pc paliwa z mediany marży pełnej ładowni, Minerały (marża kr/m³)            |  347.8 pc (3262.7) |  428.0 pc (4014.3) |  397.3 pc (3726.8) |  426.5 pc (4000.8)
+Pc paliwa z mediany marży pełnej ładowni, Rozpuszczalniki (marża kr/m³)     | 1396.2 pc (13095.7) | 1533.9 pc (14388.6) | 1518.9 pc (14248.7) | 1538.8 pc (14435.1)
+Pc paliwa z mediany marży pełnej ładowni, Materiały wybuchowe (marża kr/m³) | 5030.1 pc (47181.0) | 1320.8 pc (12390.0) | 2581.3 pc (24215.0) | 1325.4 pc (12432.7)
+Pc paliwa z mediany marży pełnej ładowni, Elektronika (marża kr/m³)         | 23123.9 pc (216894.7) | 12971.2 pc (121674.3) | 14170.6 pc (132931.0) | 13047.2 pc (122390.0)
+
+Miara                                                                       | L/pelna/A (50 z.) | L/pelna/B (50 z.) | L/pelna/C (50 z.) | L/pelna/D (50 z.)
+----------------------------------------------------------------------------+-------------------+-------------------+-------------------+------------------
+Ziarna z zyskiem (próg M ≥ 70%)                                             |            100.0% |            100.0% |            100.0% |            100.0%
+Ziarna z podwojeniem wartości                                               |             98.0% |             98.0% |             96.0% |             98.0%
+Pierwsza zyskowna trasa, mediana lotów (≤ 3)                                |               2.0 |               2.0 |               2.0 |               2.0
+Udział 5 najczęstszych tras (≤ 25%)                                         |              1.4% |              1.5% |              1.5% |              1.5%
+Loty wewnątrz jednej cywilizacji (≤ 50%)                                    |             59.3% |             54.9% |             56.3% |             54.7%
+Mediana skoków zyskownego lotu (≥ 2)                                        |               3.0 |               3.5 |               3.0 |               4.0
+Korelacja zysk/dobę z dystansem lotu (> 0; bez eksploracji)                 |             -0.34 |             -0.37 |             -0.37 |             -0.36
+  loty eksploracyjne                                                        |              0.2% |              0.1% |              0.1% |              0.2%
+  …z dystansem całej trasy handlowej (zakup → cel)                          |             -0.41 |             -0.44 |             -0.42 |             -0.43
+  trasy handlowe między cywilizacjami                                       |             50.1% |             55.5% |             53.4% |             55.8%
+  mediana dystansu trasy handlowej                                          |           47.8 pc |           53.4 pc |           51.5 pc |           53.4 pc
+Kontakt z nieznaną cywilizacją (≥ 50%)                                      |              6.0% |              4.0% |              4.0% |              6.0%
+Mediana wartości firmy na koniec                                            |     25 466 664 kr |     29 755 913 kr |     28 451 065 kr |     29 792 307 kr
+Mediana liczby lotów                                                        |              38.0 |              37.0 |              38.0 |              37.0
+Ziarna, w których bot utknął                                                |                 0 |                 0 |                 0 |                 0
+Czas bota                                                                   |            81.1 s |            84.0 s |            88.0 s |            81.4 s
+Korelacja po wszystkich dostępnych planach: stopa/dobę vs dystans           | -0.53 (77653 planów) | -0.54 (75408 planów) | -0.54 (75886 planów) | -0.54 (76101 planów)
+  …zysk netto na kurs vs dystans                                            |             -0.93 |             -0.92 |             -0.92 |             -0.92
+Udział paliwa w kosztach lotów (paliwo / (paliwo + płace))                  |             92.3% |             94.4% |             92.2% |             94.5%
+Mediana dystansu zyskownej trasy między cywilizacjami                       |           98.5 pc |           97.0 pc |          101.9 pc |           96.2 pc
+Mediana ceny paliwa zapłaconej w dokach                                     |           4502 kr |           4503 kr |           4502 kr |           4503 kr
+Korelacja per towar, Żywność: lot / trasa (n tras)                          | -0.45 / -0.26 (199) |   — / -0.40 (231) | -0.88 / -0.41 (243) |   — / -0.39 (227)
+Korelacja per towar, Minerały: lot / trasa (n tras)                         | 0.35 / -0.37 (548) | 0.40 / -0.34 (545) | 0.26 / -0.35 (559) | 0.42 / -0.33 (549)
+Korelacja per towar, Rozpuszczalniki: lot / trasa (n tras)                  | 0.78 / -0.29 (159) | 0.41 / -0.35 (128) | 0.79 / -0.35 (149) | 0.42 / -0.34 (126)
+Korelacja per towar, Materiały wybuchowe: lot / trasa (n tras)              |   — / -0.28 (133) |   — / -0.31 (114) |   — / -0.18 (100) |   — / -0.28 (124)
+Korelacja per towar, Elektronika: lot / trasa (n tras)                      | 0.66 / -0.46 (512) | 0.57 / -0.42 (502) | 0.54 / -0.41 (480) | 0.60 / -0.42 (499)
+Pc paliwa z mediany marży pełnej ładowni, Żywność (marża kr/m³)             |   87.5 pc (821.0) |   91.2 pc (855.2) |   95.7 pc (897.8) |   88.0 pc (825.7)
+Pc paliwa z mediany marży pełnej ładowni, Minerały (marża kr/m³)            | 385.4 pc (3614.5) | 414.5 pc (3888.3) | 404.1 pc (3790.9) | 413.7 pc (3880.7)
+Pc paliwa z mediany marży pełnej ładowni, Rozpuszczalniki (marża kr/m³)     | 1282.5 pc (12028.0) | 1404.6 pc (13175.7) | 1453.0 pc (13629.2) | 1437.1 pc (13480.8)
+Pc paliwa z mediany marży pełnej ładowni, Materiały wybuchowe (marża kr/m³) | 5138.2 pc (48189.0) | 5968.8 pc (55988.5) | 5741.9 pc (53858.5) | 5982.3 pc (56116.0)
+Pc paliwa z mediany marży pełnej ładowni, Elektronika (marża kr/m³)         | 41179.6 pc (386208.0) | 39308.9 pc (368728.0) | 41770.8 pc (391805.5) | 39982.4 pc (375047.8)
+S/pelna/A: najczęstsze trasy: mlot → zielna (216); milczek → iskra (214); zielna → milczek (187); milczek → szept (175); zielna → kamieniec (165)
+S/pelna/A: najczęstsze towary: Żywność (847); Minerały (686); Elektronika (673); Materiały wybuchowe (663); Rozpuszczalniki (650)
+S/pelna/B: najczęstsze trasy: mlot → zielna (222); iskra → tygiel (195); zielna → kamieniec (193); tygiel → mlot (192); milczek → iskra (181)
+S/pelna/B: najczęstsze towary: Żywność (894); Materiały wybuchowe (831); Minerały (798); Elektronika (749); Rozpuszczalniki (687)
+S/pelna/C: najczęstsze trasy: mlot → zielna (199); milczek → iskra (196); zielna → milczek (186); milczek → szept (179); zielna → kamieniec (172)
+S/pelna/C: najczęstsze towary: Żywność (871); Materiały wybuchowe (736); Minerały (727); Elektronika (709); Rozpuszczalniki (670)
+S/pelna/D: najczęstsze trasy: mlot → zielna (218); iskra → tygiel (194); zielna → kamieniec (194); tygiel → mlot (192); milczek → iskra (183)
+S/pelna/D: najczęstsze towary: Żywność (899); Materiały wybuchowe (835); Minerały (800); Elektronika (748); Rozpuszczalniki (685)
+M/pelna/A: najczęstsze trasy: ludzie-venno → orak-ulmorak (6); ludzie-dorvano → ludzie-nonova (5); orak-dzdzul → ludzie-dormiven (5); corrath-umrathcor → orak-ummorul (4); orak-ummorul → orak-dzgrum (4)
+M/pelna/A: najczęstsze towary: Minerały (877); Żywność (670); Elektronika (597); Rozpuszczalniki (590); Materiały wybuchowe (347)
+M/pelna/B: najczęstsze trasy: ludzie-terka → corrath-ancor (4); ludzie-lunrara → ludzie-noselva (4); orak-khmormor → corrath-irirvos (4); corrath-irirvos → orak-khmormor (4); corrath-ircoran → ludzie-terlun (4)
+M/pelna/B: najczęstsze towary: Żywność (1018); Minerały (949); Rozpuszczalniki (848); Elektronika (802); Materiały wybuchowe (451)
+M/pelna/C: najczęstsze trasy: orak-khmormor → corrath-irirvos (4); corrath-irirvos → orak-khmormor (4); corrath-rathcor → vreth-thuak (4); ludzie-vaterdor → corrath-ithithsel (4); ludzie-lunselmi → corrath-corcorvos (4)
+M/pelna/C: najczęstsze towary: Żywność (963); Minerały (951); Rozpuszczalniki (775); Elektronika (750); Materiały wybuchowe (296)
+M/pelna/D: najczęstsze trasy: ludzie-terka → corrath-ancor (4); orak-khmormor → corrath-irirvos (4); corrath-irirvos → orak-khmormor (4); corrath-ircoran → ludzie-terlun (4); ludzie-selterno → orak-thashul (4)
+M/pelna/D: najczęstsze towary: Żywność (1022); Minerały (952); Rozpuszczalniki (837); Elektronika (809); Materiały wybuchowe (450)
+L/pelna/A: najczęstsze trasy: vreth-thuvrmal → vreth-vrmalzan (6); vreth-ethvr → vreth-gorruketh (6); vreth-vrok → vreth-akthu (5); velhari-ienha → vreth-ethrukgor (5); vreth-malmal → vreth-thuvr (5)
+L/pelna/A: najczęstsze towary: Elektronika (483); Materiały wybuchowe (417); Minerały (395); Żywność (121); Rozpuszczalniki (82)
+L/pelna/B: najczęstsze trasy: velhari-riien → vreth-okvr (8); vreth-ethvr → vreth-gorruketh (6); vreth-vrthuruk → ludzie-rara (5); vreth-thuvrmal → vreth-vrmalzan (5); vreth-rukgor → vreth-thuakthu (5)
+L/pelna/B: najczęstsze towary: Elektronika (548); Materiały wybuchowe (470); Minerały (452); Żywność (168); Rozpuszczalniki (94)
+L/pelna/C: najczęstsze trasy: velhari-ienha → vreth-ethrukgor (7); vreth-ethvr → vreth-gorruketh (6); vreth-drak → ludzie-lunmi (5); ludzie-mimimi → vreth-vrokmal (5); vreth-vrokmal → vreth-malthuruk (5)
+L/pelna/C: najczęstsze towary: Elektronika (507); Materiały wybuchowe (450); Minerały (425); Żywność (146); Rozpuszczalniki (84)
+L/pelna/D: najczęstsze trasy: velhari-riien → vreth-okvr (8); vreth-ethvr → vreth-gorruketh (6); vreth-vrthuruk → ludzie-rara (5); vreth-thuvrmal → vreth-vrmalzan (5); vreth-rukgor → vreth-thuakthu (5)
+L/pelna/D: najczęstsze towary: Elektronika (542); Materiały wybuchowe (472); Minerały (455); Żywność (169); Rozpuszczalniki (92)
+```
 <!-- TABELA-SPREAD-KONIEC -->
+
+### Skrót (kolumny `pelna`, korelacje: lot / cała trasa handlowa)
+
+| Skala | A | B | C | D |
+|---|---|---|---|---|
+| S (200): korelacja | −0,33 / −0,34 | −0,39 / −0,39 | −0,35 / −0,35 | −0,39 / −0,39 |
+| S: mediana wartości | 12,66 mln (×1,86) | 14,69 mln (×2,16) | 13,96 mln (×2,05) | 14,70 mln (×2,16) |
+| M (200): korelacja | −0,32 / −0,34 | −0,34 / −0,36 | −0,29 / −0,33 | −0,33 / −0,36 |
+| M: mediana wartości | 15,55 mln (×2,29) | 16,32 mln (×2,40) | 16,00 mln (×2,35) | 16,40 mln (×2,41) |
+| M: pierwsza zyskowna trasa | 2 loty | 1 lot | 1 lot | 1 lot |
+| M: kontakt z nieznaną cywilizacją | 56,5% | 28,5% | 34,5% | 29,5% |
+| L (50): korelacja | −0,34 / −0,41 | −0,37 / −0,44 | −0,37 / −0,42 | −0,36 / −0,43 |
+| L: mediana wartości | 25,47 mln (×3,75) | 29,76 mln (×4,38) | 28,45 mln (×4,18) | 29,79 mln (×4,38) |
+| Korelacja po dostępnych planach, M: stopa/dobę / zysk na kurs | −0,36 / −0,57 | −0,36 / −0,52 | −0,37 / −0,55 | −0,36 / −0,52 |
+| Korelacja po dostępnych planach, L: stopa/dobę / zysk na kurs | −0,53 / −0,93 | −0,54 / −0,92 | −0,54 / −0,92 | −0,54 / −0,92 |
+| Udział paliwa w kosztach lotów, M | 92,7% | 94,8% | 92,7% | 94,7% |
+| Mediana dystansu zyskownej trasy między cywilizacjami, M | 85 pc | 92 pc | 90 pc | 93 pc |
+| Pc paliwa z mediany marży pełnej ładowni, M: Żywność / Minerały / Rozpuszczalniki / Mat. wybuchowe / Elektronika | 94 / 348 / 1 396 / 5 030 / 23 124 | 81 / 428 / 1 534 / 1 321 / 12 971 | 79 / 397 / 1 519 / 2 581 / 14 171 | 82 / 427 / 1 539 / 1 325 / 13 047 |
+
+Korelacje per towar (M, trasa handlowa, wariant A → B): Żywność −0,41 → −0,45, Minerały −0,33 → −0,36, Rozpuszczalniki −0,36 → −0,35, Materiały wybuchowe −0,30 → −0,33, Elektronika −0,27 → −0,28 (pełne wartości i liczebności w tabeli wyżej). Pc paliwa dla elektroniki i materiałów wybuchowych to wielkości teoretyczne: pełnej ładowni tych towarów nie da się kupić za kapitał startowy, a porty wchłaniają po kilka m³.
 
 ## Odpowiedzi
 
-<!-- ODPOWIEDZI-SPREAD -->
+55. **Czy usunięcie stałego spreadu odwraca znak korelacji zysku na dobę z dystansem?** Nie, w żadnym wariancie i w żadnej skali: B, C i D dają korelację od −0,29 do −0,39 na poziomie lotu i od −0,33 do −0,44 na poziomie całej trasy handlowej (A: −0,32…−0,34 / −0,34…−0,41), a po wszystkich dostępnych planach w dokach nawet zysk na kurs maleje z dystansem (M −0,52…−0,57, L −0,92…−0,93). Usunięcie spreadu podnosi medianę wartości firmy o 3–5% w M, 10–16% w S i 12–17% w L, w M skraca czas do pierwszej zyskownej trasy z 2 lotów do 1 i obniża skłonność do eksploracji (kontakt 56% → 29–35%), bo lokalny handel staje się tańszy niż ryzyko dalekiej podróży.
+56. **Która liczba kanonu blokuje dalekie trasy i o ile musiałaby się zmienić?** Żadna pojedyncza, co pokazują eksperymenty z fazy 7 (`findings.md`): przy `BasePrice Fuel` = 0 albo `kosztPaliwaNaParsek` = 0 korelacja po wykonanych trasach w M zostaje przy −0,35…−0,51; to samo przy paśmie nacisku 0,2–5,0, ładowni ×3, kapitale ×3, prędkości ×2, baku ×3 i wszystkich tych zmianach naraz (−0,36 / −0,45). Paliwo to 92–97% kosztów lotów i decyduje, które towary opłaca się wieźć daleko (mediana marży z pełnej ładowni pokrywa w M ok. 80–95 pc dla żywności, ok. 350–430 pc dla minerałów, ok. 1 400–1 540 pc dla rozpuszczalników), ale nie ono psuje korelację. Psuje ją połączenie dwóch własności kanonu: pasma nacisku `StockPressureMin`/`Max` = 0,45–2,5, które ogranicza różnicę cen do ×5,6 niezależnie od dystansu, oraz czasu kursu rosnącego liniowo z dystansem (`predkoscNominalna`), przez co stopa na dobę ~ ograniczona marża / dystans. Żeby korelacja była ≥ 0, różnica cen musiałaby rosnąć z dystansem co najmniej liniowo aż do horyzontu gry, czyli kanon potrzebowałby **reguły** (premia cenowa zależna od odległości źródła towaru albo nacisk rosnący z dystansem od producenta), a nie innej wartości istniejącej liczby. Jedyna skalarna droga, jaka pozostaje, to geometria: w M terytoria są przyległe (DECYZJE 31), więc skrajne ceny osiąga się już na granicy terytorium i dalszy lot nie przynosi nic ponad to; wynik przeglądu paliwa na L (cywilizacje w osobnych sektorach) jest w punkcie 58.
+57. **Skutek dla handlowca i dla kryterium „obrót na jednej planecie nie daje zysku”.** Handlowiec działa tylko w oknie spreadu podstawowego: w B i D (spread 0) nie zmienia żadnej ceny i bot przestaje go zatrudniać, w C okno 0,10 daje mu 4% ceny zamiast 12%, czyli rola słabnie trzykrotnie, ale pozostaje opłacalna przy pełnej ładowni. Kryterium „obrót na jednej planecie nie daje zysku” jest spełnione we wszystkich wariantach (test: każdy towar, trzy ilości, trzy załogi, S i M), ale w B/C/D gwarantuje je pamięć zakupu, a nie spread: po 5 skokach kara gaśnie, więc gracz może wrócić na planetę zakupu dłuższą pętlą i sprzedać bez kary; przy cenie krańcowej natychmiastowa odsprzedaż tej samej ilości bez spreadu daje dokładnie zero, więc to kara (0,3 albo malejąca) robi z tego stratę. Wariant D (kara liniowa) zachowuje się jak B we wszystkich miarach (różnice ≤ 0,02 korelacji i ≤ 1% wartości), bo bot rzadko wraca na planetę zakupu przed piątym skokiem.
+
+<!-- PRZEGLAD-L -->
