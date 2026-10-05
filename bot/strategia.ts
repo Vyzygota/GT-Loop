@@ -67,11 +67,23 @@ export function dojazdy(gra: Gra, zaloga: readonly Zalogant[]): Map<string, Doja
   return dojazdyZ(gra, gra.stan.pozycja, zaloga);
 }
 
+/** Runda 3: dojazdy zależą tylko od (świat, start, zasięg odcinka), a planista liczy je dla dziesiątek celów na każdy dok — pamięć między krokami floty. */
+const cacheDojazdow = new Map<string, Map<string, Dojazd>>();
+const MAX_CACHE_DOJAZDOW = 4000;
+
 export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[], ladunekDodatkowyT = 0): Map<string, Dojazd> {
   const graf = grafTankowania(gra);
   // Odcinek musi zostawić rezerwę: bak tankuje się w krokach, a zużycie nie może przekroczyć stanu baku.
-  // Runda 3: zasięg z pełnego baku przy bieżącej masie statku (ładunek spowalnia i w wariancie R zwiększa spalanie).
-  const zasiegOdcinka = gra.zasiegNaPaliwie(gra.bak() - P.bot.rezerwaPaliwaOdcinkaM3, zaloga, ladunekDodatkowyT);
+  // Runda 3: zasięg z pełnego baku przy bieżącej masie statku (ładunek spowalnia i w wariancie R zwiększa spalanie);
+  // zasięg zaokrąglony w dół do 2 pc, żeby pamięć dojazdów trafiała przy zbliżonej masie (deterministycznie).
+  let zasiegOdcinka = gra.zasiegNaPaliwie(gra.bak() - P.bot.rezerwaPaliwaOdcinkaM3, zaloga, ladunekDodatkowyT);
+  let klucz: string | null = null;
+  if (gra.runda3) {
+    zasiegOdcinka = Math.floor(zasiegOdcinka / 2) * 2;
+    klucz = `${gra.swiat.skala}:${gra.swiat.ziarno}:${start}:${zasiegOdcinka}`;
+    const gotowy = cacheDojazdow.get(klucz);
+    if (gotowy) return gotowy;
+  }
   const dystans = new Map<string, number>([[start, 0]]);
   const skokiDo = new Map<string, number>([[start, 0]]);
   const poprzednik = new Map<string, string | null>([[start, null]]);
@@ -111,6 +123,10 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[], l
       x = poprzednik.get(x) ?? null;
     }
     wynik.set(id, { dystans: d - odc.length * P.bot.karaPrzystankuPc, odcinki: odc, skoki: skokiDo.get(id) ?? 0 });
+  }
+  if (klucz) {
+    if (cacheDojazdow.size >= MAX_CACHE_DOJAZDOW) cacheDojazdow.clear();
+    cacheDojazdow.set(klucz, wynik);
   }
   return wynik;
 }

@@ -6,10 +6,10 @@
 - [x] Faza 4: `rynkiGalaktyki` w trybie rundy 3: konsumpcja z ludności (populacja planety × koszyk T1), sektory z `SectorMinTier` (mapowanie w `prototyp.json`), bramka G (`dostepny`) / P, bez głębokości portu; `mnoznikSpecjalizacji` w pozycji rynku do otwierania sektorów.
 - [x] Faza 5: `stan.rozwoj` (Z₀ z kalibrowanego PkbToWaterUnits, nadwyżka od ostatniego awansu, kontrakt), gotowość w upływie czasu, receptura, naukowiec (40 m³, nie z akademii), `dostarczKontrakt` w stolicy, awans otwiera sektory i mnoży koszyk; 5 nowych testów.
 - [x] Faza 6: w modelu: poziomy firmy (`progFirmy`), `kupStatek`, tier stoczni per szczebel, okna stoczni, pamięć floty A/B/C (`licznikPamieci`), czas ciągły (`wystartuj`/`nastepnyPrzylot`/`czekaj`).
-- [ ] Faza 7: bot floty.
-- [ ] Faza 8: testy.
-- [ ] Faza 9: pomiary (siatka 12 × 30 ziaren, przegląd k).
-- [ ] Faza 10: DECYZJE, push, opis PR.
+- [x] Faza 7: bot floty (`bot/flota.ts`: pętla zdarzeń, misje kontraktowe z dostawami częściowymi, ekspedycje jedna na flotę, inwestycje w kadłuby i statki) i poprawki planisty z sond (klaster = sam cel, drugi krok z powrotem do doku startu na 60 planach, odwrót po dwóch krokach, kara wspólnego celu, limity dób ekspedycji i misji, limit masy receptury na odcinek, odciążenie, limit straty etapu, pamięć dojazdów). Szczegóły: `findings.md`, faza 7.
+- [x] Faza 8: testy — 83 zielone (66 dotychczasowych + 17 w `tests/runda3.test.ts`: prędkości 4,00 i 0,99, zasięgi 100/78,4/24,8, ubytek paliwa, R vs D, pusty bak, czas ciągły dwóch statków z raportami per statek, rynek z ludności, bramka G/P (z produkcją po awansie), gotowość bez awansu, kontrakt z naukowcem, dostawa częściowa, flota 1/2/4/8, niezmiennik pamięci A/B/C, determinizm floty na 1 200 dób). `npm run build` zielony.
+- [ ] Faza 9: pomiary — `npm run runda3` (siatka 12 wariantów × 30 ziaren + przegląd k × 30, 4 procesy równolegle, ok. 15 s na ziarno) — w toku.
+- [ ] Faza 10: DECYZJE (założenia 75–88 wpisane; wynik i odpowiedzi po pomiarach), README (wpisane), smoke, push, opis PR.
 
 ---
 

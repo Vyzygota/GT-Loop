@@ -8,6 +8,28 @@
 - Jeden statek: cały stan (`pozycja`, `paliwo`, `ladownia`, `zaloga`, `pamiecZakupu`, `szczebel`) leży płasko w `stan`; UI, bot i testy czytają te pola bezpośrednio, więc flota wejdzie jako `stan.statki[]` z aktywnym statkiem, a dotychczasowe pola staną się widokiem na statek aktywny.
 - Węzły L: 464 układy zamieszkiwalne (kanon) plus układy przelotowe wzdłuż szlaków (ok. 19 pc), razem rząd 1 000–1 200 węzłów; liczba 840 „układów jak w grze” jest między tymi dwiema liczbami (opis w DECYZJE po policzeniu).
 
+## Fazy 2–6: model (L, pojedyncze ziarna)
+
+- **Bramka G zerowała produkcję sektorów otwieranych tierem.** `rynkiGalaktyki` normalizowało mnożnik specjalizacji z sumy konsumpcji; przy G konsumpcja towarów zamkniętych sektorów wynosiła 0, więc normalizacja = 0 i po awansie Vreth na T2 minerały (produkcjaDoPotrzeb 2,6) miały zapas 0 na każdej planecie, a kontrakt T3 (16 m³ minerałów) nie miał źródła. Naprawa: normalizacja z konsumpcji potencjalnej (koszyk T1).
+- **Receptura z towarem sąsiada dla każdego składnika** blokowała T3 na zawsze (żaden sąsiad nie był T2). Teraz towar sąsiada tylko dla towarów, które otwiera tier docelowy, i tylko gdy sąsiad już je produkuje.
+- **Kontrakt większy niż ładownia** (Ludzie T2: 814 m³ żywności + 147 m³ rozpuszczalników przy 480 m³ ładowni szczebla 0) nie dawał się dostarczyć w jednym kursie → dostawy częściowe (`dostarczone`, `naukowiecWAkademii`), a ilość towaru w recepturze ograniczona do 960 m³ (T3 Ludzi żądało 1 563 m³ minerałów = 4,7 tys. t).
+- **Raport lotu** musiał dostać linię na każdy zakup w oknie stoczni: przy skoku poziomu firmy statek kupował dwa kadłuby/statki w jednym doku, a `okres.kadlub` pamiętał tylko ostatni (suma linii ≠ przepływy).
+
+## Faza 7: bot floty — co psuło pojedyncze ziarna (L, R i D, ziarna 1–4) i jaka reguła to naprawiła
+
+1. **Klaster dystrybucji** (runda 1–2: ładunek rozwożony po sąsiadach celu, objazd liczony jako koszt). Na rynkach z ludności (norma w milionach m³) każdy plan dostawał koszt objazdu ok. 600 tys. kr, więc w dobie 0 żaden plan nie był dodatni → odwrót do stolicy Vreth 330 pc, a po drodze przewożone rozpuszczalniki (kupione 18,9 tys., sprzedawane 40,7 tys. kr/m³ w każdym deficytowym porcie Ludzi) jechały 150 dób. Po zmianie (klaster = sam cel) wahadło Raven ↔ Noralun (40 pc) daje 100–130 tys. kr/dobę i firma rośnie z 6,8 do 66 mln kr w 250 dób (ziarno 1, R).
+2. **Drugi krok tylko po 25 najbliższych planetach celu i tylko dla 5 najlepszych planów stopy pierwszego kroku.** Ziarno 3 (D): start w regionie Ludzi bez lokalnych tras; jedyna pętla (Nonolun 80 pc: rozpuszczalniki 18,2 tys. → 40,7 tys. kr/m³) miała pierwszy krok −15,3 tys./dobę (gorszy niż puste loty do Corrath −13,4 tys.), więc nie była oceniana, a bot ping-pongował z żywnością do Vreth do bankructwa (doba 460). Po zmianie (powrót do doku startu w drugim kroku, 60 planów) ocena pętli = +195 tys./dobę; ziarno 3 kończy z 168–534 mln kr.
+3. **Odwrót po jednym słabym doku** liczył „słabość” z pierwszego kroku: pusty statek w porcie bez towaru na sprzedaż ma ujemny pierwszy krok i dodatni kurs po nim. Teraz dok jest słaby, gdy nawet dwa kroki nie zarabiają.
+4. **Trzy statki na tej samej ekspedycji** (ziarno 1, R: s1–s3 do Velhari-Arcasum 553 pc, 7–9 mln kr paliwa każdy, 250 dób) i ekspedycja statku z recepturą misji na pokładzie. Teraz jedna ekspedycja naraz w całej flocie (rytm liczony od ostatniej któregokolwiek statku), nie na misji, i tylko gdy przy obecnej masie trwa ≤ 150 dób (w D 530 pc pustym szczeblem 1 to 438 dób).
+5. **Twarde wykluczenie celów innych statków** wysyłało statek z 840 m³ rozpuszczalników 122 pc do Venter, mijając Noralun (ten sam pułap ceny), bo tam leciał kolega. Teraz kara 10% oceny.
+6. **Misje bez limitu czasu drogi**: kontrakt Corrath z Ludzi (860 pc po grafie tankowania, 694 doby z ładunkiem) był przyjmowany i wykonywany jako jedyny plan (−6,6 mln kr na etap) aż do bankructwa (ziarno 2, R). Teraz droga misji ≤ 240 dób z masą receptury, etap o stracie > 10% wartości firmy kończy misję.
+7. **Masa receptury a zasięg (R)**: 840 m³ minerałów (2 520 t) na szczeblu 1 to 0,6 pc/dobę i 22 pc zasięgu na pełnym baku — akademia poza grafem tankowania, misja porzucana po 400 dobach. Teraz zakup receptury ograniczony do masy, z którą statek przeleci najdłuższy odcinek drogi do akademii z 15% zapasu; statek na misji sprzedaje ładunek handlowy przy przydziale.
+8. **Źródło receptury z zapasem 0** (rynek deficytowy z produkcją, ale pustym zapasem) wybierane jako cel → statek wracał w kółko na 25 pc. Teraz źródło musi mieć zapas.
+9. **Flota „utknięta”** (nikt nie leci przez 90 dób) przerywała przebieg przed horyzontem, a `uplywCzasu` nie kończyło gry po czasie → nieskończona pętla w teście determinizmu. Teraz czas płynie do horyzontu, a koniec gry zależy od doby.
+10. **Czas obliczeń**: 60 planów z drugim krokiem to 60 Dijkstr po grafie tankowania na każdy dok (35–45 s na ziarno przy 8 statkach). Pamięć dojazdów między krokami (klucz: świat, start, zasięg odcinka zaokrąglony do 2 pc) daje 15 s na ziarno przy identycznych wynikach sond.
+
+Po tych regułach ziarna 1–4 w R i D kończą 1 200 dób bez bankructwa (22–534 mln kr, 2–8 statków), z 2–4 awansami cywilizacji na T2 i pojedynczymi T3; o wyniku na 30 ziarnach — DECYZJE, sekcja „Runda 3”.
+
 ---
 
 # Archiwum: ustalenia zadania progresja
