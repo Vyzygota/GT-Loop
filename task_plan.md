@@ -1,4 +1,30 @@
-# Plan: PROMPT-progresja.md — czy pełna progresja mieści się w ok. 1000 dobach
+# Plan: PROMPT-runda3.md — progresja na mechanizmach kanonu (lot, awans, flota)
+
+Gałąź: `claude/blissful-planck-r8yb9d` (PR #1). Pliki robocze: `task_plan.md` (ten plan), `findings.md` (ustalenia), `progress.md` (dziennik). Poprzednie zadania w archiwum na końcu każdego pliku.
+
+## Fazy
+
+1. **Rozpoznanie** — gdzie w `sim/` siedzą: stała prędkość i spalanie (`gra.ts`: `potrzebnePaliwo`, `zasieg`, `lec`; `zaloga.ts`: `predkosc`), port z głębokości (`swiat.ts`: `rynkiGalaktyki`), koszyk awansu (`gra.ts`: `zaliczDostawe`), pamięć zakupu (`stan.pamiecZakupu`), jeden statek (`stan.pozycja`, `paliwo`, `ladownia`, `zaloga`); ile węzłów ma L (464 zamieszkiwalne + przelotowe vs 840 w grze).
+2. **Przełącznik i statek** — `runda3` w `prototyp.json` (domyślnie wyłączony; `paliwo` R/D, `bramkaTowaru` G/P, `pamiecFloty` A/B/C) i opcje gry; stan floty: `stan.statki[]` z aktywnym statkiem (dotychczasowe pola stanu to widok na aktywny statek), moduły (reaktory, ładownie, bak) per szczebel, masa sucha, obsada.
+3. **Lot z hierarchii ciągu** — ciąg = dysze × 230 tf, masa na bieżąco (kadłub + moduły + paliwo + ładunek), prędkość = 4 × ciąg/masa ÷ 0,8812 × pilot, paliwo R (4 m³/dobę, postać zamknięta: t = m₀/4·(1 − e^(−4d/C))) albo D (1 m³/pc, t = (m₀d − d²/2)/C); pusty bak na starcie; testy kontrolne (4,00 i 0,99 pc/dobę; zasięgi 100 / 78,4 / 24,8 pc przy stałej masie).
+4. **Rynek z ludności** — konsumpcja = `konsumpcjaNaMlnNaDobe` × potrzeby rasy × populacja × koszyk tieru, norma 30 dób, bez głębokości portu; otwartość tylko jako sufit NPC; sektory produkcji i `SectorMinTier` {1,2,1,1,2,3,1} z mapowaniem na towary; bramka G/P.
+5. **Drabina rozwoju kanonu** — próg gotowości Z₀ × k^(T−1) (Z₀ = Σ populacja × zamożność × PkbToWaterUnits, zamrożone w dobie 0) vs skumulowana nadwyżka (od ostatniego awansu); kontrakt rozwojowy: receptura, naukowiec (40 m³), akademia w stolicy; awans otwiera sektory i podnosi koszyk popytu.
+6. **Firma i flota** — poziomy firmy 1/2/4/8 statków (`progFirmy`), kupno statku i szczebla w stoczni cywilizacji o tierze ≥ `tierSzczebla`[N], ceny szczebli jak w rundzie 2, czas ciągły z asynchronicznymi przylotami, okna stoczni liczone, pamięć zakupu floty A/B/C z niezmiennikiem.
+7. **Bot floty** — pętla zdarzeń (statek w doku decyduje i startuje; świat przewija się do najbliższego przylotu), paliwo przed pierwszym lotem, podział floty (cele innych statków wykluczone), misje kontraktowe (zakup u innej cywilizacji → naukowiec → akademia), zakupy szczebli i statków, zmiana konfiguracji modułów.
+8. **Testy** — dotychczasowe zielone; nowe z promptu.
+9. **Pomiary** — `npm run runda3`: siatka R/D × G/P × A/B/C po 30 ziaren, przegląd `k` w R+G+A, miary 1–8.
+10. **Wynik** — sekcja „Runda 3: progresja na mechanizmach kanonu” w DECYZJE.md, README, push, opis PR.
+
+## Kryteria ukończenia
+
+- `npm test` zielone (stare + nowe).
+- Tabele siatki wariantów i przeglądu `k`, odpowiedzi na sześć pytań z promptu.
+
+---
+
+# Archiwum: PROMPT-progresja (zadanie poprzednie)
+
+## Plan: PROMPT-progresja.md — czy pełna progresja mieści się w ok. 1000 dobach
 
 Gałąź: `claude/blissful-planck-r8yb9d` (PR #1). Pliki robocze: `task_plan.md` (ten plan), `findings.md` (ustalenia), `progress.md` (dziennik). Poprzednie zadanie (spread) w archiwum na końcu każdego pliku.
 

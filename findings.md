@@ -1,4 +1,18 @@
-# Ustalenia (findings) — progresja
+# Ustalenia (findings) — runda 3
+
+## Faza 1: rozpoznanie
+
+- Lot: `Gra.sprawdzTrase/lec` liczą doby = dystans / (4 × pilot) i paliwo = dystans × 1 m³/pc × mnożnik nawigatora; masa statku nie istnieje w modelu. Graf tankowania bota zakłada stały zasięg odcinka (bak − 1) / koszt na pc.
+- Rynek: `rynkiGalaktyki` liczy konsumpcję z `portNaUkladM3NaDobe` × potrzeby × waga układu × głębokość portu z otwartości; populacja planety (`populacjaMln`, 10³–10⁶ mln) nie wchodzi do konsumpcji. Przy `konsumpcjaNaMlnNaDobe` rzędu 0,8 m³ żywności na mln i dobę (profil świata S) cywilizacja Ludzi (15 mln mln) konsumuje ok. 12 mln m³ żywności dziennie, czyli 25 000 ładowni jedynki: rynek z ludności jest dla jednego statku bezdenny.
+- Awans: w rundzie 2 koszyk był wymyślony (Elektronika / Elektronika + Materiały wybuchowe, próg = `progAwansu` × PKB). Kanon tej rundy: próg gotowości z Z₀ i k, kontrakt z naukowcem i akademią, sektory `SectorMinTier`.
+- Jeden statek: cały stan (`pozycja`, `paliwo`, `ladownia`, `zaloga`, `pamiecZakupu`, `szczebel`) leży płasko w `stan`; UI, bot i testy czytają te pola bezpośrednio, więc flota wejdzie jako `stan.statki[]` z aktywnym statkiem, a dotychczasowe pola staną się widokiem na statek aktywny.
+- Węzły L: 464 układy zamieszkiwalne (kanon) plus układy przelotowe wzdłuż szlaków (ok. 19 pc), razem rząd 1 000–1 200 węzłów; liczba 840 „układów jak w grze” jest między tymi dwiema liczbami (opis w DECYZJE po policzeniu).
+
+---
+
+# Archiwum: ustalenia zadania progresja
+
+## Ustalenia (findings) — progresja
 
 ## Faza 1: rozpoznanie
 

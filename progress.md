@@ -1,4 +1,21 @@
-# Dziennik (progress) — progresja
+# Dziennik (progress) — runda 3
+
+- [x] Faza 1: rozpoznanie — notatki w `findings.md`.
+- [ ] Faza 2: przełącznik `runda3`, stan floty, moduły.
+- [ ] Faza 3: lot z hierarchii ciągu (R/D), pusty bak, testy kontrolne.
+- [ ] Faza 4: rynek z ludności, sektory, bramka G/P.
+- [ ] Faza 5: drabina rozwoju kanonu (gotowość, kontrakt, naukowiec, akademia).
+- [ ] Faza 6: firma i flota, czas ciągły, okna stoczni, pamięć floty A/B/C.
+- [ ] Faza 7: bot floty.
+- [ ] Faza 8: testy.
+- [ ] Faza 9: pomiary (siatka 12 × 30 ziaren, przegląd k).
+- [ ] Faza 10: DECYZJE, push, opis PR.
+
+---
+
+# Archiwum: dziennik zadania progresja
+
+## Dziennik (progress) — progresja
 
 - [x] Faza 1: rozpoznanie — notatki w `findings.md`.
 - [x] Faza 2: kanon i przełącznik — `kanon.json`: `TierCount` 4, `tierZalogi` (progi 0/500/1500/9999 XP, widełki płac), `drabinaKadlubow` (6 szczebli, proponowane); `prototyp.json`: blok `progresja` (wyłączona domyślnie, horyzont 1 200, `progAwansu`, koszyki T2–T4, `mnoznikKonsumpcjiAwansu`, `mnoznikSzczebla`, `k`, `minKursowDoWycenySzczebla`, `xpNaDobeLotu`, `xpZaKontakt`, nazwy tierów) i parametry bota (`mnoznikGotowkiNaSzczebel`, premia awansu, `maxKosztDobyXpKr`, ekspedycje).
