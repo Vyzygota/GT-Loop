@@ -275,6 +275,22 @@ export interface Prototyp {
     mnoznikGotowkiNaKontynuacje: number;
     /** Progresja: po tylu kolejnych dokach bez dodatniego planu bot wraca do najbliższej stolicy innej cywilizacji. */
     slabychDokowDoOdwrotu: number;
+    /** Runda 3: zasięg grafu tankowania (pc); zasięg odcinka statku filtruje go per statek i masa. */
+    maxOdcinekGrafuPc: number;
+    /** Runda 3: najdalszy kontrakt rozwojowy, jakiego bot się podejmuje (pc po grafie tankowania do akademii). */
+    maxDystansKontraktuPc: number;
+    /** Runda 3: misja kontraktowa rusza, gdy gotówka ≥ mnożnik × (receptura po cenach bazowych + paliwo tam). */
+    mnoznikGotowkiNaKontrakt: number;
+    /** Runda 3: po tylu dobach bot porzuca misję kontraktową. */
+    maxDobyMisji: number;
+    /** Runda 3: nowy statek, gdy gotówka ≥ mnożnik × cena statku. */
+    mnoznikGotowkiNaStatek: number;
+    /** Runda 3: gdy wszystkie statki stoją bez planu, flota czeka tyle dób i próbuje ponownie. */
+    dobyCzekaniaFloty: number;
+    /** Runda 3: po tylu dobach czekania bez planu flota utknęła. */
+    maxDobyCzekaniaFloty: number;
+    /** Flota: o ile (ułamek oceny) gorszy jest cel, do którego leci już inny statek firmy (podział floty między trasy przy remisie). */
+    karaWspolnegoCelu: number;
   };
 }
 

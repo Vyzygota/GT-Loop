@@ -292,19 +292,23 @@ export class Gra {
    * Receptura kontraktu na tier T: towary sektorów otwartych na bieżącym tierze (bez paliwa) plus towary, które otwiera tier T,
    * jeśli jakaś sąsiednia cywilizacja już je produkuje; ilość = ilosciKontraktu × dzienna konsumpcja stolicy przy koszyku tieru T.
    */
-  recepturaKontraktu(idCyw: string, tier: number): Partial<Record<Towar, number>> {
+  recepturaKontraktu(idCyw: string, tier: number): { towary: Partial<Record<Towar, number>>; odSasiada: Partial<Record<Towar, number>> } {
     const cyw = this.cywilizacja(idCyw)!;
     const obecny = this.tierCywilizacji(idCyw);
     const sasiedziZTierem = this.sasiednieCywilizacje(idCyw).some((s) => this.tierCywilizacji(s) >= tier);
     const towary: Partial<Record<Towar, number>> = {};
+    const odSasiada: Partial<Record<Towar, number>> = {};
     const pop = this.wezel(cyw.stolica).populacjaMln ?? 0;
     for (const t of TOWARY) {
       const min = minTierTowaru(t);
-      const wRecepturze = min <= obecny || (min === tier && sasiedziZTierem);
-      if (!wRecepturze) continue;
-      towary[t] = Math.max(1, Math.ceil(P.runda3.awans.ilosciKontraktu * konsumpcjaZLudnosci(idCyw, pop, t, tier)));
+      const wlasny = min <= obecny;
+      const sasiada = min === tier && sasiedziZTierem;
+      if (!wlasny && !sasiada) continue;
+      const ilosc = Math.max(1, Math.ceil(P.runda3.awans.ilosciKontraktu * konsumpcjaZLudnosci(idCyw, pop, t, tier)));
+      towary[t] = ilosc;
+      if (sasiada) odSasiada[t] = ilosc;
     }
-    return towary;
+    return { towary, odSasiada };
   }
 
   /** Upływ czasu w rundzie 3: skumulowana nadwyżka cywilizacji, po przekroczeniu progu kontrakt rozwojowy. */
@@ -316,7 +320,8 @@ export class Gra {
       if (tier >= K.TierCount) continue;
       r.nadwyzkaWU += this.nadwyzkaDobowaWU(c.id) * dt;
       if (!r.kontrakt && r.nadwyzkaWU >= this.progGotowosciWU(c.id, tier + 1)) {
-        r.kontrakt = { tier: tier + 1, towary: this.recepturaKontraktu(c.id, tier + 1), otwartyDoba: this.stan.doba };
+        const receptura = this.recepturaKontraktu(c.id, tier + 1);
+        r.kontrakt = { tier: tier + 1, towary: receptura.towary, odSasiada: receptura.odSasiada, dostarczone: {}, naukowiecWAkademii: false, otwartyDoba: this.stan.doba };
         this.kamien(`gotowosc:${c.id}:T${tier + 1}`);
       }
     }
@@ -353,8 +358,40 @@ export class Gra {
     return Math.min(suma, l.m3);
   }
 
-  /** Czy kontrakt cywilizacji w tym doku da się dostarczyć (akademia = stolica, naukowiec, receptura kupiona gdzie indziej). */
-  kontraktDoDostarczenia(idWezla: string = this.stan.pozycja): { cywilizacja: string; kontrakt: Kontrakt; brakuje: string[] } | null {
+  /** Ile m³ towaru w ładowni pochodzi od sąsiadów cywilizacji `idCyw` (towar sąsiada w recepturze). */
+  ladunekOdSasiadow(towar: Towar, idCyw: string): number {
+    const l = this.stan.ladownia[towar];
+    const sasiedzi = new Set(this.sasiednieCywilizacje(idCyw));
+    let suma = 0;
+    for (const c of Object.keys(l.pochodzenie)) if (sasiedzi.has(c)) suma += l.pochodzenie[c];
+    return Math.min(suma, l.m3);
+  }
+
+  /** Ile m³ towaru receptury kontraktu `idCyw` już jest w ładowni (z właściwym pochodzeniem). */
+  ladunekDoKontraktu(towar: Towar, idCyw: string): number {
+    const kontrakt = this.stan.rozwoj[idCyw]?.kontrakt;
+    if (!kontrakt) return 0;
+    return kontrakt.odSasiada[towar] ? this.ladunekOdSasiadow(towar, idCyw) : this.stan.ladownia[towar].m3;
+  }
+
+  /** Ile m³ receptury kontraktu cywilizacji jeszcze nie dotarło do akademii (bez ładunku na pokładzie). */
+  pozostaloKontraktu(idCyw: string): Partial<Record<Towar, number>> {
+    const kontrakt = this.stan.rozwoj[idCyw]?.kontrakt;
+    const pozostalo: Partial<Record<Towar, number>> = {};
+    if (!kontrakt) return pozostalo;
+    for (const t of Object.keys(kontrakt.towary) as Towar[]) {
+      const r = kontrakt.towary[t]! - (kontrakt.dostarczone[t] ?? 0);
+      if (r > EPS) pozostalo[t] = r;
+    }
+    return pozostalo;
+  }
+
+  /**
+   * Kontrakt cywilizacji w tym doku (akademia = stolica): co z pokładu da się teraz dostarczyć (`dostarczalne`)
+   * i czego po tej dostawie wciąż będzie brakować do zamknięcia (`brakuje`: towary i/lub 'naukowiec').
+   * Dostawy są częściowe: receptura może dotrzeć w kilku kursach lub kilkoma statkami; awans zamyka ostatnia dostawa z naukowcem.
+   */
+  kontraktDoDostarczenia(idWezla: string = this.stan.pozycja): { cywilizacja: string; kontrakt: Kontrakt; brakuje: string[]; dostarczalne: Partial<Record<Towar, number>>; naukowiecNaPokladzie: boolean } | null {
     if (!this.runda3) return null;
     const w = this.wezel(idWezla);
     if (w.typ !== 'planeta' || !w.cywilizacja) return null;
@@ -363,31 +400,49 @@ export class Gra {
     const kontrakt = this.stan.rozwoj[cyw.id].kontrakt;
     if (!kontrakt) return null;
     const brakuje: string[] = [];
+    const dostarczalne: Partial<Record<Towar, number>> = {};
     const s = this.statek();
-    if (!s.naukowiec || s.naukowiec.cywilizacja !== cyw.id) brakuje.push('naukowiec');
-    for (const t of Object.keys(kontrakt.towary) as Towar[]) {
-      if (this.ladunekSpoza(t, cyw.id) + EPS < kontrakt.towary[t]!) brakuje.push(t);
+    const naukowiecNaPokladzie = s.naukowiec?.cywilizacja === cyw.id;
+    if (!naukowiecNaPokladzie && !kontrakt.naukowiecWAkademii) brakuje.push('naukowiec');
+    const pozostalo = this.pozostaloKontraktu(cyw.id);
+    for (const t of Object.keys(pozostalo) as Towar[]) {
+      const ile = Math.min(pozostalo[t]!, this.ladunekDoKontraktu(t, cyw.id));
+      if (ile > EPS) dostarczalne[t] = ile;
+      if (pozostalo[t]! - ile > EPS) brakuje.push(t);
     }
-    return { cywilizacja: cyw.id, kontrakt, brakuje };
+    return { cywilizacja: cyw.id, kontrakt, brakuje, dostarczalne, naukowiecNaPokladzie };
   }
 
-  /** Dostawa kontraktu rozwojowego w akademii: zużywa recepturę i naukowca, cywilizacja awansuje o tier. */
-  dostarczKontrakt(): { cywilizacja: string; tier: number } {
+  /**
+   * Dostawa (częściowa lub końcowa) kontraktu rozwojowego w akademii: zużywa z pokładu to, co pasuje do receptury, i naukowca;
+   * gdy cała receptura i naukowiec są w akademii, cywilizacja awansuje o tier (`zamkniety`).
+   */
+  dostarczKontrakt(): { cywilizacja: string; tier: number; zamkniety: boolean; dostarczone: Partial<Record<Towar, number>> } {
     const d = this.kontraktDoDostarczenia();
     if (!d) throw new Error('Tu nie ma otwartego kontraktu rozwojowego do dostarczenia');
-    if (d.brakuje.length) throw new Error(`Do kontraktu brakuje: ${d.brakuje.join(', ')}`);
-    for (const t of Object.keys(d.kontrakt.towary) as Towar[]) this.zuzyjLadunekSpoza(t, d.kontrakt.towary[t]!, d.cywilizacja);
-    this.statek().naukowiec = null;
-    this.awansujCywilizacje(d.cywilizacja, d.kontrakt.tier);
-    return { cywilizacja: d.cywilizacja, tier: d.kontrakt.tier };
+    const towary = Object.keys(d.dostarczalne) as Towar[];
+    if (!towary.length && !d.naukowiecNaPokladzie) throw new Error(`Nie masz nic do tego kontraktu; brakuje: ${d.brakuje.join(', ')}`);
+    for (const t of towary) {
+      this.zuzyjLadunek(t, d.dostarczalne[t]!, d.kontrakt.odSasiada[t] ? new Set(this.sasiednieCywilizacje(d.cywilizacja)) : null);
+      d.kontrakt.dostarczone[t] = (d.kontrakt.dostarczone[t] ?? 0) + d.dostarczalne[t]!;
+    }
+    if (d.naukowiecNaPokladzie) {
+      this.statek().naukowiec = null;
+      d.kontrakt.naukowiecWAkademii = true;
+    }
+    const zamkniety = d.brakuje.length === 0;
+    if (zamkniety) this.awansujCywilizacje(d.cywilizacja, d.kontrakt.tier);
+    return { cywilizacja: d.cywilizacja, tier: d.kontrakt.tier, zamkniety, dostarczone: d.dostarczalne };
   }
 
-  private zuzyjLadunekSpoza(towar: Towar, m3: number, idCyw: string): void {
+  /** Zużywa m3 towaru z ładowni; gdy podano zbiór cywilizacji, najpierw z ich pochodzenia (towar sąsiada), inaczej z dowolnego. */
+  private zuzyjLadunek(towar: Towar, m3: number, zCywilizacji: Set<string> | null): void {
     const l = this.stan.ladownia[towar];
     const koszt = zaokr((l.kosztKr * m3) / l.m3);
     let zostalo = m3;
-    for (const c of Object.keys(l.pochodzenie)) {
-      if (c === idCyw || zostalo <= EPS) continue;
+    const kolejnosc = Object.keys(l.pochodzenie).sort((a, b) => Number(zCywilizacji?.has(b) ?? false) - Number(zCywilizacji?.has(a) ?? false));
+    for (const c of kolejnosc) {
+      if (zostalo <= EPS) break;
       const bierz = Math.min(l.pochodzenie[c], zostalo);
       l.pochodzenie[c] -= bierz;
       zostalo -= bierz;
@@ -637,18 +692,18 @@ export class Gra {
    * Lot na dystans: doby i paliwo. Runda 3 liczy z hierarchii ciągu (masa z bieżącym paliwem i ładunkiem),
    * poza rundą 3 dystans / prędkość i 1 m³/pc × mnożnik nawigatora.
    */
-  obliczLot(dystansPc: number, zaloga: readonly Zalogant[] = this.stan.zaloga, paliwoM3 = this.stan.paliwo, ladunekDodatkowyT = 0): { doby: number; paliwo: number; dobyNominalne: number; bezZalogi: number; poNawigatorze: number; predkoscStart: number; predkoscMeta: number } {
+  obliczLot(dystansPc: number, zaloga: readonly Zalogant[] = this.stan.zaloga, paliwoM3 = this.stan.paliwo, ladunekDodatkowyT = 0): { doby: number; paliwo: number; dobyNominalne: number; bezZalogi: number; poNawigatorze: number; bezPilota: number; predkoscStart: number; predkoscMeta: number } {
     const ef = this.efekty(zaloga);
     if (!this.runda3) {
       const bezZalogi = dystansPc * K.kosztPaliwaNaParsek;
       const poNawigatorze = bezZalogi * ef.mnoznikNawigatora;
-      return { doby: dystansPc / ef.predkosc, paliwo: poNawigatorze * ef.mnoznikSynergii, dobyNominalne: dystansPc / K.predkoscNominalna, bezZalogi, poNawigatorze, predkoscStart: ef.predkosc, predkoscMeta: ef.predkosc };
+      return { doby: dystansPc / ef.predkosc, paliwo: poNawigatorze * ef.mnoznikSynergii, dobyNominalne: dystansPc / K.predkoscNominalna, bezZalogi, poNawigatorze, bezPilota: poNawigatorze * ef.mnoznikSynergii, predkoscStart: ef.predkosc, predkoscMeta: ef.predkosc };
     }
     const pelny = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, true, true, true));
     const nominalny = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, true, true));
     const bezZalogi = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, false, false));
     const poNawigatorze = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, true, false));
-    return { doby: pelny.doby, paliwo: pelny.paliwoM3, dobyNominalne: nominalny.doby, bezZalogi: bezZalogi.paliwoM3, poNawigatorze: poNawigatorze.paliwoM3, predkoscStart: pelny.predkoscStart, predkoscMeta: pelny.predkoscMeta };
+    return { doby: pelny.doby, paliwo: pelny.paliwoM3, dobyNominalne: nominalny.doby, bezZalogi: bezZalogi.paliwoM3, poNawigatorze: poNawigatorze.paliwoM3, bezPilota: nominalny.paliwoM3, predkoscStart: pelny.predkoscStart, predkoscMeta: pelny.predkoscMeta };
   }
 
   /** Najdalszy dystans na podanym paliwie przy bieżącej masie (runda 3) albo paliwo / (1 m³/pc × mnożnik). */
@@ -707,6 +762,12 @@ export class Gra {
     this.okres.kadlub = { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
     this.kamien(`szczebel:${w.nastepny}`);
     return { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
+  }
+
+  private zamknijKurs(): void {
+    const ks = this.stan.kursStart;
+    (this.stan.zyskiKursow[ks.szczebel] ??= []).push(this.okres.wartoscNaStarcie - ks.wartosc + ks.kadlubKr);
+    this.stan.kursStart = { wartosc: this.okres.wartoscNaStarcie, szczebel: this.stan.szczebel, kadlubKr: 0 };
   }
 
   private kamien(klucz: string): void {
@@ -1105,6 +1166,9 @@ export class Gra {
     if (this.masaZajeta() + m3 * K.towary[towar].gestosc > this.maxMasa() + EPS) throw new Error('Przekroczona masa ładunku');
     const w = this.wycenaKupna(towar, m3);
     if (w.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
+    // Runda 3: kurs zamyka pierwszy zakup w doku (cykl handlowy zaczyna się zakupem; przy bezdennych rynkach sprzedaże drobnych
+    // partii po drodze dawały medianę zysku na kurs ujemną mimo rosnącej wartości firmy).
+    if (this.runda3 && !this.okres.transakcje.some((t) => t.rodzaj === 'kupno')) this.zamknijKurs();
     this.stan.kr -= w.kwotaKr;
     this.okres.deltaKr -= w.kwotaKr;
     poz.zapas -= m3;
@@ -1146,12 +1210,9 @@ export class Gra {
     if (m3 > l.m3 + EPS) throw new Error('Nie masz tyle w ładowni');
     if (this.stan.rynki[tu][towar].dostepny === false) throw new Error('Ta cywilizacja nie zna jeszcze tego towaru (tier za niski)');
     m3 = Math.min(m3, l.m3);
-    // Pierwsza sprzedaż w tym doku zamyka kurs: zysk = wartość przy przylocie tutaj − wartość przy przylocie do poprzedniego doku ze sprzedażą (+ wydatki na kadłub).
-    if (!this.okres.transakcje.some((t) => t.rodzaj === 'sprzedaz')) {
-      const ks = this.stan.kursStart;
-      (this.stan.zyskiKursow[ks.szczebel] ??= []).push(this.okres.wartoscNaStarcie - ks.wartosc + ks.kadlubKr);
-      this.stan.kursStart = { wartosc: this.okres.wartoscNaStarcie, szczebel: this.stan.szczebel, kadlubKr: 0 };
-    }
+    // Pierwsza sprzedaż w tym doku zamyka kurs (runda 3: pierwszy zakup): zysk = wartość przy przylocie tutaj − wartość przy przylocie
+    // do poprzedniego doku zamykającego kurs (+ wydatki na kadłub).
+    if (!this.runda3 && !this.okres.transakcje.some((t) => t.rodzaj === 'sprzedaz')) this.zamknijKurs();
     const w = this.wycenaSprzedazy(towar, m3);
     const kosztZakupu = zaokr((l.kosztKr * m3) / l.m3);
     const cywTu = this.wezel(tu).cywilizacja ?? '';
@@ -1288,6 +1349,7 @@ export class Gra {
       paliwoZuzyteM3: l.paliwo,
       bezZalogiM3: l.bezZalogi,
       poNawigatorzeM3: l.poNawigatorze,
+      bezPilotaM3: l.bezPilota,
       placeKr: place,
       placeNominalneKr: placeNominalne,
       cenaOdniesieniaKr: this.cenaPaliwaTutaj(),
@@ -1384,7 +1446,8 @@ export class Gra {
     const zuzyte = w.paliwoZuzyteM3;
     const bezZalogi = w.bezZalogiM3;
     const oszczNaw = bezZalogi - w.poNawigatorzeM3;
-    const oszczSyn = w.poNawigatorzeM3 - (this.runda3 ? this.obliczLotBezPilota(w) : zuzyte);
+    // Synergia liczona przy załodze z chwili startu (XP po locie mógł zmienić umiejętności); w rundzie 3 pilot zmienia też spalanie.
+    const oszczSyn = w.poNawigatorzeM3 - w.bezPilotaM3;
     const cenaOdniesienia = w.cenaOdniesieniaKr;
     const place = w.placeKr;
     const placeNominalne = w.placeNominalneKr;
@@ -1424,7 +1487,7 @@ export class Gra {
 
     const zmianaSalda = linie.reduce((a, l) => a + l.kr, 0);
     if (zmianaSalda !== okres.deltaKr) {
-      throw new Error(`Raport nie sumuje się do przepływów statku: ${zmianaSalda} vs ${okres.deltaKr}`);
+      throw new Error(`Raport nie sumuje się do przepływów statku: ${zmianaSalda} vs ${okres.deltaKr} (${linie.map((l) => `${l.klucz}=${l.kr}`).join(', ')}; paliwo kupione ${okres.paliwoKosztKr}, transakcje ${okres.transakcje.map((t) => `${t.rodzaj[0]}${t.towar}=${t.kwotaKr}`).join(',')})`);
     }
 
     const wynikHandlowy: WynikHandlowy[] = [];
@@ -1483,14 +1546,6 @@ export class Gra {
     this.stan.raporty.push(raport);
     this.ostatnieRaporty[i] = raport;
     this.stan.aktywny = poprzedni;
-  }
-
-  /** Paliwo lotu bez pilota, ale z nawigatorem i synergią (do linii synergii w rundzie 3, gdzie pilot zmienia też spalanie). */
-  private obliczLotBezPilota(w: { dystans: number; paliwoZuzyteM3: number }): number {
-    // Masa startowa odtworzona: paliwo na starcie = paliwo teraz + zużyte (statek już przyleciał).
-    const statek = this.statek();
-    const l = lot(w.dystans, this.parametryLotu(statek.zaloga, statek.paliwo + w.paliwoZuzyteM3, 0, false, true, true));
-    return l.paliwoM3;
   }
 
   // ---------- Pomocnicze ----------

@@ -574,10 +574,12 @@ function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string
       // Runda 3: konsumpcja z ludności (populacja planety × koszyk T1), bez głębokości portu; sektor otwarty, gdy T1 ≥ SectorMinTier.
       const otwarty = !tryb.runda3 || minTierTowaru(g) <= 1;
       const naRynku = !tryb.runda3 || tryb.bramka === 'P' || otwarty;
-      const konsumpcje = t.uklady.map((i, r) => (tryb.runda3 ? (naRynku ? konsumpcjaZLudnosci(t.id, populacje[i], g, 1) : 0) : G.portNaUkladM3NaDobe[g] * profil.potrzeby[g] * t.wagi[r] * (g === 'Fuel' ? 1 : glebokosc)));
+      // Konsumpcja potencjalna (koszyk T1) liczy się zawsze: normalizacja specjalizacji musi być gotowa, zanim tier otworzy sektor (bramka G).
+      const potencjalne = t.uklady.map((i, r) => (tryb.runda3 ? konsumpcjaZLudnosci(t.id, populacje[i], g, 1) : G.portNaUkladM3NaDobe[g] * profil.potrzeby[g] * t.wagi[r] * (g === 'Fuel' ? 1 : glebokosc)));
+      const konsumpcje = potencjalne.map((k) => (naRynku ? k : 0));
       const spec = t.uklady.map((_, r) => (g !== 'Fuel' && specjalnosci[r] === g ? G.specjalizacjaMnoznik : g === 'Fuel' ? 1 : G.specjalizacjaReszta));
-      const sumaK = konsumpcje.reduce((s, k) => s + k, 0);
-      const sumaKS = konsumpcje.reduce((s, k, r) => s + k * spec[r], 0);
+      const sumaK = potencjalne.reduce((s, k) => s + k, 0);
+      const sumaKS = potencjalne.reduce((s, k, r) => s + k * spec[r], 0);
       const normalizacja = sumaKS > 0 ? sumaK / sumaKS : 0;
       t.uklady.forEach((i, r) => {
         const id = idUkladu[i];

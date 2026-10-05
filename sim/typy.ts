@@ -80,8 +80,14 @@ export interface PozycjaRynku {
 export interface Kontrakt {
   /** Tier docelowy. */
   tier: number;
-  /** Receptura: towar → m³ do dostarczenia (kupione u innej cywilizacji). */
+  /** Receptura: towar → m³ do dostarczenia; towary sektorów otwartych na bieżącym tierze mogą pochodzić skądkolwiek. */
   towary: Partial<Record<Towar, number>>;
+  /** Część receptury, która musi pochodzić od sąsiedniej cywilizacji (towar tieru docelowego, który sąsiad już produkuje). */
+  odSasiada: Partial<Record<Towar, number>>;
+  /** Ile m³ każdego towaru już dostarczono do akademii (dostawy częściowe, kilka kursów lub statków). */
+  dostarczone: Partial<Record<Towar, number>>;
+  /** Czy naukowiec już dotarł do akademii. */
+  naukowiecWAkademii: boolean;
   otwartyDoba: number;
 }
 
@@ -297,6 +303,8 @@ export interface LotWToku {
   paliwoZuzyteM3: number;
   bezZalogiM3: number;
   poNawigatorzeM3: number;
+  /** Paliwo bez pilota (z nawigatorem i synergią) przy załodze z chwili startu. */
+  bezPilotaM3: number;
   placeKr: number;
   placeNominalneKr: number;
   cenaOdniesieniaKr: number;

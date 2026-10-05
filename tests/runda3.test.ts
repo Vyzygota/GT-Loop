@@ -169,7 +169,7 @@ describe('runda 3: drabina rozwoju kanonu', () => {
     expect(Object.keys(k.towary)).not.toContain('Fuel');
   });
 
-  it('awans tylko po kontrakcie: receptura kupiona u innej cywilizacji + naukowiec z innej planety, dostarczone do akademii (stolicy)', () => {
+  it('awans tylko po kontrakcie: receptura + naukowiec z innej planety, dostarczone do akademii (stolicy)', () => {
     const g = new Gra('r3-kontrakt', OPCJE);
     const cywStart = g.wezel(g.stan.pozycja).cywilizacja!;
     // Cywilizacja do awansu: inna znana cywilizacja; jej stolica to akademia.
@@ -192,21 +192,22 @@ describe('runda 3: drabina rozwoju kanonu', () => {
         g.lec([sciezka[i], sciezka[i + 1]]);
       }
     };
-    // Kup recepturę u innej cywilizacji niż cel: tutaj, a gdy tu brak zapasu (deficyt), na najbliższej planecie z zapasem.
+    // Kup recepturę (towary własnych sektorów celu, dowolne pochodzenie): tutaj, a gdy tu brak zapasu, na najbliższej planecie z zapasem.
+    expect(Object.keys(kontrakt.odSasiada)).toEqual([]);
     g.tankuj(g.maxPaliwo());
     for (const t of Object.keys(kontrakt.towary) as (keyof typeof kontrakt.towary)[]) {
       const ile = kontrakt.towary[t]!;
       if (g.maxKupno(t) < ile) {
         const d0 = g.graf.dijkstra(g.stan.pozycja);
         const zrodlo = g.swiat.wezly
-          .filter((w) => w.typ === 'planeta' && w.cywilizacja !== cel.id && g.rynekZnany(w.id) && g.stan.rynki[w.id][t].zapas >= ile)
+          .filter((w) => w.typ === 'planeta' && g.rynekZnany(w.id) && g.stan.rynki[w.id][t].zapas >= ile)
           .sort((a, b) => (d0.get(a.id)?.dystans ?? Infinity) - (d0.get(b.id)?.dystans ?? Infinity))[0];
         expect(zrodlo).toBeDefined();
         lecDo(zrodlo.id);
       }
       expect(g.maxKupno(t)).toBeGreaterThanOrEqual(ile);
       g.kup(t, ile);
-      expect(g.ladunekSpoza(t, cel.id)).toBeGreaterThanOrEqual(ile);
+      expect(g.ladunekDoKontraktu(t, cel.id)).toBeGreaterThanOrEqual(ile);
     }
     // Naukowiec: z planety celu innej niż akademia (lub sąsiedniej); tu (cywilizacja startowa) tylko jeśli sąsiednia.
     const d = g.graf.dijkstra(g.stan.pozycja);
