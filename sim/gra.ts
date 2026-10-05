@@ -177,7 +177,7 @@ export class Gra {
     this.bramkaTowaru = opcje.bramkaTowaru ?? P.runda3.bramkaTowaru;
     this.wariantPamieciFloty = opcje.pamiecFloty ?? P.runda3.pamiecFloty;
     this.progresja = this.runda3 || (opcje.progresja ?? P.progresja.wlaczona);
-    this.limitDob = opcje.limitDob ?? (this.progresja ? P.progresja.horyzontDob : P.skale[this.skala].limitDob);
+    this.limitDob = opcje.limitDob ?? (this.runda3 ? P.runda3.horyzontDob : this.progresja ? P.progresja.horyzontDob : P.skale[this.skala].limitDob);
     this.wariantSpreadu = opcje.spread ?? P.spread;
     const konfig = P.wariantySpreadu[this.wariantSpreadu];
     this.spreadPodstawowy = konfig.tryb === 'staly' ? K.tradeSpread : (konfig.spreadPodstawowy ?? 0);

@@ -80,6 +80,7 @@
   },
   "runda3": {
     "wlaczona": false,
+    "horyzontDob": 4800,
     "paliwo": "R",
     "bramkaTowaru": "G",
     "pamiecFloty": "A",
@@ -970,16 +971,18 @@
     "slabychDokowDoOdwrotu": 1,
     "maxResztaKoszykaKrotnoscMajatku": 2.0,
     "maxOdcinekGrafuPc": 400,
-    "maxDystansKontraktuPc": 900,
+    "maxDystansKontraktuPc": 2000,
     "mnoznikGotowkiNaKontrakt": 2.0,
-    "maxDobyMisji": 400,
+    "maxDobyMisji": 800,
     "mnoznikGotowkiNaStatek": 1.5,
     "dobyCzekaniaFloty": 5,
     "maxDobyCzekaniaFloty": 90,
     "karaWspolnegoCelu": 0.1,
-    "maxDobyEkspedycji": 150,
-    "maxDobyDrogiMisji": 240,
+    "maxDobyEkspedycji": [150, 250, 400, 400],
+    "maxDobyDrogiMisji": [150, 250, 400, 500],
     "rezerwaZasieguMisji": 0.15,
-    "maxStrataMisjiUlamek": 0.1
+    "maxStrataMisjiUlamek": 0.1,
+    "maxUdzialKosztuMisji": 0.1,
+    "mnoznikGotowkiNaEkspedycjeRunda3": 5.0
   }
 }

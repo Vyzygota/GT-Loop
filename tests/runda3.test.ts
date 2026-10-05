@@ -434,7 +434,7 @@ describe('runda 3: flota, pamięć floty, dostawy częściowe, determinizm', () 
     expect(g.rozwoj(cel.id).kontrakt).toBeNull();
   });
 
-  it('determinizm floty: dwa przebiegi bota floty na L z tym samym ziarnem dają ten sam stan po całym horyzoncie 1 200 dób', () => {
+  it('determinizm floty: dwa przebiegi bota floty na L z tym samym ziarnem dają ten sam stan po całym horyzoncie 4 800 dób', () => {
     const opcje = { skala: 'L' as const, informacja: 'pelna' as const, spread: 'B' as const, paliwo: 'R' as const, bramkaTowaru: 'G' as const, pamiecFloty: 'A' as const };
     const zrzut = (g: Gra) =>
       JSON.stringify({
@@ -453,7 +453,8 @@ describe('runda 3: flota, pamięć floty, dostawy częściowe, determinizm', () 
     expect(a).toBe(b);
     expect(wa.wartoscKoncowa).toBe(wb.wartoscKoncowa);
     expect(wa.loty.length).toBe(wb.loty.length);
-    expect(JSON.parse(a).doba).toBeGreaterThanOrEqual(1200);
+    expect(JSON.parse(a).doba).toBeGreaterThanOrEqual(P.runda3.horyzontDob);
+    expect(P.runda3.horyzontDob).toBe(4800);
     expect(Number.isFinite(wa.wartoscKoncowa)).toBe(true);
-  }, 120_000);
+  }, 900_000);
 });

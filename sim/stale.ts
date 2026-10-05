@@ -123,6 +123,8 @@ export interface KonfiguracjaProgresji {
 }
 
 export interface KonfiguracjaRundy3 {
+  /** Horyzont rundy 3 (dób); cel projektanta: maksimum osi w ok. 4 000 dób, horyzont 4 800 pokazuje przekroczenie. */
+  horyzontDob: number;
   wlaczona: boolean;
   paliwo: 'R' | 'D';
   bramkaTowaru: 'G' | 'P';
@@ -295,14 +297,18 @@ export interface Prototyp {
     karaWspolnegoCelu: number;
     /** Runda 3: ile planów (wg stopy pierwszego kroku) dostaje ocenę dwóch kroków; na skali L pętla handlowa bywa poza pierwszą piątką. */
     planowDoDrugiegoKrokuRunda3: number;
-    /** Runda 3: ekspedycja (pusty lot do nieznanej cywilizacji) tylko, gdy przy obecnej masie trwa nie dłużej niż tyle dób. */
-    maxDobyEkspedycji: number;
-    /** Runda 3: misja kontraktowa tylko, gdy droga po recepturę i do akademii trwa nie dłużej niż tyle dób. */
-    maxDobyDrogiMisji: number;
+    /** Runda 3: ekspedycja (pusty lot do nieznanej cywilizacji) tylko, gdy przy obecnej masie trwa nie dłużej niż tyle dób; indeks = wielkość floty (1 / 2–3 / 4–7 / 8). */
+    maxDobyEkspedycji: number[];
+    /** Runda 3: misja kontraktowa tylko, gdy droga po recepturę i do akademii trwa nie dłużej niż tyle dób; indeks = wielkość floty (1 / 2–3 / 4–7 / 8). */
+    maxDobyDrogiMisji: number[];
     /** Runda 3: zapas zasięgu (ułamek najdłuższego odcinka drogi do akademii), jaki musi zostać po załadunku receptury (wariant R: masa skraca zasięg). */
     rezerwaZasieguMisji: number;
     /** Runda 3: etap misji, którego plan traci więcej niż ten ułamek wartości firmy, kończy misję (zamiast spalić kasę na jednym locie). */
     maxStrataMisjiUlamek: number;
+    /** Runda 3: koszt misji (receptura po cenie bazowej + paliwo drogi) nie może przekraczać tego ułamka wartości firmy. */
+    maxUdzialKosztuMisji: number;
+    /** Runda 3: ekspedycja tylko, gdy gotówka z ładunkiem ≥ tyle × koszt pustego lotu (flota w słabym regionie bankrutowała na dwóch ekspedycjach z rzędu przy 3×). */
+    mnoznikGotowkiNaEkspedycjeRunda3: number;
   };
 }
 

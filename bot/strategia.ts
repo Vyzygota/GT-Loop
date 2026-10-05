@@ -1,3 +1,4 @@
+import { bakSzczeblaM3 } from '../sim/lot';
 import {
   Gra,
   Graf,
@@ -88,6 +89,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[], l
   const skokiDo = new Map<string, number>([[start, 0]]);
   const poprzednik = new Map<string, string | null>([[start, null]]);
   const odwiedzone = new Set<string>();
+  const karaPrzystanku = P.bot.karaPrzystankuPc;
   // Prosty Dijkstra po grafie tankowania (kilkaset węzłów).
   while (true) {
     let biezacy: string | null = null;
@@ -105,7 +107,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[], l
     for (const o of lista) {
       if (o.dystans > zasiegOdcinka + 1e-9) continue;
       // Każdy przystanek kosztuje czas i uwagę: kara w pc preferuje mniej, dłuższych odcinków.
-      const nowy = najmniej + o.dystans + P.bot.karaPrzystankuPc;
+      const nowy = najmniej + o.dystans + karaPrzystanku;
       if (nowy < (dystans.get(o.do) ?? Infinity)) {
         dystans.set(o.do, nowy);
         poprzednik.set(o.do, biezacy);
@@ -122,7 +124,7 @@ export function dojazdyZ(gra: Gra, start: string, zaloga: readonly Zalogant[], l
       odc.unshift(x);
       x = poprzednik.get(x) ?? null;
     }
-    wynik.set(id, { dystans: d - odc.length * P.bot.karaPrzystankuPc, odcinki: odc, skoki: skokiDo.get(id) ?? 0 });
+    wynik.set(id, { dystans: d - odc.length * karaPrzystanku, odcinki: odc, skoki: skokiDo.get(id) ?? 0 });
   }
   if (klucz) {
     if (cacheDojazdow.size >= MAX_CACHE_DOJAZDOW) cacheDojazdow.clear();
@@ -195,7 +197,12 @@ export class Kontekst {
     readonly zarezerwowaneTowary: Partial<Record<Towar, number>> = {},
     /** Flota: inny statek jest już na ekspedycji (albo flota niedawno ją zrobiła) — ten statek nie rusza na kolejną. */
     readonly bezEkspedycji = false,
-  ) {}
+  ) {
+    this.rezerwaKr = rezerwaFloty(gra);
+  }
+
+  /** Flota: gotówka zarezerwowana na paliwo innych statków (plany liczą z gotówki pomniejszonej o nią). */
+  readonly rezerwaKr: number;
 
   /** Marża na m³ towaru, jakiej bot może oczekiwać: mediana własnych sprzedaży (co najmniej minSprzedazyDoMarzy), inaczej 0. */
   marzaOczekiwana(towar: Towar): number {
@@ -256,11 +263,11 @@ export class Kontekst {
     return Math.round(Math.min(m3 * K.towary[towar].basePrice, p.pozostaloWU) * p.naWU);
   }
 
-  dojazdyZ(start: string, zaloga: readonly Zalogant[]): Map<string, Dojazd> {
-    const klucz = `${start}:${efektyZalogi(zaloga).mnoznikPaliwa.toFixed(4)}`;
+  dojazdyZ(start: string, zaloga: readonly Zalogant[], ladunekDodatkowyT = 0): Map<string, Dojazd> {
+    const klucz = `${start}:${efektyZalogi(zaloga).mnoznikPaliwa.toFixed(4)}:${Math.round(ladunekDodatkowyT)}`;
     const gotowe = this.dojazdyCache.get(klucz);
     if (gotowe) return gotowe;
-    const d = dojazdyZ(this.gra, start, zaloga);
+    const d = dojazdyZ(this.gra, start, zaloga, ladunekDodatkowyT);
     this.dojazdyCache.set(klucz, d);
     return d;
   }
@@ -580,10 +587,13 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     }
     if (!znanyCel) continue;
 
-    const gotowka = gra.stan.kr + przychodTu - koszty;
+    const gotowkaReal = gra.stan.kr + przychodTu - koszty;
     // Trasa, na którą nie starcza gotówki po sprzedaży tutaj, nie jest planem: przychód w celu nie zapłaci za paliwo po drodze
     // (bez tej reguły bot z drogim ładunkiem i pustą kasą grzązł u plemion w połowie drogi).
-    if (gotowka < 0) continue;
+    if (gotowkaReal < 0) continue;
+    // Flota: zakupy tylko z gotówki ponad rezerwę na paliwo innych statków; sam lot (ze sprzedażą tutaj) jest możliwy zawsze,
+    // gdy starcza realnej gotówki — rezerwa nie może zablokować wszystkich planów naraz (flota stała 3 400 dób z 10 mln w kasie).
+    const gotowka = Math.max(0, gotowkaReal - ctx.rezerwaKr);
     const zakupy = rynekTu && gotowka > 0 ? dobierzLadunek(ctx, cel, doby, gotowka, ef.udzialHandlowca, zostaje, objetosc, masa, d.skoki) : [];
     const premiaLadunku = premia;
     premia += zakupy.reduce((s, z) => s + z.premiaKr, 0);
@@ -633,7 +643,9 @@ export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]
   const gotowe = ctx.drugiKrokCache.get(kluczCache);
   if (gotowe) return gotowe;
   const ef = efektyZalogi(zaloga);
-  const doj = ctx.dojazdyZ(plan.cel, zaloga);
+  // Drugi krok startuje z celu po sprzedaży ładunku: dojazdy liczone dla pustego statku (w rundzie 3 zasięg zależy od masy,
+  // a stały zasięg pustego kadłuba trafia w pamięć dojazdów między krokami floty).
+  const doj = ctx.dojazdyZ(plan.cel, zaloga, gra.runda3 ? -gra.masaZajeta() : 0);
   const cenaPaliwa = gra.cenaPaliwa(plan.cel) ?? gra.cenaPaliwaTutaj();
   let najlepszy = { zysk: 0, doby: 0 };
   const cele2 = [...doj.entries()]
@@ -767,7 +779,8 @@ function kosztWyjscia(gra: Gra, doj: Map<string, Dojazd>): number {
  * czyli koszt pustego lotu do stolicy innej cywilizacji (bez tego bot kupował kadłub w regionie bez zyskownych tras i grzązł tam).
  */
 function stacNaSzczebel(gra: Gra, kwotaKr: number, doj: Map<string, Dojazd>): boolean {
-  return gra.stan.kr >= P.bot.mnoznikGotowkiNaSzczebel * kwotaKr && gra.stan.kr - kwotaKr >= kosztWyjscia(gra, doj);
+  const kasa = gra.stan.kr - rezerwaFloty(gra);
+  return kasa >= P.bot.mnoznikGotowkiNaSzczebel * kwotaKr && kasa - kwotaKr >= kosztWyjscia(gra, doj);
 }
 
 /**
@@ -781,7 +794,7 @@ function celStoczni(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | null 
   const naKadlub = !!w && w.kwotaKr !== null && stacNaSzczebel(gra, w.kwotaKr, doj);
   // Runda 3: wyprawa po nowy statek, gdy poziom firmy ma wolne miejsce i stać na statek z budżetem wyjścia.
   const cenaStatku = P.runda3.firma.cenaNowegoStatkuKr;
-  const naStatek = gra.runda3 && gra.stan.statki.length < gra.limitStatkow() && gra.stan.kr >= P.bot.mnoznikGotowkiNaStatek * cenaStatku && gra.stan.kr - cenaStatku >= kosztWyjscia(gra, doj);
+  const naStatek = gra.runda3 && gra.stan.statki.length < gra.limitStatkow() && gra.stan.kr - rezerwaFloty(gra) >= P.bot.mnoznikGotowkiNaStatek * cenaStatku && gra.stan.kr - rezerwaFloty(gra) - cenaStatku >= kosztWyjscia(gra, doj);
   if ((!naKadlub && !naStatek) || gra.wStoczni()) {
     stanBota.doStoczni = null;
     return null;
@@ -799,6 +812,23 @@ function celStoczni(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | null 
 }
 
 /** Szacowany koszt pustego lotu o danej długości: paliwo po cenie bazowej (u plemion tyle kosztuje) i płace. */
+/**
+ * Rezerwa gotówki floty (runda 3): wspólna kasa, więc statek w doku nie wydaje pieniędzy, których inne statki potrzebują na paliwo
+ * (pełny bak każdego z nich po cenie bazowej) — inaczej jeden zakup ładunku zostawiał resztę floty bez paliwa u plemion.
+ */
+export function rezerwaFloty(gra: Gra): number {
+  if (!gra.runda3) return 0;
+  let suma = 0;
+  for (const s of gra.stan.statki) if (s.id !== gra.stan.aktywny) suma += bakSzczeblaM3(s.szczebel) * kr(K.towary.Fuel.basePrice);
+  return suma;
+}
+
+/** Limit zależny od wielkości floty: 1 statek / 2–3 / 4–7 / 8 (samotny statek nie może zniknąć na setki dób). */
+export function limitFloty(limity: number[], statkow: number): number {
+  const i = statkow >= 8 ? 3 : statkow >= 4 ? 2 : statkow >= 2 ? 1 : 0;
+  return limity[Math.min(i, limity.length - 1)];
+}
+
 function kosztPustegoLotu(gra: Gra, dystans: number): number {
   const ef = efektyZalogi(gra.stan.zaloga);
   const l = gra.obliczLot(dystans, gra.stan.zaloga, gra.bak());
@@ -827,11 +857,11 @@ function celEkspedycji(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | nu
   if (!najlepszy) return null;
   // Runda 3: czas płynie dla całej floty, więc ekspedycja dłuższa niż maxDobyEkspedycji (przy obecnej masie statku) nie ma sensu
   // na horyzoncie 1 200 dób; dalsze cywilizacje czekają na szybszy (większy) kadłub.
-  if (gra.runda3 && gra.obliczLot(najlepszy.dystans, gra.stan.zaloga, gra.bak()).doby > P.bot.maxDobyEkspedycji) return null;
+  if (gra.runda3 && gra.obliczLot(najlepszy.dystans, gra.stan.zaloga, gra.bak()).doby > limitFloty(P.bot.maxDobyEkspedycji, gra.stan.statki.length)) return null;
   // Ekspedycja to pusty lot: rusza tylko, gdy gotówka (po sprzedaży ładunku tutaj) pokrywa koszt z zapasem.
   const koszt = kosztPustegoLotu(gra, najlepszy.dystans);
   const gotowka = gra.stan.kr + gra.wartoscLadowni();
-  if (gotowka < P.bot.mnoznikGotowkiNaEkspedycje * koszt) return null;
+  if (gotowka < (gra.runda3 ? P.bot.mnoznikGotowkiNaEkspedycjeRunda3 : P.bot.mnoznikGotowkiNaEkspedycje) * koszt) return null;
   stanBota.ekspedycje.push({ doba: gra.stan.doba, cel: najlepszy.id, dystans: najlepszy.dystans, kosztKr: koszt, gotowkaKr: gotowka, wynik: 'w drodze' });
   return najlepszy.id;
 }
@@ -935,7 +965,9 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
     }
     return { plan: naj, ocena: najOcena };
   };
-  const wyprawa = stanBota.celMisji ?? odwrotWToku(gra, stanBota) ?? celStoczni(gra, stanBota, ctx);
+  // Flota: stocznia (kadłub albo nowy statek, gdy stać) ma pierwszeństwo przed misją — jeden statek na 800-dobowych misjach
+  // nigdy nie dojeżdżał do stoczni po drugi statek, choć miał na niego od setek dób.
+  const wyprawa = celStoczni(gra, stanBota, ctx) ?? stanBota.celMisji ?? odwrotWToku(gra, stanBota);
   let wstepne = wyprawa ? planyDlaZalogi(gra, bezZmian.zaloga, ctx, { cele: new Set([wyprawa]) }) : [];
   if (wstepne.length === 0) wstepne = planyDlaZalogi(gra, bezZmian.zaloga, ctx);
   obserwator?.(wstepne);
@@ -1108,7 +1140,7 @@ export function inwestuj(gra: Gra, stanBota: StanBota = nowyStanBota()): Akcja[]
   // Runda 3: nowy statek, gdy poziom firmy ma wolne miejsce i gotówka ≥ mnożnik × cena (plus budżet wyjścia).
   if (gra.runda3 && gra.stan.statki.length < gra.limitStatkow()) {
     const cena = P.runda3.firma.cenaNowegoStatkuKr;
-    if (gra.stan.kr >= P.bot.mnoznikGotowkiNaStatek * cena && gra.stan.kr - cena >= kosztWyjscia(gra, doj)) {
+    if (gra.stan.kr - rezerwaFloty(gra) >= P.bot.mnoznikGotowkiNaStatek * cena && gra.stan.kr - rezerwaFloty(gra) - cena >= kosztWyjscia(gra, doj)) {
       const s = gra.kupStatek();
       akcje.push({ typ: 'kup-statek', id: s.id });
     }
