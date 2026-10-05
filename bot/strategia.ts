@@ -610,7 +610,7 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
  * Najlepszy pojedynczy kurs z celu planu (po przylocie, z gotówką po sprzedaży): jeden towar, jeden cel.
  * Dzięki temu bot widzi wartość pozycjonowania się po stronie producenta, nawet gdy pierwszy etap sam w sobie nie zarabia.
  */
-function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zysk: number; doby: number } {
+export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zysk: number; doby: number } {
   const gra = ctx.gra;
   if (plan.eksploracja) return { zysk: 0, doby: 0 };
   const kluczCache = `${plan.cel}:${Math.round(plan.doby)}:${Math.round(plan.gotowkaPo / 1e5)}`;
@@ -624,6 +624,11 @@ function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zy
     .filter(([cel2]) => cel2 !== plan.cel && gra.wezel(cel2).typ === 'planeta' && gra.informacjaORynku(cel2) !== null)
     .sort((a, b) => a[1].dystans - b[1].dystans)
     .slice(0, P.bot.celowDrugiegoKroku);
+  // Runda 3: na skali L najbliższe planety celu to zwykle ta sama cywilizacja (ten sam profil nadwyżek), więc drugi krok
+  // liczy też powrót do doku, z którego startujemy — pętla handlowa między dwiema cywilizacjami (żywność tam, rozpuszczalniki z powrotem).
+  const tu = gra.stan.pozycja;
+  const dTu = doj.get(tu);
+  if (gra.runda3 && dTu && tu !== plan.cel && gra.wezel(tu).typ === 'planeta' && gra.informacjaORynku(tu) !== null && !cele2.some(([c]) => c === tu)) cele2.push([tu, dTu]);
   for (const [cel2, d] of cele2) {
     for (const t of TOWARY) {
       const zrodlo = ctx.rynekZa(plan.cel, t, plan.doby);
@@ -804,6 +809,9 @@ function celEkspedycji(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | nu
     if (!najlepszy || d.dystans < najlepszy.dystans) najlepszy = { id, dystans: d.dystans };
   }
   if (!najlepszy) return null;
+  // Runda 3: czas płynie dla całej floty, więc ekspedycja dłuższa niż maxDobyEkspedycji (przy obecnej masie statku) nie ma sensu
+  // na horyzoncie 1 200 dób; dalsze cywilizacje czekają na szybszy (większy) kadłub.
+  if (gra.runda3 && gra.obliczLot(najlepszy.dystans, gra.stan.zaloga, gra.bak()).doby > P.bot.maxDobyEkspedycji) return null;
   // Ekspedycja to pusty lot: rusza tylko, gdy gotówka (po sprzedaży ładunku tutaj) pokrywa koszt z zapasem.
   const koszt = kosztPustegoLotu(gra, najlepszy.dystans);
   const gotowka = gra.stan.kr + gra.wartoscLadowni();
@@ -898,7 +906,7 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
     lista.sort((a, b) => b.naDobe - a.naDobe);
     let naj: Plan | null = null;
     let najOcena = -Infinity;
-    for (const p of lista.slice(0, P.bot.planowDoDrugiegoKroku)) {
+    for (const p of lista.slice(0, gra.runda3 ? P.bot.planowDoDrugiegoKrokuRunda3 : P.bot.planowDoDrugiegoKroku)) {
       const dalej = drugiKrok(ctx, p, bezZmian.zaloga);
       let ocena = Math.max(p.naDobe, (p.zyskNetto + dalej.zysk) / (p.doby + dalej.doby));
       // Flota: cel, do którego leci już inny statek firmy, jest gorszy o karaWspolnegoCelu (podział floty między trasy przy remisie,

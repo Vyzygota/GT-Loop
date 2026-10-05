@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Gra, K, P, TOWARY, lot, zasiegPrzyStalejMasie, zasiegNaPaliwie, masaSuchaT, ciagTf, type ParametryLotu } from '../sim/index';
+import { zagrajFlote } from '../bot/flota';
 
 const S = () => P.runda3.statek;
 
@@ -253,7 +254,206 @@ describe('runda 3: drabina rozwoju kanonu', () => {
     (g as unknown as { awansujCywilizacje: (c: string, t: number) => void }).awansujCywilizacje(cel.id, 2);
     expect(g.stan.rynki[cel.stolica].Minerals.dostepny).toBe(true);
     expect(g.stan.rynki[cel.stolica].Minerals.konsumpcja).toBeGreaterThan(0);
+    // Sektor otwarty tierem produkuje od razu (normalizacja specjalizacji liczona z konsumpcji potencjalnej, nie z zera).
+    expect(g.stan.rynki[cel.stolica].Minerals.produkcja).toBeGreaterThan(0);
     expect(g.stan.rynki[cel.stolica].Electronics.dostepny).toBe(false);
     expect(g.ceny(cel.stolica, 'Minerals')).not.toBeNull();
   });
+});
+
+/** Lot po najkrótszej ścieżce z tankowaniem tam, gdzie jest paliwo (pomocnik testów floty). */
+function lecDo(g: Gra, celId: string): void {
+  const sciezka = g.graf.najkrotszaSciezka(g.stan.pozycja, celId)!;
+  for (let i = 0; i + 1 < sciezka.length; i++) {
+    if (g.maPaliwo()) {
+      const ile = Math.min(g.bak() - g.stan.paliwo, g.maxPaliwo());
+      if (ile > 1e-6) g.tankuj(ile);
+    }
+    g.lec([sciezka[i], sciezka[i + 1]]);
+  }
+}
+
+/** Do stoczni cywilizacji startowej (stolica), z dużą gotówką na testy floty. */
+function doStoczni(g: Gra): void {
+  g.stan.kr = 1e9;
+  const cyw = g.cywilizacja(g.wezel(g.stan.pozycja).cywilizacja!)!;
+  if (!g.wStoczni()) lecDo(g, cyw.stolica);
+  expect(g.wStoczni()).toBe(true);
+}
+
+describe('runda 3: flota, pamięć floty, dostawy częściowe, determinizm', () => {
+  it('poziom firmy dopuszcza 1/2/4/8 statków; nowy statek tylko w stoczni i w limicie; okno stoczni nie przesuwa czasu', () => {
+    const g = new Gra('r3-flota', { skala: 'L', runda3: true, bramkaTowaru: 'G' });
+    doStoczni(g);
+    const doba = g.stan.doba;
+    const kr = g.stan.kr;
+    expect(P.runda3.firma.statkiNaPoziom).toEqual([1, 2, 4, 8]);
+    expect(g.limitStatkow()).toBe(1);
+    expect(() => g.kupStatek()).toThrow();
+    for (const [poziom, limit] of [[2, 2], [3, 4], [4, 8]] as const) {
+      g.stan.poziomFirmy = poziom;
+      expect(g.limitStatkow()).toBe(limit);
+      while (g.stan.statki.length < limit) g.kupStatek();
+      expect(() => g.kupStatek()).toThrow();
+    }
+    expect(g.stan.statki.length).toBe(8);
+    expect(g.statkiWDoku()).toHaveLength(8);
+    expect(g.stan.oknaStoczni.filter((o) => o.rodzaj === 'statek')).toHaveLength(7);
+    expect(g.stan.doba).toBe(doba);
+    expect(g.stan.kr).toBe(kr - 7 * P.runda3.firma.cenaNowegoStatkuKr);
+    for (const s of g.stan.statki.slice(1)) {
+      expect(s.szczebel).toBe(0);
+      expect(s.paliwo).toBe(0);
+      expect(s.pozycja).toBe(g.stan.pozycja);
+    }
+    // Poza stocznią nowego statku nie ma.
+    const h = new Gra('r3-flota', { skala: 'L', runda3: true, bramkaTowaru: 'G' });
+    h.stan.kr = 1e9;
+    h.stan.poziomFirmy = 4;
+    if (!h.wStoczni()) expect(() => h.kupStatek()).toThrow();
+  });
+
+  for (const wariant of ['A', 'B', 'C'] as const) {
+    it(`pamięć floty ${wariant}: odsprzedaż w miejscu zakupu przed wygaśnięciem nie daje zysku żadnemu statkowi; wygasa według reguły wariantu`, () => {
+      const g = new Gra('r3-pamiec', { skala: 'L', runda3: true, spread: 'B', pamiecFloty: wariant, paliwo: 'D' });
+      doStoczni(g);
+      g.stan.poziomFirmy = 2;
+      g.kupStatek();
+      const tu = g.stan.pozycja;
+      const towar = 'Food';
+      const N = P.pamiecZakupuSkokow;
+      g.wybierzStatek(0);
+      const q = 10;
+      const zakup = g.kup(towar, q);
+      const cenaZakupu = zakup.kwotaKr / q;
+      // Przed wygaśnięciem: oba statki widzą licznik > 0 i cenę sprzedaży nie wyższą od ceny zakupu.
+      for (const i of [0, 1]) {
+        g.wybierzStatek(i);
+        expect(g.licznikPamieci(tu, towar)).toBe(N);
+        expect(g.karaSprzedazy(tu, towar)).toBeGreaterThan(0);
+        expect(g.ceny(tu, towar)!.sprzedazKr).toBeLessThanOrEqual(cenaZakupu);
+      }
+      // Sąsiad do skoków: najbliższy węzeł po grafie (krawędź bezpośrednia).
+      const d0 = g.graf.dijkstra(tu);
+      let sasiad: { id: string; d: number } | null = null;
+      for (const [id, x] of d0) if (id !== tu && x.dystans > 0 && (!sasiad || x.dystans < sasiad.d)) sasiad = { id, d: x.dystans };
+      expect(g.graf.najkrotszaSciezka(tu, sasiad!.id)).toHaveLength(2);
+      const skocz = (i: number, razy: number) => {
+        g.wybierzStatek(i);
+        for (let k = 0; k < razy; k++) {
+          if (g.maPaliwo()) g.tankuj(Math.min(g.bak() - g.stan.paliwo, g.maxPaliwo()));
+          g.lec([g.stan.pozycja, g.stan.pozycja === tu ? sasiad!.id : tu]);
+        }
+      };
+      if (wariant === 'C') {
+        // Czas: licznik maleje z dobami niezależnie od skoków, gaśnie po pamiecCzasDob.
+        g.czekaj(P.runda3.pamiecCzasDob * 0.4);
+        for (const i of [0, 1]) {
+          g.wybierzStatek(i);
+          expect(g.licznikPamieci(tu, towar)).toBeGreaterThan(0);
+          expect(g.licznikPamieci(tu, towar)).toBeLessThan(N);
+        }
+        g.czekaj(P.runda3.pamiecCzasDob * 0.6 + 0.01);
+        for (const i of [0, 1]) {
+          g.wybierzStatek(i);
+          expect(g.licznikPamieci(tu, towar)).toBe(0);
+          expect(g.karaSprzedazy(tu, towar)).toBe(0);
+        }
+        return;
+      }
+      const kupujacy = 0;
+      const sprzedajacy = 1;
+      const pierwszy = wariant === 'A' ? sprzedajacy : kupujacy; // skoki tego statku NIE wygaszają pamięci dla sprzedającego
+      const drugi = wariant === 'A' ? kupujacy : sprzedajacy; // skoki tego statku wygaszają
+      skocz(pierwszy, 2 * N);
+      g.wybierzStatek(sprzedajacy);
+      expect(g.licznikPamieci(tu, towar)).toBe(N);
+      expect(g.karaSprzedazy(tu, towar)).toBeGreaterThan(0);
+      skocz(drugi, N - 1);
+      g.wybierzStatek(sprzedajacy);
+      expect(g.licznikPamieci(tu, towar)).toBe(1);
+      skocz(drugi, 1);
+      g.wybierzStatek(sprzedajacy);
+      expect(g.licznikPamieci(tu, towar)).toBe(0);
+      expect(g.karaSprzedazy(tu, towar)).toBe(0);
+    });
+  }
+
+  it('dostawa częściowa: receptura w jednym kursie, naukowiec w drugim; awans dopiero po ostatniej dostawie z naukowcem', () => {
+    const g = new Gra('r3-czesciowa', { skala: 'L', runda3: true, bramkaTowaru: 'P' });
+    const cywStart = g.wezel(g.stan.pozycja).cywilizacja!;
+    const cel = g.swiat.cywilizacje.find((c) => c.id !== cywStart && g.cywilizacjaZnana(c.id))!;
+    g.rozwoj(cel.id).nadwyzkaWU = g.progGotowosciWU(cel.id, 2);
+    g.czekaj(0.01);
+    const kontrakt = g.rozwoj(cel.id).kontrakt!;
+    expect(kontrakt.dostarczone).toEqual({});
+    expect(kontrakt.naukowiecWAkademii).toBe(false);
+    g.stan.kr = 1e9;
+    g.tankuj(g.maxPaliwo());
+    // Zakup całej receptury (tu albo na najbliższej planecie z zapasem).
+    for (const t of Object.keys(kontrakt.towary) as (keyof typeof kontrakt.towary)[]) {
+      const ile = kontrakt.towary[t]!;
+      if (g.maxKupno(t) < ile) {
+        const d0 = g.graf.dijkstra(g.stan.pozycja);
+        const zrodlo = g.swiat.wezly
+          .filter((w) => w.typ === 'planeta' && g.rynekZnany(w.id) && g.stan.rynki[w.id][t].zapas >= ile)
+          .sort((a, b) => (d0.get(a.id)?.dystans ?? Infinity) - (d0.get(b.id)?.dystans ?? Infinity))[0];
+        lecDo(g, zrodlo.id);
+      }
+      g.kup(t, ile);
+    }
+    // Kurs 1: do akademii bez naukowca — dostawa częściowa, kontrakt otwarty, tier bez zmian.
+    lecDo(g, cel.stolica);
+    const dd1 = g.kontraktDoDostarczenia()!;
+    expect(dd1.brakuje).toEqual(['naukowiec']);
+    expect(Object.keys(dd1.dostarczalne).length).toBeGreaterThan(0);
+    const w1 = g.dostarczKontrakt();
+    expect(w1.zamkniety).toBe(false);
+    expect(g.tierCywilizacji(cel.id)).toBe(1);
+    expect(g.rozwoj(cel.id).kontrakt).not.toBeNull();
+    expect(g.pozostaloKontraktu(cel.id)).toEqual({});
+    for (const t of Object.keys(kontrakt.towary) as (keyof typeof kontrakt.towary)[]) {
+      expect(g.rozwoj(cel.id).kontrakt!.dostarczone[t]).toBeCloseTo(kontrakt.towary[t]!, 6);
+      expect(g.stan.ladownia[t].m3).toBeCloseTo(0, 6);
+    }
+    // Bez niczego na pokładzie dostawa jest błędem.
+    expect(() => g.dostarczKontrakt()).toThrow();
+    // Kurs 2: naukowiec z innej planety celu, powrót, dostawa końcowa — awans.
+    const d = g.graf.dijkstra(g.stan.pozycja);
+    const planetaNaukowca = cel.planety.filter((id) => id !== cel.stolica).sort((a, b) => (d.get(a)?.dystans ?? Infinity) - (d.get(b)?.dystans ?? Infinity))[0];
+    lecDo(g, planetaNaukowca);
+    g.zabierzNaukowca(cel.id);
+    lecDo(g, cel.stolica);
+    const dd2 = g.kontraktDoDostarczenia()!;
+    expect(dd2.brakuje).toEqual([]);
+    expect(dd2.naukowiecNaPokladzie).toBe(true);
+    const w2 = g.dostarczKontrakt();
+    expect(w2.zamkniety).toBe(true);
+    expect(g.tierCywilizacji(cel.id)).toBe(2);
+    expect(g.statek().naukowiec).toBeNull();
+    expect(g.rozwoj(cel.id).kontrakt).toBeNull();
+  });
+
+  it('determinizm floty: dwa przebiegi bota floty na L z tym samym ziarnem dają ten sam stan po całym horyzoncie 1 200 dób', () => {
+    const opcje = { skala: 'L' as const, informacja: 'pelna' as const, spread: 'B' as const, paliwo: 'R' as const, bramkaTowaru: 'G' as const, pamiecFloty: 'A' as const };
+    const zrzut = (g: Gra) =>
+      JSON.stringify({
+        doba: g.stan.doba,
+        kr: g.stan.kr,
+        statki: g.stan.statki.map((s) => [s.pozycja, s.paliwo, s.szczebel, s.skoki, s.zaloga.length]),
+        tiery: g.stan.tiery,
+        kamienie: g.stan.kamienie,
+        poziom: g.stan.poziomFirmy,
+        okna: g.stan.oknaStoczni.length,
+      });
+    let a = '';
+    let b = '';
+    const wa = zagrajFlote('det-flota', opcje, { naKoniec: (g) => (a = zrzut(g)) });
+    const wb = zagrajFlote('det-flota', opcje, { naKoniec: (g) => (b = zrzut(g)) });
+    expect(a).toBe(b);
+    expect(wa.wartoscKoncowa).toBe(wb.wartoscKoncowa);
+    expect(wa.loty.length).toBe(wb.loty.length);
+    expect(JSON.parse(a).doba).toBeGreaterThanOrEqual(1200);
+    expect(Number.isFinite(wa.wartoscKoncowa)).toBe(true);
+  }, 120_000);
 });

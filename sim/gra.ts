@@ -1411,6 +1411,8 @@ export class Gra {
       for (const t of TOWARY_I_PALIWO) krokRynku(rynek[t], dt);
     }
     this.stan.doba += dt;
+    // Horyzont mija także bez przylotu (flota czeka w doku): koniec gry zależy od czasu, nie od zdarzeń statków.
+    if (this.stan.doba >= this.limitDob - EPS) this.stan.koniec = true;
     this.poUplywieCzasu(dt);
   }
 

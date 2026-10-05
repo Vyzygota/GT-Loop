@@ -128,6 +128,7 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
       if (!Number.isFinite(objazd)) continue;
       const droga = objazd + d.dystans;
       const l = gra.obliczLot(droga, gra.stan.zaloga, gra.bak());
+      if (l.doby > P.bot.maxDobyDrogiMisji) continue;
       const koszt = kosztReceptury + l.paliwo * kr(K.towary.Fuel.basePrice);
       if (gra.stan.kr < P.bot.mnoznikGotowkiNaKontrakt * koszt) continue;
       if (naj && droga >= naj.d) continue;
@@ -303,14 +304,12 @@ export function zagrajFlote(ziarno: string, opcje: OpcjeGry = {}, haki: HakiFlot
     }
     if (gra.nastepnyPrzylotDoba() === null) {
       if (ktosWystartowal) continue;
-      // Nikt nie leci i nikt nie ma planu: czas płynie, flota czeka.
+      // Nikt nie leci i nikt nie ma planu: czas płynie, flota czeka (po maxDobyCzekaniaFloty z rzędu liczy się jako utknięcie,
+      // ale czas płynie dalej do końca horyzontu — stan świata po 1 200 dobach jest zawsze zdefiniowany).
       gra.czekaj(P.bot.dobyCzekaniaFloty);
       dobyCzekania += P.bot.dobyCzekaniaFloty;
       czekanieZRzedu += P.bot.dobyCzekaniaFloty;
-      if (czekanieZRzedu > P.bot.maxDobyCzekaniaFloty) {
-        utknal = true;
-        break;
-      }
+      if (czekanieZRzedu > P.bot.maxDobyCzekaniaFloty) utknal = true;
       continue;
     }
     const raport = gra.nastepnyPrzylot()!;

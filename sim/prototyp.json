@@ -953,6 +953,7 @@
     "promienDystrybucjiPc": 70,
     "maxPlanetDystrybucji": 2,
     "planowDoDrugiegoKroku": 5,
+    "planowDoDrugiegoKrokuRunda3": 60,
     "krokiDrugiegoKroku": 3,
     "celowDrugiegoKroku": 25,
     "mnoznikGotowkiNaSzczebel": 1.5,
@@ -974,6 +975,8 @@
     "mnoznikGotowkiNaStatek": 1.5,
     "dobyCzekaniaFloty": 5,
     "maxDobyCzekaniaFloty": 90,
-    "karaWspolnegoCelu": 0.1
+    "karaWspolnegoCelu": 0.1,
+    "maxDobyEkspedycji": 150,
+    "maxDobyDrogiMisji": 240
   }
 }

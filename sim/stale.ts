@@ -291,6 +291,12 @@ export interface Prototyp {
     maxDobyCzekaniaFloty: number;
     /** Flota: o ile (ułamek oceny) gorszy jest cel, do którego leci już inny statek firmy (podział floty między trasy przy remisie). */
     karaWspolnegoCelu: number;
+    /** Runda 3: ile planów (wg stopy pierwszego kroku) dostaje ocenę dwóch kroków; na skali L pętla handlowa bywa poza pierwszą piątką. */
+    planowDoDrugiegoKrokuRunda3: number;
+    /** Runda 3: ekspedycja (pusty lot do nieznanej cywilizacji) tylko, gdy przy obecnej masie trwa nie dłużej niż tyle dób. */
+    maxDobyEkspedycji: number;
+    /** Runda 3: misja kontraktowa tylko, gdy droga po recepturę i do akademii trwa nie dłużej niż tyle dób. */
+    maxDobyDrogiMisji: number;
   };
 }
 

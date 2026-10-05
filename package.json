@@ -10,7 +10,8 @@
     "test": "vitest run",
     "bot": "tsx bot/bot.ts",
     "smoke": "tsx scripts/smoke.ts",
-    "progresja": "tsx bot/progresja.ts"
+    "progresja": "tsx bot/progresja.ts",
+    "runda3": "tsx bot/runda3.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
