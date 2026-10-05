@@ -6,3 +6,4 @@ export * from './zaloga';
 export * from './swiat';
 export * from './gra';
 export * from './losowosc';
+export * from './lot';

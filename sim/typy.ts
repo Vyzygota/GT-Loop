@@ -5,6 +5,9 @@ export type TypWezla = 'planeta' | 'tankowanie' | 'przelot';
 export type Skala = 'S' | 'M' | 'L';
 export type TrybInformacji = 'pelna' | 'zasieg';
 export type WariantSpreadu = 'A' | 'B' | 'C' | 'D' | 'E';
+export type WariantPaliwa = 'R' | 'D';
+export type BramkaTowaru = 'G' | 'P';
+export type PamiecFloty = 'A' | 'B' | 'C';
 
 export const TOWARY: Towar[] = ['Food', 'Minerals', 'Solvents', 'Explosives', 'Electronics'];
 export const TOWARY_I_PALIWO: TowarLubPaliwo[] = [...TOWARY, 'Fuel'];
@@ -168,6 +171,10 @@ export interface Raport {
   /** Progresja: awanse tierów cywilizacji w tym okresie i kupiony szczebel kadłuba. */
   awanse?: { cywilizacja: string; nazwa: string; tier: number }[];
   kadlub?: { szczebel: number; kwotaKr: number };
+  /** Runda 3: który statek wykonał lot i prędkości na starcie/mecie. */
+  statek?: number;
+  predkoscStart?: number;
+  predkoscMeta?: number;
   koniecGry: boolean;
 }
 
@@ -227,6 +234,60 @@ export interface OpcjeGry {
   progresja?: boolean;
   /** Horyzont dób (domyślnie ze skali, a w progresji z `progresja.horyzontDob`). */
   limitDob?: number;
+  /** Runda 3: lot z hierarchii ciągu, rynek z ludności, drabina rozwoju kanonu, flota; domyślnie z prototypu (wymusza progresję). */
+  runda3?: boolean;
+  paliwo?: WariantPaliwa;
+  bramkaTowaru?: BramkaTowaru;
+  pamiecFloty?: PamiecFloty;
+}
+
+/** Jeden statek firmy. Dotychczasowe pola stanu (pozycja, paliwo, ładownia, załoga…) są widokiem na statek aktywny. */
+export interface Statek {
+  id: number;
+  nazwa: string;
+  pozycja: string;
+  paliwo: number;
+  ladownia: Record<Towar, PozycjaLadowni>;
+  zaloga: Zalogant[];
+  kandydaci: Zalogant[];
+  /** Pamięć zakupu statku (poza rundą 3): klucz „planeta|towar” → licznik skoków. */
+  pamiecZakupu: Record<string, number>;
+  szczebel: number;
+  /** Runda 3: zamontowane moduły (reaktory, ładownie); poza rundą 3 nieużywane. */
+  moduly: { reaktory: number; ladownie: number };
+  numerLotu: number;
+  /** Łączna liczba wykonanych skoków (pamięć zakupu floty A/B). */
+  skoki: number;
+  kursStart: { wartosc: number; szczebel: number; kadlubKr: number };
+  /** Runda 3: naukowiec na pokładzie (kontrakt rozwojowy cywilizacji), zajmuje naukowiecM3. */
+  naukowiec: { cywilizacja: string; zPlanety: string } | null;
+  /** Lot w toku (czas ciągły): trasa i doba przylotu; null w doku. */
+  wLocie: LotWToku | null;
+}
+
+export interface LotWToku {
+  trasa: string[];
+  dystans: number;
+  dobaStart: number;
+  przylot: number;
+  doby: number;
+  dobyNominalne: number;
+  paliwoZuzyteM3: number;
+  bezZalogiM3: number;
+  poNawigatorzeM3: number;
+  placeKr: number;
+  placeNominalneKr: number;
+  cenaOdniesieniaKr: number;
+  /** Prędkość na starcie i na mecie (runda 3: statek przyspiesza w miarę spalania). */
+  predkoscStart: number;
+  predkoscMeta: number;
+}
+
+/** Wpis pamięci zakupu floty (runda 3): doba i liczniki skoków wszystkich statków w chwili zakupu. */
+export interface WpisPamieciFloty {
+  doba: number;
+  statek: number;
+  skokiStatkow: Record<number, number>;
 }
 
 /** Postęp awansu cywilizacji na kolejny tier. */

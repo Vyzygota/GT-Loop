@@ -78,6 +78,174 @@
       "Legenda"
     ]
   },
+  "runda3": {
+    "wlaczona": false,
+    "paliwo": "R",
+    "bramkaTowaru": "G",
+    "pamiecFloty": "A",
+    "pamiecCzasDob": 25,
+    "statek": {
+      "masaReaktoraT": 100,
+      "modulLadowniM3": 120,
+      "masaModuluLadowniT": 36,
+      "mnoznikKadluba": 1.5,
+      "objetoscJedynkiM3": 851,
+      "konfiguracje": [
+        {
+          "reaktory": 1,
+          "ladownie": 4
+        },
+        {
+          "reaktory": 1,
+          "ladownie": 7
+        },
+        {
+          "reaktory": 2,
+          "ladownie": 9
+        },
+        {
+          "reaktory": 3,
+          "ladownie": 14
+        },
+        {
+          "reaktory": 5,
+          "ladownie": 20
+        },
+        {
+          "reaktory": 7,
+          "ladownie": 30
+        }
+      ],
+      "bakM3": [
+        100,
+        150,
+        225,
+        338,
+        506,
+        759
+      ],
+      "tierSzczebla": [
+        1,
+        1,
+        2,
+        3,
+        3,
+        4
+      ],
+      "obsada": {
+        "kokpit": 1,
+        "naReaktor": 1,
+        "naModulyLadowni": 4
+      },
+      "naukowiecM3": 40
+    },
+    "rynek": {
+      "konsumpcjaNaMlnNaDobe": {
+        "Food": 0.8,
+        "Minerals": 0.24,
+        "Solvents": 0.08,
+        "Explosives": 0.012,
+        "Electronics": 0.0024,
+        "Fuel": 0.3
+      },
+      "sektory": [
+        {
+          "nazwa": "rolnictwo",
+          "towar": "Food"
+        },
+        {
+          "nazwa": "górnictwo",
+          "towar": "Minerals"
+        },
+        {
+          "nazwa": "chemia",
+          "towar": "Solvents"
+        },
+        {
+          "nazwa": "energetyka",
+          "towar": "Fuel"
+        },
+        {
+          "nazwa": "przemysł",
+          "towar": "Explosives"
+        },
+        {
+          "nazwa": "elektronika",
+          "towar": "Electronics"
+        },
+        {
+          "nazwa": "nauka",
+          "towar": null
+        }
+      ],
+      "koszykTieru": [
+        {
+          "Food": 1.0,
+          "Minerals": 1.0,
+          "Solvents": 1.0,
+          "Explosives": 1.0,
+          "Electronics": 1.0,
+          "Fuel": 1.0
+        },
+        {
+          "Food": 1.0,
+          "Minerals": 6.38,
+          "Solvents": 1.5,
+          "Explosives": 2.0,
+          "Electronics": 1.0,
+          "Fuel": 3.46
+        },
+        {
+          "Food": 1.0,
+          "Minerals": 8.0,
+          "Solvents": 2.0,
+          "Explosives": 3.0,
+          "Electronics": 3.0,
+          "Fuel": 5.0
+        },
+        {
+          "Food": 1.0,
+          "Minerals": 10.0,
+          "Solvents": 2.5,
+          "Explosives": 4.0,
+          "Electronics": 6.0,
+          "Fuel": 6.0
+        }
+      ]
+    },
+    "awans": {
+      "k": 1.15,
+      "dobyGotowosciT2": 250,
+      "zamoznosc": {
+        "ludzie": 1.0,
+        "vreth": 1.0,
+        "corrath": 1.0,
+        "szkarni": 1.0,
+        "orak": 1.0,
+        "ai": 1.0,
+        "planta": 1.0,
+        "duhari": 1.0,
+        "velhari": 1.0
+      },
+      "ilosciKontraktu": 0.0005,
+      "naukowiecZInnejPlanety": true
+    },
+    "firma": {
+      "progFirmy": [
+        0,
+        20000000,
+        60000000,
+        200000000
+      ],
+      "statkiNaPoziom": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "cenaNowegoStatkuKr": 6800000
+    }
+  },
   "skale": {
     "S": {
       "limitDob": 120,

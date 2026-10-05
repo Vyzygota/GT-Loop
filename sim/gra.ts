@@ -11,29 +11,35 @@ import {
   zapasPo,
 } from './rynek';
 import { K, P, kr } from './stale';
+import { bakSzczeblaM3, ciagTf, konfiguracjaSzczebla, ladowniaM3, lot, masaSuchaT, obsada, zasiegNaPaliwie } from './lot';
 import { generujSwiat } from './swiat';
 import { Graf, odleglosc } from './trasa';
 import { aktualizujZaloganta, efektyZalogi, generujKandydatow, tierZalogi } from './zaloga';
 import {
   TOWARY,
   TOWARY_I_PALIWO,
+  type BramkaTowaru,
   type Ceny,
   type EfektyZalogi,
   type InformacjaORynku,
   type LiniaRaportu,
   type OpcjeGry,
   type Osiagalny,
+  type PamiecFloty,
   type PostepAwansu,
   type PozycjaLadowni,
   type Raport,
   type Rynek,
   type Skala,
+  type Statek,
   type Swiat,
   type Towar,
   type Transakcja,
   type TrybInformacji,
+  type WariantPaliwa,
   type WariantSpreadu,
   type Wezel,
+  type WpisPamieciFloty,
   type Wycena,
   type WycenaSzczebla,
   type WynikHandlowy,
@@ -50,6 +56,9 @@ export interface Odczyt {
 export interface Stan {
   doba: number;
   kr: number;
+  /** Flota firmy; `aktywny` to statek, na który patrzą pola pozycja/paliwo/ładownia/załoga/kandydaci/pamięć/szczebel/numerLotu/kursStart. */
+  statki: Statek[];
+  aktywny: number;
   paliwo: number;
   pozycja: string;
   ladownia: Record<Towar, PozycjaLadowni>;
@@ -79,6 +88,13 @@ export interface Stan {
   wydanoNaKadlub: number;
   /** Kamienie milowe: klucz → doba pierwszego osiągnięcia. */
   kamienie: Record<string, number>;
+  // ---- Runda 3 ----
+  /** Pamięć zakupu floty: klucz „planeta|towar” → doba zakupu i liczniki skoków statków w chwili zakupu. */
+  pamiecFloty: Record<string, WpisPamieciFloty>;
+  /** Poziom firmy (1…4) → liczba statków 1/2/4/8. */
+  poziomFirmy: number;
+  /** Okna stoczni (kupno kadłuba, zmiana modułów, nowy statek): doba i liczba statków w tej chwili. */
+  oknaStoczni: { doba: number; statkow: number; rodzaj: string }[];
 }
 
 interface Okres {
@@ -87,9 +103,15 @@ interface Okres {
   paliwoKosztKr: number;
   saldoNaStarcie: number;
   wartoscNaStarcie: number;
+  /** Przepływy gotówki tego statku w okresie (przy flocie inne statki też ruszają kasę). */
+  deltaKr: number;
   kadlub: { szczebel: number; kwotaKr: number } | null;
+  /** Runda 3: statek kupiony w tym okresie przez statek aktywny (okno stoczni). */
+  nowyStatek: { id: number; kwotaKr: number } | null;
   awanse: { cywilizacja: string; nazwa: string; tier: number }[];
 }
+
+const POLA_STATKU = ['pozycja', 'paliwo', 'ladownia', 'zaloga', 'kandydaci', 'pamiecZakupu', 'szczebel', 'numerLotu', 'kursStart'] as const;
 
 function zaokr(x: number): number {
   return Math.round(x);
@@ -122,13 +144,33 @@ export class Gra {
   readonly obciecieNacisku: boolean;
   /** Progresja: tiery cywilizacji, drabina kadłubów, XP załogi. */
   readonly progresja: boolean;
-  private okres!: Okres;
+  /** Runda 3: lot z hierarchii ciągu, rynek z ludności, drabina rozwoju kanonu, flota. */
+  readonly runda3: boolean;
+  readonly wariantPaliwa: WariantPaliwa;
+  readonly bramkaTowaru: BramkaTowaru;
+  readonly wariantPamieciFloty: PamiecFloty;
+  /** Okres doku każdego statku (indeks = id statku). */
+  private okresy: Okres[] = [];
+  /** Ostatni raport każdego statku (po przylocie). */
+  private ostatnieRaporty: (Raport | null)[] = [];
   private readonly rng: Losowosc;
+
+  private get okres(): Okres {
+    return this.okresy[this.stan.aktywny];
+  }
+
+  private set okres(o: Okres) {
+    this.okresy[this.stan.aktywny] = o;
+  }
 
   constructor(ziarno: string, opcje: OpcjeGry = {}) {
     this.skala = opcje.skala ?? P.skala;
     this.informacja = opcje.informacja ?? P.informacja;
-    this.progresja = opcje.progresja ?? P.progresja.wlaczona;
+    this.runda3 = opcje.runda3 ?? P.runda3.wlaczona;
+    this.wariantPaliwa = opcje.paliwo ?? P.runda3.paliwo;
+    this.bramkaTowaru = opcje.bramkaTowaru ?? P.runda3.bramkaTowaru;
+    this.wariantPamieciFloty = opcje.pamiecFloty ?? P.runda3.pamiecFloty;
+    this.progresja = this.runda3 || (opcje.progresja ?? P.progresja.wlaczona);
     this.limitDob = opcje.limitDob ?? (this.progresja ? P.progresja.horyzontDob : P.skale[this.skala].limitDob);
     this.wariantSpreadu = opcje.spread ?? P.spread;
     const konfig = P.wariantySpreadu[this.wariantSpreadu];
@@ -138,8 +180,6 @@ export class Gra {
     this.swiat = swiat;
     this.graf = new Graf(swiat.wezly, swiat.krawedzie);
     this.rng = new Losowosc(ziarno);
-    const ladownia = {} as Record<Towar, PozycjaLadowni>;
-    for (const t of TOWARY) ladownia[t] = { m3: 0, kosztKr: 0, pochodzenie: {} };
     const znane: Record<string, boolean> = {};
     const tiery: Record<string, number> = {};
     const dostawy: Record<string, Partial<Record<Towar, number>>> = {};
@@ -148,31 +188,141 @@ export class Gra {
       tiery[c.id] = 1;
       dostawy[c.id] = {};
     }
-    this.stan = {
+    const stan: Partial<Stan> = {
       doba: 0,
       kr: K.startingCredits,
-      paliwo: K.bak,
-      pozycja: swiat.startId,
-      ladownia,
-      zaloga: [],
-      kandydaci: [],
+      statki: [],
+      aktywny: 0,
       rynki,
       znaneCywilizacje: znane,
       wizyty: {},
       odczyty: {},
-      pamiecZakupu: {},
-      numerLotu: 0,
       koniec: false,
       raporty: [],
       tiery,
       dostawy,
-      szczebel: 0,
       zyskiKursow: { 0: [] },
-      kursStart: { wartosc: K.startingCredits, szczebel: 0, kadlubKr: 0 },
       wydanoNaKadlub: 0,
       kamienie: {},
+      pamiecFloty: {},
+      poziomFirmy: 1,
+      oknaStoczni: [],
     };
+    // Pola statku aktywnego jako widok: UI, bot i testy czytają `stan.pozycja` itd. jak dotąd.
+    for (const pole of POLA_STATKU) {
+      Object.defineProperty(stan, pole, {
+        enumerable: true,
+        get: () => (this.stan.statki[this.stan.aktywny] as unknown as Record<string, unknown>)[pole],
+        set: (v: unknown) => {
+          (this.stan.statki[this.stan.aktywny] as unknown as Record<string, unknown>)[pole] = v;
+        },
+      });
+    }
+    this.stan = stan as Stan;
+    this.dodajStatek(swiat.startId);
     this.zadokuj();
+  }
+
+  // ---------- Flota ----------
+
+  private nowaLadownia(): Record<Towar, PozycjaLadowni> {
+    const ladownia = {} as Record<Towar, PozycjaLadowni>;
+    for (const t of TOWARY) ladownia[t] = { m3: 0, kosztKr: 0, pochodzenie: {} };
+    return ladownia;
+  }
+
+  /** Nowy statek szczebla 0 w podanym węźle; w rundzie 3 z pustym bakiem (paliwo jest pierwszym zakupem). */
+  private dodajStatek(pozycja: string): Statek {
+    const id = this.stan.statki.length;
+    const statek: Statek = {
+      id,
+      nazwa: `Statek ${id + 1}`,
+      pozycja,
+      paliwo: this.runda3 ? 0 : K.bak,
+      ladownia: this.nowaLadownia(),
+      zaloga: [],
+      kandydaci: [],
+      pamiecZakupu: {},
+      szczebel: 0,
+      moduly: { ...konfiguracjaSzczebla(0) },
+      numerLotu: 0,
+      skoki: 0,
+      kursStart: { wartosc: this.stan.statki.length === 0 ? K.startingCredits : this.wartoscFirmy(), szczebel: 0, kadlubKr: 0 },
+      naukowiec: null,
+      wLocie: null,
+    };
+    this.stan.statki.push(statek);
+    this.okresy.push({ transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.stan.kr, deltaKr: 0, kadlub: null, nowyStatek: null, awanse: [] });
+    this.ostatnieRaporty.push(null);
+    return statek;
+  }
+
+  statek(i: number = this.stan.aktywny): Statek {
+    return this.stan.statki[i];
+  }
+
+  /** Przełącza statek aktywny (pola stanu, akcje w doku, lot). */
+  wybierzStatek(i: number): void {
+    if (i < 0 || i >= this.stan.statki.length) throw new Error(`Nie ma statku ${i}`);
+    this.stan.aktywny = i;
+  }
+
+  /** Liczba statków, jaką dopuszcza poziom firmy (runda 3: 1/2/4/8). */
+  limitStatkow(): number {
+    if (!this.runda3) return 1;
+    const lista = P.runda3.firma.statkiNaPoziom;
+    return lista[Math.min(this.stan.poziomFirmy, lista.length) - 1];
+  }
+
+  /** Czy stoimy w stoczni (dok stolicy znanej cywilizacji), a w rundzie 3 dodatkowo czy jej tier dopuszcza dany szczebel. */
+  stoczniaDopuszcza(szczebel: number, idWezla: string = this.stan.pozycja): boolean {
+    if (!this.wStoczni(idWezla)) return false;
+    if (!this.runda3) return true;
+    const cyw = this.wezel(idWezla).cywilizacja!;
+    const tiery = P.runda3.statek.tierSzczebla;
+    return this.tierCywilizacji(cyw) >= tiery[Math.min(szczebel, tiery.length - 1)];
+  }
+
+  /** Runda 3: zakup nowego statku szczebla 0 w stoczni; wymaga wolnego miejsca w limicie poziomu firmy. */
+  kupStatek(): Statek {
+    if (!this.runda3) throw new Error('Flota działa tylko w rundzie 3');
+    if (!this.stoczniaDopuszcza(0)) throw new Error('Nowy statek kupisz tylko w stoczni stolicy');
+    if (this.stan.statki.length >= this.limitStatkow()) throw new Error(`Poziom firmy ${this.stan.poziomFirmy} pozwala na ${this.limitStatkow()} statków`);
+    const cena = P.runda3.firma.cenaNowegoStatkuKr;
+    if (cena > this.stan.kr) throw new Error('Brak gotówki');
+    this.stan.kr -= cena;
+    this.okres.deltaKr -= cena;
+    this.stan.wydanoNaKadlub += cena;
+    const s = this.dodajStatek(this.stan.pozycja);
+    this.okres.nowyStatek = { id: s.id, kwotaKr: cena };
+    this.oknoStoczni('statek');
+    this.kamien(`flota:${this.stan.statki.length}`);
+    // Nowy statek dokuje tu i dostaje własnych kandydatów (czas stoi w oknie stoczni).
+    const poprzedni = this.stan.aktywny;
+    this.stan.aktywny = s.id;
+    this.zadokuj();
+    this.stan.aktywny = poprzedni;
+    return s;
+  }
+
+  /** Runda 3: awans poziomu firmy, gdy wartość firmy ≥ progFirmy(T); sprawdzany przy każdym przylocie. */
+  private sprawdzPoziomFirmy(): void {
+    if (!this.runda3) return;
+    const progi = P.runda3.firma.progFirmy;
+    const wartosc = this.wartoscFirmy();
+    while (this.stan.poziomFirmy < progi.length && wartosc >= progi[this.stan.poziomFirmy]) {
+      this.stan.poziomFirmy += 1;
+      this.kamien(`firma:T${this.stan.poziomFirmy}`);
+    }
+  }
+
+  private oknoStoczni(rodzaj: string): void {
+    this.stan.oknaStoczni.push({ doba: this.stan.doba, statkow: this.stan.statki.length, rodzaj });
+  }
+
+  /** Statki w doku (nie w locie), do pętli bota. */
+  statkiWDoku(): number[] {
+    return this.stan.statki.filter((s) => s.wLocie === null).map((s) => s.id);
   }
 
   // ---------- Kadłub (drabina) ----------
@@ -181,17 +331,91 @@ export class Gra {
     return Math.pow(P.progresja.mnoznikSzczebla, this.stan.szczebel);
   }
 
-  /** Pojemność ładowni (m³) na bieżącym szczeblu: BaseShip × mnoznikSzczebla^N. */
+  /** Pojemność ładowni (m³): runda 3 = moduły ładowni × 120 m³, inaczej BaseShip × mnoznikSzczebla^N. */
   ladownia(): number {
+    if (this.runda3) return ladowniaM3(this.statek().moduly);
     return K.ladownia * this.mnoznikKadluba();
   }
 
   bak(): number {
+    if (this.runda3) return bakSzczeblaM3(this.stan.szczebel);
     return K.bak * this.mnoznikKadluba();
   }
 
+  /** Limit masy ładunku: w rundzie 3 brak (masa tylko spowalnia statek), inaczej BaseShip × mnoznikSzczebla^N. */
   maxMasa(): number {
+    if (this.runda3) return Infinity;
     return K.maxMasaLadunku * this.mnoznikKadluba();
+  }
+
+  // ---------- Runda 3: masa, ciąg, prędkość ----------
+
+  masaSuchaT(statek: Statek = this.statek()): number {
+    return masaSuchaT(statek.szczebel, statek.moduly);
+  }
+
+  ciagTf(statek: Statek = this.statek()): number {
+    return ciagTf(statek.moduly);
+  }
+
+  /** Masa statku teraz: kadłub + moduły + paliwo (1 t/m³) + ładunek (gęstość × m³). */
+  masaStatkuT(statek: Statek = this.statek(), ladunekDodatkowyT = 0): number {
+    let ladunek = 0;
+    for (const t of TOWARY) ladunek += statek.ladownia[t].m3 * K.towary[t].gestosc;
+    return this.masaSuchaT(statek) + statek.paliwo * K.towary.Fuel.gestosc + ladunek + ladunekDodatkowyT;
+  }
+
+  /** Prędkość w tej chwili (pc/dobę): runda 3 z hierarchii ciągu, inaczej nominalna × pilot. */
+  predkoscTeraz(zaloga: readonly Zalogant[] = this.stan.zaloga): number {
+    const ef = this.efekty(zaloga);
+    if (!this.runda3) return ef.predkosc;
+    return (K.predkoscNominalna * this.ciagTf() * ef.mnoznikPilota) / (K.statek.stalaPredkosci * this.masaStatkuT());
+  }
+
+  /** Obsada statku (runda 3): miejsca w załodze wynikają z modułów; inaczej miejscaZalogi kanonu. */
+  miejscaZalogi(statek: Statek = this.statek()): number {
+    return this.runda3 ? obsada(statek.moduly) : K.miejscaZalogi;
+  }
+
+  /**
+   * Parametry lotu dla statku: masa startowa (z podanym paliwem i ładunkiem dodatkowym), ciąg, pilot, mnożnik paliwa.
+   */
+  private parametryLotu(zaloga: readonly Zalogant[], paliwoM3: number, ladunekDodatkowyT: number, pilot: boolean, nawigator: boolean, synergia: boolean) {
+    const ef = this.efekty(zaloga);
+    const statek = this.statek();
+    let ladunek = ladunekDodatkowyT;
+    for (const t of TOWARY) ladunek += statek.ladownia[t].m3 * K.towary[t].gestosc;
+    return {
+      masaStartT: this.masaSuchaT(statek) + paliwoM3 * K.towary.Fuel.gestosc + ladunek,
+      ciagTf: this.ciagTf(statek),
+      pilot: pilot ? ef.mnoznikPilota : 1,
+      mnoznikPaliwa: (nawigator ? ef.mnoznikNawigatora : 1) * (synergia ? ef.mnoznikSynergii : 1),
+      wariant: this.wariantPaliwa,
+    };
+  }
+
+  /**
+   * Lot na dystans: doby i paliwo. Runda 3 liczy z hierarchii ciągu (masa z bieżącym paliwem i ładunkiem),
+   * poza rundą 3 dystans / prędkość i 1 m³/pc × mnożnik nawigatora.
+   */
+  obliczLot(dystansPc: number, zaloga: readonly Zalogant[] = this.stan.zaloga, paliwoM3 = this.stan.paliwo, ladunekDodatkowyT = 0): { doby: number; paliwo: number; dobyNominalne: number; bezZalogi: number; poNawigatorze: number; predkoscStart: number; predkoscMeta: number } {
+    const ef = this.efekty(zaloga);
+    if (!this.runda3) {
+      const bezZalogi = dystansPc * K.kosztPaliwaNaParsek;
+      const poNawigatorze = bezZalogi * ef.mnoznikNawigatora;
+      return { doby: dystansPc / ef.predkosc, paliwo: poNawigatorze * ef.mnoznikSynergii, dobyNominalne: dystansPc / K.predkoscNominalna, bezZalogi, poNawigatorze, predkoscStart: ef.predkosc, predkoscMeta: ef.predkosc };
+    }
+    const pelny = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, true, true, true));
+    const nominalny = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, true, true));
+    const bezZalogi = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, false, false));
+    const poNawigatorze = lot(dystansPc, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, false, true, false));
+    return { doby: pelny.doby, paliwo: pelny.paliwoM3, dobyNominalne: nominalny.doby, bezZalogi: bezZalogi.paliwoM3, poNawigatorze: poNawigatorze.paliwoM3, predkoscStart: pelny.predkoscStart, predkoscMeta: pelny.predkoscMeta };
+  }
+
+  /** Najdalszy dystans na podanym paliwie przy bieżącej masie (runda 3) albo paliwo / (1 m³/pc × mnożnik). */
+  zasiegNaPaliwie(paliwoM3: number, zaloga: readonly Zalogant[] = this.stan.zaloga, ladunekDodatkowyT = 0): number {
+    if (!this.runda3) return paliwoM3 / (K.kosztPaliwaNaParsek * this.efekty(zaloga).mnoznikPaliwa);
+    return zasiegNaPaliwie(paliwoM3, this.parametryLotu(zaloga, paliwoM3, ladunekDodatkowyT, true, true, true));
   }
 
   /** Czy stoimy w doku stolicy znanej cywilizacji (tylko tam działa stocznia). */
@@ -211,7 +435,9 @@ export class Gra {
     if (nastepny >= K.drabinaKadlubow.szczebli) return null;
     const m = Math.pow(P.progresja.mnoznikSzczebla, nastepny);
     const zyski = this.stan.zyskiKursow[this.stan.szczebel] ?? [];
-    const baza = { nastepny, kursow: zyski.length, ladowniaM3: K.ladownia * m, bakM3: K.bak * m };
+    const baza = this.runda3
+      ? { nastepny, kursow: zyski.length, ladowniaM3: ladowniaM3(konfiguracjaSzczebla(nastepny)), bakM3: bakSzczeblaM3(nastepny) }
+      : { nastepny, kursow: zyski.length, ladowniaM3: K.ladownia * m, bakM3: K.bak * m };
     if (zyski.length < P.progresja.minKursowDoWycenySzczebla) {
       return { ...baza, kwotaKr: null, medianaZyskuKr: null, powod: `stocznia wycenia kadłub po ${P.progresja.minKursowDoWycenySzczebla} kursach na obecnym szczeblu (masz ${zyski.length})` };
     }
@@ -226,10 +452,16 @@ export class Gra {
     if (!this.wStoczni()) throw new Error('Stocznia jest tylko w doku stolicy');
     const w = this.wycenaSzczebla();
     if (!w) throw new Error('To już najwyższy szczebel');
+    if (!this.stoczniaDopuszcza(w.nastepny)) throw new Error(`Stocznia tej cywilizacji buduje kadłuby do szczebla wymagającego tieru ${P.runda3.statek.tierSzczebla[w.nastepny]}`);
     if (w.kwotaKr === null) throw new Error(w.powod ?? 'Brak wyceny');
     if (w.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
     this.stan.kr -= w.kwotaKr;
+    this.okres.deltaKr -= w.kwotaKr;
     this.stan.szczebel = w.nastepny;
+    if (this.runda3) {
+      this.statek().moduly = { ...konfiguracjaSzczebla(w.nastepny) };
+      this.oknoStoczni('kadlub');
+    }
     this.stan.zyskiKursow[w.nastepny] ??= [];
     this.stan.wydanoNaKadlub += w.kwotaKr;
     this.stan.kursStart.kadlubKr += w.kwotaKr;
@@ -391,19 +623,33 @@ export class Gra {
     return `${idWezla}|${towar}`;
   }
 
-  /** Licznik pamięci zakupu pary (planeta, towar) po `skokiWPrzod` kolejnych skokach. */
-  licznikPamieci(idWezla: string, towar: Towar, skokiWPrzod = 0): number {
-    return Math.max(0, (this.stan.pamiecZakupu[this.kluczPamieci(idWezla, towar)] ?? 0) - skokiWPrzod);
+  /**
+   * Licznik pamięci zakupu pary (planeta, towar) po `skokiWPrzod` kolejnych skokach statku aktywnego (i `dobyWPrzod` dobach).
+   * Runda 3 (pamięć floty): A = skoki statku, który kupił; B = skoki statku, który sprzedaje; C = czas (pamiecCzasDob ≙ 5 skoków).
+   */
+  licznikPamieci(idWezla: string, towar: Towar, skokiWPrzod = 0, dobyWPrzod = 0): number {
+    if (!this.runda3) return Math.max(0, (this.stan.pamiecZakupu[this.kluczPamieci(idWezla, towar)] ?? 0) - skokiWPrzod);
+    const wpis = this.stan.pamiecFloty[this.kluczPamieci(idWezla, towar)];
+    if (!wpis) return 0;
+    const N = P.pamiecZakupuSkokow;
+    const wariant = this.wariantPamieciFloty;
+    if (wariant === 'C') {
+      const minelo = this.stan.doba + dobyWPrzod - wpis.doba;
+      return Math.max(0, Math.ceil(((P.runda3.pamiecCzasDob - minelo) / P.runda3.pamiecCzasDob) * N - 1e-9));
+    }
+    const statek = wariant === 'A' ? wpis.statek : this.stan.aktywny;
+    const skokiTeraz = this.stan.statki[statek].skoki + (statek === this.stan.aktywny ? skokiWPrzod : 0);
+    return Math.max(0, N - (skokiTeraz - (wpis.skokiStatkow[statek] ?? skokiTeraz)));
   }
 
   /**
    * Kara za odsprzedaż w miejscu zakupu (ułamek ceny sprzedaży): wariant A nie ma kary (spread stały),
    * schodek = pełne tradeSpread dopóki licznik > 0, liniowy = tradeSpread × licznik / pamiecZakupuSkokow.
    */
-  karaSprzedazy(idWezla: string, towar: Towar, skokiWPrzod = 0): number {
+  karaSprzedazy(idWezla: string, towar: Towar, skokiWPrzod = 0, dobyWPrzod = 0): number {
     const konfig = P.wariantySpreadu[this.wariantSpreadu];
     if (konfig.tryb !== 'pamiec') return 0;
-    const licznik = this.licznikPamieci(idWezla, towar, skokiWPrzod);
+    const licznik = this.licznikPamieci(idWezla, towar, skokiWPrzod, dobyWPrzod);
     if (licznik <= 0) return 0;
     return konfig.kara === 'liniowy' ? (K.tradeSpread * licznik) / P.pamiecZakupuSkokow : K.tradeSpread;
   }
@@ -510,7 +756,8 @@ export class Gra {
   }
 
   objetoscZajeta(): number {
-    return TOWARY.reduce((s, t) => s + this.stan.ladownia[t].m3, 0);
+    const naukowiec = this.runda3 && this.statek().naukowiec ? P.runda3.statek.naukowiecM3 : 0;
+    return TOWARY.reduce((s, t) => s + this.stan.ladownia[t].m3, 0) + naukowiec;
   }
 
   masaZajeta(): number {
@@ -547,35 +794,55 @@ export class Gra {
     return lo;
   }
 
-  potrzebnePaliwo(dystansPc: number, zaloga: readonly Zalogant[] = this.stan.zaloga): number {
-    return dystansPc * K.kosztPaliwaNaParsek * this.efekty(zaloga).mnoznikPaliwa;
+  potrzebnePaliwo(dystansPc: number, zaloga: readonly Zalogant[] = this.stan.zaloga, ladunekDodatkowyT = 0): number {
+    return this.obliczLot(dystansPc, zaloga, this.runda3 ? Math.max(this.stan.paliwo, this.potrzebnePaliwoPrzyblizenie(dystansPc, zaloga, ladunekDodatkowyT)) : this.stan.paliwo, ladunekDodatkowyT).paliwo;
+  }
+
+  /** Przybliżenie paliwa na odcinek (do iteracji w rundzie 3: masa zależy od paliwa, które trzeba mieć na starcie). */
+  private potrzebnePaliwoPrzyblizenie(dystansPc: number, zaloga: readonly Zalogant[], ladunekDodatkowyT: number): number {
+    let paliwo = this.obliczLot(dystansPc, zaloga, this.stan.paliwo, ladunekDodatkowyT).paliwo;
+    for (let i = 0; i < 3; i++) paliwo = this.obliczLot(dystansPc, zaloga, paliwo, ladunekDodatkowyT).paliwo;
+    return paliwo;
   }
 
   /** Węzły osiągalne z bieżącej pozycji na obecnym paliwie, najkrótszą ścieżką. */
   zasieg(paliwo = this.stan.paliwo, zaloga: readonly Zalogant[] = this.stan.zaloga): Map<string, Osiagalny> {
-    const mnoznik = this.efekty(zaloga).mnoznikPaliwa;
-    const maxDystans = paliwo / (K.kosztPaliwaNaParsek * mnoznik) + EPS;
+    const maxDystans = this.zasiegNaPaliwie(paliwo, zaloga) + EPS;
     const d = this.graf.dijkstra(this.stan.pozycja, maxDystans);
     const wynik = new Map<string, Osiagalny>();
     for (const [id, w] of d) {
-      const potrzebne = w.dystans * K.kosztPaliwaNaParsek * mnoznik;
+      const potrzebne = this.obliczLot(w.dystans, zaloga, paliwo).paliwo;
       if (potrzebne <= paliwo + EPS) wynik.set(id, { id, dystans: w.dystans, paliwo: potrzebne, sciezka: Graf.sciezkaZ(d, id)! });
     }
     return wynik;
   }
 
-  /** Wartość firmy = kr + ładunek po cenie sprzedaży w bieżącym doku (bez rynku: po koszcie zakupu). */
+  /** Wartość firmy = kr + ładunki wszystkich statków (w doku z rynkiem po cenie sprzedaży, inaczej po koszcie zakupu). */
   wartoscFirmy(): number {
-    return this.stan.kr + this.wartoscLadowni();
+    let suma = this.stan.kr;
+    for (const s of this.stan.statki) suma += this.wartoscLadowniStatku(s.id);
+    return suma;
   }
 
+  /** Wartość ładowni statku aktywnego. */
   wartoscLadowni(): number {
-    const tu = this.stan.pozycja;
+    return this.wartoscLadowniStatku(this.stan.aktywny);
+  }
+
+  wartoscLadowniStatku(i: number): number {
+    const s = this.stan.statki[i];
+    const wDoku = s.wLocie === null && this.rynekZnany(s.pozycja);
+    const poprzedni = this.stan.aktywny;
+    this.stan.aktywny = i;
     let suma = 0;
-    for (const t of TOWARY) {
-      const poz = this.stan.ladownia[t];
-      if (poz.m3 <= 0) continue;
-      suma += this.rynekZnany(tu) ? this.wycenaSprzedazy(t, poz.m3).kwotaKr : zaokr(poz.kosztKr);
+    try {
+      for (const t of TOWARY) {
+        const poz = s.ladownia[t];
+        if (poz.m3 <= 0) continue;
+        suma += wDoku ? this.wycenaSprzedazy(t, poz.m3).kwotaKr : zaokr(poz.kosztKr);
+      }
+    } finally {
+      this.stan.aktywny = poprzedni;
     }
     return suma;
   }
@@ -597,6 +864,7 @@ export class Gra {
     const w = this.wycenaKupna(towar, m3);
     if (w.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
     this.stan.kr -= w.kwotaKr;
+    this.okres.deltaKr -= w.kwotaKr;
     poz.zapas -= m3;
     const l = this.stan.ladownia[towar];
     l.m3 += m3;
@@ -604,8 +872,13 @@ export class Gra {
     // Pochodzenie ładunku (cywilizacja zakupu): dostawa koszyka awansu liczy tylko towar kupiony u innej cywilizacji.
     const cywTu = this.wezel(tu).cywilizacja ?? '';
     l.pochodzenie[cywTu] = (l.pochodzenie[cywTu] ?? 0) + m3;
-    // Pamięć zakupu: (towar, planeta, licznik skoków) bez ceny kupna.
+    // Pamięć zakupu: (towar, planeta, licznik skoków) bez ceny kupna; w rundzie 3 pamięć floty (doba i liczniki skoków statków).
     this.stan.pamiecZakupu[this.kluczPamieci(tu, towar)] = P.pamiecZakupuSkokow;
+    if (this.runda3) {
+      const skokiStatkow: Record<number, number> = {};
+      for (const s of this.stan.statki) skokiStatkow[s.id] = s.skoki;
+      this.stan.pamiecFloty[this.kluczPamieci(tu, towar)] = { doba: this.stan.doba, statek: this.stan.aktywny, skokiStatkow };
+    }
     const t: Transakcja = {
       rodzaj: 'kupno',
       planeta: tu,
@@ -649,6 +922,7 @@ export class Gra {
       if (l.pochodzenie[c] < EPS) delete l.pochodzenie[c];
     }
     this.stan.kr += w.kwotaKr;
+    this.okres.deltaKr += w.kwotaKr;
     this.stan.rynki[tu][towar].zapas += m3;
     l.kosztKr -= kosztZakupu;
     l.m3 -= m3;
@@ -684,6 +958,7 @@ export class Gra {
     const wyc = this.wycenaPaliwa(m3);
     if (wyc.kwotaKr > this.stan.kr) throw new Error('Brak gotówki');
     this.stan.kr -= wyc.kwotaKr;
+    this.okres.deltaKr -= wyc.kwotaKr;
     this.stan.paliwo = Math.min(this.bak(), this.stan.paliwo + m3);
     // Paliwo jest zawsze dostępne: przy pustym zapasie planeta sprzedaje po cenie maksymalnej z wzoru.
     if (w.typ === 'planeta') {
@@ -698,7 +973,7 @@ export class Gra {
   zatrudnij(idKandydata: string): Zalogant {
     const i = this.stan.kandydaci.findIndex((k) => k.id === idKandydata);
     if (i < 0) throw new Error('Nie ma takiego kandydata');
-    if (this.stan.zaloga.length >= K.miejscaZalogi) throw new Error('Brak wolnych miejsc w załodze');
+    if (this.stan.zaloga.length >= this.miejscaZalogi()) throw new Error('Brak wolnych miejsc w załodze');
     const [z] = this.stan.kandydaci.splice(i, 1);
     this.stan.zaloga.push(z);
     return z;
@@ -717,10 +992,12 @@ export class Gra {
     const ef = this.efekty();
     try {
       if (trasa.length < 2) return { dystans: 0, doby: 0, paliwo: 0, blad: 'Wybierz cel na mapie' };
+      if (this.statek().wLocie) return { dystans: 0, doby: 0, paliwo: 0, blad: 'Statek jest w locie' };
       if (trasa[0] !== this.stan.pozycja) return { dystans: 0, doby: 0, paliwo: 0, blad: 'Trasa musi zaczynać się tutaj' };
       const dystans = this.graf.dlugoscTrasy(trasa);
-      const paliwo = this.potrzebnePaliwo(dystans);
-      const doby = dystans / ef.predkosc;
+      const l = this.obliczLot(dystans);
+      const paliwo = l.paliwo;
+      const doby = l.doby;
       if (paliwo > this.stan.paliwo + EPS) return { dystans, doby, paliwo, blad: 'Za mało paliwa na tę trasę' };
       const place = Math.round(ef.placeNaDobe * doby);
       if (place > this.stan.kr) return { dystans, doby, paliwo, blad: `Za mało gotówki na płace załogi w locie (${place} kr)` };
@@ -731,56 +1008,146 @@ export class Gra {
     }
   }
 
+  /**
+   * Lot statku aktywnego: start (paliwo i płace schodzą od razu, lot jest zaplanowany), a potem świat przewija się
+   * do przylotu tego statku, dokując po drodze inne statki, które przylatują wcześniej. Zwraca raport z tego lotu.
+   */
   lec(trasa: string[]): Raport {
+    const i = this.stan.aktywny;
+    this.wystartuj(trasa);
+    this.przewinDo(this.stan.statki[i].wLocie!.przylot);
+    this.stan.aktywny = i;
+    return this.ostatnieRaporty[i]!;
+  }
+
+  /** Start lotu statku aktywnego bez przewijania czasu (pętla floty: `nastepnyPrzylot` dokuje statki po kolei). */
+  wystartuj(trasa: string[]): void {
     const s = this.sprawdzTrase(trasa);
     if (s.blad) throw new Error(s.blad);
     const ef = this.efekty();
-    const okres = this.okres;
-    const stanPrzed = { saldo: okres.saldoNaStarcie, wartosc: okres.wartoscNaStarcie };
+    const statek = this.statek();
     const z = this.stan.pozycja;
-    const cel = trasa[trasa.length - 1];
-    const cenaOdniesienia = this.cenaPaliwaTutaj();
+    const l = this.obliczLot(s.dystans);
     this.zapiszOdczyt(z);
-
-    // Paliwo: bez załogi, nawigator, synergia.
-    const bezZalogi = s.dystans * K.kosztPaliwaNaParsek;
-    const poNawigatorze = bezZalogi * ef.mnoznikNawigatora;
-    const zuzyte = poNawigatorze * ef.mnoznikSynergii;
-    const oszczNaw = bezZalogi - poNawigatorze;
-    const oszczSyn = poNawigatorze - zuzyte;
-    this.stan.paliwo = Math.max(0, this.stan.paliwo - zuzyte);
-
-    // Czas i płace.
-    const dobyNominalne = s.dystans / K.predkoscNominalna;
-    const place = zaokr(ef.placeNaDobe * s.doby);
-    const placeNominalne = zaokr(ef.placeNaDobe * dobyNominalne);
+    // Paliwo i płace schodzą na starcie (płace za czas lotu).
+    const place = zaokr(ef.placeNaDobe * l.doby);
+    const placeNominalne = zaokr(ef.placeNaDobe * l.dobyNominalne);
     this.stan.kr -= place;
-    const dobaStart = this.stan.doba;
-    this.stan.doba += s.doby;
+    this.okres.deltaKr -= place;
+    statek.paliwo = Math.max(0, statek.paliwo - l.paliwo);
+    statek.wLocie = {
+      trasa: [...trasa],
+      dystans: s.dystans,
+      dobaStart: this.stan.doba,
+      przylot: this.stan.doba + l.doby,
+      doby: l.doby,
+      dobyNominalne: l.dobyNominalne,
+      paliwoZuzyteM3: l.paliwo,
+      bezZalogiM3: l.bezZalogi,
+      poNawigatorzeM3: l.poNawigatorze,
+      placeKr: place,
+      placeNominalneKr: placeNominalne,
+      cenaOdniesieniaKr: this.cenaPaliwaTutaj(),
+      predkoscStart: l.predkoscStart,
+      predkoscMeta: l.predkoscMeta,
+    };
+  }
 
-    // Świat żyje.
+  /** Najbliższy zaplanowany przylot (doba) albo null, gdy żaden statek nie leci. */
+  nastepnyPrzylotDoba(): number | null {
+    let min: number | null = null;
+    for (const s of this.stan.statki) if (s.wLocie && (min === null || s.wLocie.przylot < min)) min = s.wLocie.przylot;
+    return min;
+  }
+
+  /**
+   * Przewija świat do najbliższego przylotu, dokuje ten statek (staje się aktywny) i zwraca jego raport;
+   * null, gdy żaden statek nie leci. Przy remisie dokuje statek o niższym numerze.
+   */
+  nastepnyPrzylot(): Raport | null {
+    const doba = this.nastepnyPrzylotDoba();
+    if (doba === null) return null;
+    const i = this.stan.statki.find((s) => s.wLocie && s.wLocie.przylot <= doba + EPS)!.id;
+    this.przewinDo(doba, i);
+    this.stan.aktywny = i;
+    return this.ostatnieRaporty[i];
+  }
+
+  /** Czeka w doku `doby` dób (czas płynie: rynki żyją, inne statki przylatują). */
+  czekaj(doby: number): void {
+    if (!(doby > 0)) return;
+    const i = this.stan.aktywny;
+    this.przewinDo(this.stan.doba + doby);
+    this.stan.aktywny = i;
+  }
+
+  /**
+   * Przewija czas świata do `doDoby`: rynki żyją, statki przylatujące po drodze dokują (w kolejności przylotu; przy remisie
+   * `pierwszy` albo niższy numer), a na końcu dokują statki z przylotem dokładnie w `doDoby`.
+   */
+  private przewinDo(doDoby: number, pierwszy: number | null = null): void {
+    for (;;) {
+      let najblizszy: Statek | null = null;
+      for (const s of this.stan.statki) {
+        if (!s.wLocie || s.wLocie.przylot > doDoby + EPS) continue;
+        if (!najblizszy || s.wLocie.przylot < najblizszy.wLocie!.przylot - EPS || (Math.abs(s.wLocie.przylot - najblizszy.wLocie!.przylot) <= EPS && s.id === pierwszy)) najblizszy = s;
+      }
+      if (!najblizszy) break;
+      this.uplywCzasu(najblizszy.wLocie!.przylot - this.stan.doba);
+      this.przylot(najblizszy.id);
+    }
+    this.uplywCzasu(doDoby - this.stan.doba);
+  }
+
+  /** Upływ dt dób bez zdarzeń statków: rynki, gotowość cywilizacji (runda 3). */
+  private uplywCzasu(dt: number): void {
+    if (!(dt > EPS)) return;
     for (const rynek of Object.values(this.stan.rynki)) {
-      for (const t of TOWARY_I_PALIWO) krokRynku(rynek[t], s.doby);
+      for (const t of TOWARY_I_PALIWO) krokRynku(rynek[t], dt);
     }
-    // Pamięć zakupu: każdy wykonany skok zmniejsza wszystkie liczniki o 1.
-    const skoki = trasa.length - 1;
-    for (const klucz of Object.keys(this.stan.pamiecZakupu)) {
-      const nowy = this.stan.pamiecZakupu[klucz] - skoki;
-      if (nowy > 0) this.stan.pamiecZakupu[klucz] = nowy;
-      else delete this.stan.pamiecZakupu[klucz];
+    this.stan.doba += dt;
+    this.poUplywieCzasu(dt);
+  }
+
+  /** Hak na zdarzenia zależne od czasu (runda 3: skumulowana nadwyżka i gotowość cywilizacji). */
+  protected poUplywieCzasu(_dt: number): void {}
+
+  /** Przylot statku `i`: pamięć zakupu, XP, dokowanie, raport (linie sumują się do przepływów gotówki statku w okresie). */
+  private przylot(i: number): void {
+    const poprzedni = this.stan.aktywny;
+    this.stan.aktywny = i;
+    const statek = this.statek();
+    const w = statek.wLocie!;
+    const okres = this.okres;
+    const ef = this.efekty();
+    const z = w.trasa[0];
+    const cel = w.trasa[w.trasa.length - 1];
+    const stanPrzed = { saldo: okres.saldoNaStarcie, wartosc: okres.wartoscNaStarcie };
+    const skoki = w.trasa.length - 1;
+    statek.skoki += skoki;
+    // Pamięć zakupu statku: każdy wykonany skok zmniejsza liczniki o 1 (runda 3 liczy z pamięci floty).
+    for (const klucz of Object.keys(statek.pamiecZakupu)) {
+      const nowy = statek.pamiecZakupu[klucz] - skoki;
+      if (nowy > 0) statek.pamiecZakupu[klucz] = nowy;
+      else delete statek.pamiecZakupu[klucz];
     }
-
-    // XP załogi za doby lotu (przed przylotem: efekty tego lotu liczyły się przy starej umiejętności).
-    this.dodajXP(P.progresja.xpNaDobeLotu * s.doby);
-
-    // Przylot, kontakt, nowi kandydaci.
-    this.stan.pozycja = cel;
-    this.stan.numerLotu += 1;
+    // XP załogi za doby lotu (efekty tego lotu liczyły się przy starej umiejętności).
+    this.dodajXP(P.progresja.xpNaDobeLotu * w.doby);
+    statek.wLocie = null;
+    statek.pozycja = cel;
+    statek.numerLotu += 1;
     const kontakt = this.zadokuj();
     if (kontakt) this.dodajXP(P.progresja.xpZaKontakt);
+    this.sprawdzPoziomFirmy();
     this.stan.koniec = this.stan.doba >= this.limitDob - EPS;
 
-    // Raport: linie sumują się do zmiany salda.
+    const zuzyte = w.paliwoZuzyteM3;
+    const bezZalogi = w.bezZalogiM3;
+    const oszczNaw = bezZalogi - w.poNawigatorzeM3;
+    const oszczSyn = w.poNawigatorzeM3 - (this.runda3 ? this.obliczLotBezPilota(w) : zuzyte);
+    const cenaOdniesienia = w.cenaOdniesieniaKr;
+    const place = w.placeKr;
+    const placeNominalne = w.placeNominalneKr;
     const sprzedaze = okres.transakcje.filter((t) => t.rodzaj === 'sprzedaz');
     const zakupy = okres.transakcje.filter((t) => t.rodzaj === 'kupno');
     const sprzedazBaza = sprzedaze.reduce((a, t) => a + t.kwotaBezKaryKr, 0);
@@ -808,15 +1175,16 @@ export class Gra {
     });
     if (ef.najlepszy.nawigator) linie.push({ klucz: 'nawigator', etykieta: `Nawigator: paliwo zaoszczędzone (${oszczNaw.toFixed(1)} m³)`, kr: oszczNawKr, opis: `mnożnik zużycia ${ef.mnoznikNawigatora.toFixed(3)}` });
     if (ef.synergia) linie.push({ klucz: 'synergia', etykieta: `Synergia „trasa zgrana” (${oszczSyn.toFixed(1)} m³)`, kr: oszczSynKr, opis: 'pilot i nawigator z tej samej cywilizacji' });
-    linie.push({ klucz: 'place', etykieta: `Płace załogi za ${dobyNominalne.toFixed(1)} doby przy prędkości nominalnej`, kr: -placeNominalne, opis: `${ef.placeNaDobe} kr/dobę` });
-    if (ef.najlepszy.pilot) linie.push({ klucz: 'pilot', etykieta: `Pilot: lot ${s.doby < dobyNominalne ? 'krótszy' : 'dłuższy'} o ${Math.abs(dobyNominalne - s.doby).toFixed(1)} doby`, kr: pilotKr, opis: `prędkość ${ef.predkosc.toFixed(2)} pc/dobę` });
+    linie.push({ klucz: 'place', etykieta: `Płace załogi za ${w.dobyNominalne.toFixed(1)} doby przy prędkości nominalnej`, kr: -placeNominalne, opis: `${ef.placeNaDobe} kr/dobę` });
+    if (ef.najlepszy.pilot) linie.push({ klucz: 'pilot', etykieta: `Pilot: lot ${w.doby < w.dobyNominalne ? 'krótszy' : 'dłuższy'} o ${Math.abs(w.dobyNominalne - w.doby).toFixed(1)} doby`, kr: pilotKr, opis: `prędkość ${(this.runda3 ? w.predkoscStart : ef.predkosc).toFixed(2)} pc/dobę` });
     if (okres.kadlub) linie.push({ klucz: 'stocznia', etykieta: `Stocznia: kadłub szczebla ${okres.kadlub.szczebel}`, kr: -okres.kadlub.kwotaKr, opis: `ładownia ${Math.round(this.ladownia())} m³, bak ${Math.round(this.bak())} m³` });
-    for (const a of okres.awanse) linie.push({ klucz: 'awans', etykieta: `Awans cywilizacji ${a.nazwa} na tier ${a.tier}`, kr: 0, opis: `dostarczony koszyk tieru ${a.tier}: popyt portów na towary koszyka × ${P.progresja.mnoznikKonsumpcjiAwansu}` });
+    if (okres.nowyStatek) linie.push({ klucz: 'nowy_statek', etykieta: `Stocznia: nowy statek (${this.stan.statki[okres.nowyStatek.id].nazwa})`, kr: -okres.nowyStatek.kwotaKr, opis: `poziom firmy ${this.stan.poziomFirmy}: do ${this.limitStatkow()} statków` });
+    for (const a of okres.awanse) linie.push({ klucz: 'awans', etykieta: `Awans cywilizacji ${a.nazwa} na tier ${a.tier}`, kr: 0, opis: this.runda3 ? `kontrakt rozwojowy tieru ${a.tier} dostarczony do akademii z naukowcem` : `dostarczony koszyk tieru ${a.tier}: popyt portów na towary koszyka × ${P.progresja.mnoznikKonsumpcjiAwansu}` });
     if (kontakt) linie.push({ klucz: 'kontakt', etykieta: `Kontakt z cywilizacją ${kontakt.nazwa}`, kr: 0, opis: kontakt.opis });
 
     const zmianaSalda = linie.reduce((a, l) => a + l.kr, 0);
-    if (zmianaSalda !== this.stan.kr - stanPrzed.saldo) {
-      throw new Error(`Raport nie sumuje się do zmiany salda: ${zmianaSalda} vs ${this.stan.kr - stanPrzed.saldo}`);
+    if (zmianaSalda !== okres.deltaKr) {
+      throw new Error(`Raport nie sumuje się do przepływów statku: ${zmianaSalda} vs ${okres.deltaKr}`);
     }
 
     const wynikHandlowy: WynikHandlowy[] = [];
@@ -829,19 +1197,19 @@ export class Gra {
     }
 
     const raport: Raport = {
-      numerLotu: this.stan.numerLotu,
+      numerLotu: statek.numerLotu,
       z,
       do: cel,
-      trasa: [...trasa],
-      dystansPc: s.dystans,
-      doby: s.doby,
-      dobyNominalne,
-      dobaStart,
+      trasa: [...w.trasa],
+      dystansPc: w.dystans,
+      doby: w.doby,
+      dobyNominalne: w.dobyNominalne,
+      dobaStart: w.dobaStart,
       dobaKoniec: this.stan.doba,
       linie,
       zmianaSalda,
       saldoPrzed: stanPrzed.saldo,
-      saldoPo: this.stan.kr,
+      saldoPo: stanPrzed.saldo + zmianaSalda,
       wartoscPrzed: stanPrzed.wartosc,
       wartoscPo: this.wartoscFirmy(),
       transakcje: [...okres.transakcje],
@@ -854,29 +1222,41 @@ export class Gra {
         oszczednoscNawigatoraM3: oszczNaw,
         oszczednoscSynergiiM3: oszczSyn,
         cenaOdniesieniaKr: cenaOdniesienia,
-        wBakuPo: this.stan.paliwo,
+        wBakuPo: statek.paliwo,
       },
       zaloga: {
         placeNaDobe: ef.placeNaDobe,
-        predkosc: ef.predkosc,
+        predkosc: this.runda3 ? w.predkoscStart : ef.predkosc,
         mnoznikPaliwa: ef.mnoznikPaliwa,
         udzialHandlowca: ef.udzialHandlowca,
         synergia: ef.synergia,
-        sklad: this.stan.zaloga.map((x) => ({ ...x })),
+        sklad: statek.zaloga.map((x) => ({ ...x })),
       },
       kontakt,
       awanse: okres.awanse.length ? [...okres.awanse] : undefined,
       kadlub: okres.kadlub ?? undefined,
+      statek: this.runda3 ? statek.id : undefined,
+      predkoscStart: this.runda3 ? w.predkoscStart : undefined,
+      predkoscMeta: this.runda3 ? w.predkoscMeta : undefined,
       koniecGry: this.stan.koniec,
     };
     this.stan.raporty.push(raport);
-    return raport;
+    this.ostatnieRaporty[i] = raport;
+    this.stan.aktywny = poprzedni;
+  }
+
+  /** Paliwo lotu bez pilota, ale z nawigatorem i synergią (do linii synergii w rundzie 3, gdzie pilot zmienia też spalanie). */
+  private obliczLotBezPilota(w: { dystans: number; paliwoZuzyteM3: number }): number {
+    // Masa startowa odtworzona: paliwo na starcie = paliwo teraz + zużyte (statek już przyleciał).
+    const statek = this.statek();
+    const l = lot(w.dystans, this.parametryLotu(statek.zaloga, statek.paliwo + w.paliwoZuzyteM3, 0, false, true, true));
+    return l.paliwoM3;
   }
 
   // ---------- Pomocnicze ----------
 
   private nowyOkres(): Okres {
-    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy(), kadlub: null, awanse: [] };
+    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy(), deltaKr: 0, kadlub: null, nowyStatek: null, awanse: [] };
   }
 
   /** Zapamiętuje odczyt rynku odwiedzonej planety (tylko w trybie `zasieg`). */

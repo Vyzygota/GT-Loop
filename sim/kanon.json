@@ -139,5 +139,23 @@
   "drabinaKadlubow": {
     "szczebli": 6,
     "status": "proponowane"
-  }
+  },
+  "statek": {
+    "ciagDyszyTf": 230,
+    "dyszNaReaktor": 2,
+    "masaJedynkiSuchaT": 421.99,
+    "stalaPredkosci": 0.8812,
+    "spalanieRM3NaDobe": 4,
+    "dawkaDM3NaPc": 1,
+    "objetoscReaktoraM3": 271
+  },
+  "SectorMinTier": [
+    1,
+    2,
+    1,
+    1,
+    2,
+    3,
+    1
+  ]
 }

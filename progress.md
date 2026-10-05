@@ -1,8 +1,8 @@
 # Dziennik (progress) — runda 3
 
 - [x] Faza 1: rozpoznanie — notatki w `findings.md`.
-- [ ] Faza 2: przełącznik `runda3`, stan floty, moduły.
-- [ ] Faza 3: lot z hierarchii ciągu (R/D), pusty bak, testy kontrolne.
+- [x] Faza 2: przełącznik `runda3` (+ `paliwo`, `bramkaTowaru`, `pamiecFloty`), liczby kanonu statku i `SectorMinTier` w `kanon.json`, stan floty `stan.statki[]` z aktywnym statkiem (dotychczasowe pola to widok), moduły per szczebel, obsada, pamięć floty, okna stoczni, `kupStatek`, poziomy firmy.
+- [x] Faza 3: `sim/lot.ts` (postać zamknięta R i D, zasięgi), lot jako start → przewinięcie czasu → przylot (czas ciągły, statki asynchroniczne, raport sumuje się do przepływów statku), pusty bak na starcie; 6 testów kontrolnych zielonych, 66 dotychczasowych bez zmian.
 - [ ] Faza 4: rynek z ludności, sektory, bramka G/P.
 - [ ] Faza 5: drabina rozwoju kanonu (gotowość, kontrakt, naukowiec, akademia).
 - [ ] Faza 6: firma i flota, czas ciągły, okna stoczni, pamięć floty A/B/C.

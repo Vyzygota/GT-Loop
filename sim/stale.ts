@@ -38,6 +38,10 @@ export interface Kanon {
   tierZalogi: { progiXP: number[]; placaKrNaDobe: [number, number][] };
   /** Drabina kadłubów: liczba szczebli (0…szczebli−1), status proponowane. */
   drabinaKadlubow: { szczebli: number; status: string };
+  /** Statek kanonu: ciąg dyszy, dysze na reaktor, masa sucha jedynki, stała prędkości, spalanie R, dawka D, objętość reaktora. */
+  statek: { ciagDyszyTf: number; dyszNaReaktor: number; masaJedynkiSuchaT: number; stalaPredkosci: number; spalanieRM3NaDobe: number; dawkaDM3NaPc: number; objetoscReaktoraM3: number };
+  /** Minimalny tier otwierający sektor produkcji (7 sektorów; mapowanie na towary w prototyp.json). */
+  SectorMinTier: number[];
 }
 
 export interface PlanetaProfil {
@@ -118,6 +122,45 @@ export interface KonfiguracjaProgresji {
   nazwyTierowZalogi: string[];
 }
 
+export interface KonfiguracjaRundy3 {
+  wlaczona: boolean;
+  paliwo: 'R' | 'D';
+  bramkaTowaru: 'G' | 'P';
+  pamiecFloty: 'A' | 'B' | 'C';
+  /** Wariant C pamięci zakupu: kara gaśnie po tylu dobach (25 = 5 skoków jedynki). */
+  pamiecCzasDob: number;
+  statek: {
+    masaReaktoraT: number;
+    modulLadowniM3: number;
+    masaModuluLadowniT: number;
+    mnoznikKadluba: number;
+    objetoscJedynkiM3: number;
+    konfiguracje: { reaktory: number; ladownie: number }[];
+    bakM3: number[];
+    tierSzczebla: number[];
+    obsada: { kokpit: number; naReaktor: number; naModulyLadowni: number };
+    naukowiecM3: number;
+  };
+  rynek: {
+    konsumpcjaNaMlnNaDobe: Record<TowarLubPaliwo, number>;
+    sektory: { nazwa: string; towar: TowarLubPaliwo | null }[];
+    /** Mnożniki popytu per tier (indeks 0 = T1) i towar. */
+    koszykTieru: Record<TowarLubPaliwo, number>[];
+  };
+  awans: {
+    k: number;
+    dobyGotowosciT2: number;
+    zamoznosc: Record<string, number>;
+    ilosciKontraktu: number;
+    naukowiecZInnejPlanety: boolean;
+  };
+  firma: {
+    progFirmy: number[];
+    statkiNaPoziom: number[];
+    cenaNowegoStatkuKr: number;
+  };
+}
+
 export interface Prototyp {
   skala: Skala;
   informacja: TrybInformacji;
@@ -125,6 +168,7 @@ export interface Prototyp {
   wariantySpreadu: Record<WariantSpreadu, KonfiguracjaSpreadu>;
   pamiecZakupuSkokow: number;
   progresja: KonfiguracjaProgresji;
+  runda3: KonfiguracjaRundy3;
   skale: Record<Skala, KonfiguracjaSkali>;
   celMnoznikWartosci: number;
   nawigatorMaxRedukcjaPaliwa: number;
