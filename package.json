@@ -10,6 +10,7 @@
     "test": "vitest run",
     "bot": "tsx bot/bot.ts",
     "smoke": "tsx scripts/smoke.ts",
+    "smoke:runda3": "tsx scripts/smoke-runda3.ts",
     "progresja": "tsx bot/progresja.ts",
     "runda3": "tsx bot/runda3.ts"
   },

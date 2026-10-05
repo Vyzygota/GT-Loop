@@ -457,7 +457,11 @@ function main(): void {
     return;
   }
   const siatka = [...mapa.entries()].filter(([k]) => !k.startsWith('k-')).sort(([a], [b]) => (a < b ? -1 : 1));
-  const przegladK = [...mapa.entries()].filter(([k]) => k.startsWith('k-')).map(([k, w]) => ({ k: Number(k.slice(2)), wyniki: w })).sort((a, b) => a.k - b.k);
+  const przegladK = [...mapa.entries()].filter(([k]) => k.startsWith('k-')).map(([k, w]) => ({ k: Number(k.slice(2)), wyniki: w }));
+  // Wariant bazowy R:G:A liczy się przy domyślnym k, więc jest wierszem przeglądu k dla tej wartości (bez osobnego przebiegu).
+  const bazowy = mapa.get('R:G:A');
+  if (bazowy && !przegladK.some((g) => g.k === P.runda3.awans.k)) przegladK.push({ k: P.runda3.awans.k, wyniki: bazowy });
+  przegladK.sort((a, b) => a.k - b.k);
   const out: string[] = [];
   const baza = mapa.get('R:G:A') ?? siatka[0]?.[1] ?? [];
   if (baza.length) {
