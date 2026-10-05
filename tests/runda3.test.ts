@@ -115,3 +115,144 @@ describe('runda 3: lot z hierarchii ciągu', () => {
     expect(g.limitStatkow()).toBe(1);
   });
 });
+
+describe('runda 3: rynek z ludności, sektory i bramka towaru', () => {
+  it('konsumpcja planety = konsumpcjaNaMlnNaDobe × potrzeby × populacja × koszyk T1; rynek jest bezdenny wobec jednego statku', () => {
+    const g = new Gra('r3-rynek', { skala: 'L', runda3: true, bramkaTowaru: 'P' });
+    const tu = g.stan.pozycja;
+    const w = g.wezel(tu);
+    const poz = g.stan.rynki[tu].Food;
+    const oczekiwana = P.runda3.rynek.konsumpcjaNaMlnNaDobe.Food * P.cywilizacjeKanonu[w.cywilizacja!].potrzeby.Food * w.populacjaMln!;
+    expect(poz.konsumpcja).toBeCloseTo(oczekiwana, 6);
+    expect(poz.norma).toBeCloseTo(K.normaZapasu * oczekiwana, 6);
+    expect(poz.norma).toBeGreaterThan(1000 * g.ladownia());
+  });
+
+  it('bramka G: towar sektora o minTier > 1 nie istnieje na rynku cywilizacji T1, bramka P: istnieje, ale nikt go nie produkuje', () => {
+    const gG = new Gra('r3-bramka', { skala: 'L', runda3: true, bramkaTowaru: 'G' });
+    const gP = new Gra('r3-bramka', { skala: 'L', runda3: true, bramkaTowaru: 'P' });
+    const tu = gG.stan.pozycja;
+    expect(K.SectorMinTier).toEqual([1, 2, 1, 1, 2, 3, 1]);
+    expect(gG.stan.rynki[tu].Minerals.dostepny).toBe(false);
+    expect(gG.ceny(tu, 'Minerals')).toBeNull();
+    expect(gG.maxKupno('Minerals')).toBe(0);
+    expect(gG.stan.rynki[tu].Minerals.konsumpcja).toBe(0);
+    expect(gP.stan.rynki[tu].Minerals.dostepny).toBe(true);
+    expect(gP.ceny(tu, 'Minerals')).not.toBeNull();
+    expect(gP.stan.rynki[tu].Minerals.konsumpcja).toBeGreaterThan(0);
+    expect(gP.stan.rynki[tu].Minerals.produkcja).toBe(0);
+    for (const t of ['Food', 'Solvents'] as const) {
+      expect(gG.stan.rynki[tu][t].dostepny).toBe(true);
+      expect(gG.stan.rynki[tu][t].produkcja).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('runda 3: drabina rozwoju kanonu', () => {
+  const OPCJE = { skala: 'L' as const, runda3: true, bramkaTowaru: 'P' as const };
+
+  it('gotowość rośnie z nadwyżki i progu Z₀ × k^(T−1); bez dostawy gracza żadna cywilizacja nie awansuje, choć kontrakty są otwarte', () => {
+    const g = new Gra('r3-awans', OPCJE);
+    for (const c of g.swiat.cywilizacje) {
+      expect(g.tierCywilizacji(c.id)).toBe(1);
+      expect(g.rozwoj(c.id).z0WU).toBeGreaterThan(0);
+      expect(g.progGotowosciWU(c.id, 2)).toBeCloseTo(g.rozwoj(c.id).z0WU * P.runda3.awans.k, 6);
+    }
+    g.czekaj(P.runda3.awans.dobyGotowosciT2 * P.runda3.awans.k * 3);
+    const zKontraktem = g.swiat.cywilizacje.filter((c) => g.rozwoj(c.id).kontrakt !== null);
+    expect(zKontraktem.length).toBeGreaterThan(0);
+    for (const c of g.swiat.cywilizacje) expect(g.tierCywilizacji(c.id)).toBe(1);
+    const k = g.rozwoj(zKontraktem[0].id).kontrakt!;
+    expect(k.tier).toBe(2);
+    expect(Object.keys(k.towary).length).toBeGreaterThan(0);
+    expect(Object.keys(k.towary)).not.toContain('Minerals');
+    expect(Object.keys(k.towary)).not.toContain('Fuel');
+  });
+
+  it('awans tylko po kontrakcie: receptura kupiona u innej cywilizacji + naukowiec z innej planety, dostarczone do akademii (stolicy)', () => {
+    const g = new Gra('r3-kontrakt', OPCJE);
+    const cywStart = g.wezel(g.stan.pozycja).cywilizacja!;
+    // Cywilizacja do awansu: inna znana cywilizacja; jej stolica to akademia.
+    const cel = g.swiat.cywilizacje.find((c) => c.id !== cywStart && g.cywilizacjaZnana(c.id))!;
+    // Wymuś gotowość (bez czekania setek dób) i otwórz kontrakt przez upływ chwili.
+    g.rozwoj(cel.id).nadwyzkaWU = g.progGotowosciWU(cel.id, 2);
+    g.czekaj(0.01);
+    const kontrakt = g.rozwoj(cel.id).kontrakt!;
+    expect(kontrakt).not.toBeNull();
+    // Przed dostawą: tier 1; dostawa bez naukowca i bez towarów odrzucona.
+    expect(g.tierCywilizacji(cel.id)).toBe(1);
+    expect(() => g.dostarczKontrakt()).toThrow();
+    const lecDo = (celId: string) => {
+      const sciezka = g.graf.najkrotszaSciezka(g.stan.pozycja, celId)!;
+      for (let i = 0; i + 1 < sciezka.length; i++) {
+        if (g.maPaliwo()) {
+          const ile = Math.min(g.bak() - g.stan.paliwo, g.maxPaliwo());
+          if (ile > 1e-6) g.tankuj(ile);
+        }
+        g.lec([sciezka[i], sciezka[i + 1]]);
+      }
+    };
+    // Kup recepturę u innej cywilizacji niż cel: tutaj, a gdy tu brak zapasu (deficyt), na najbliższej planecie z zapasem.
+    g.tankuj(g.maxPaliwo());
+    for (const t of Object.keys(kontrakt.towary) as (keyof typeof kontrakt.towary)[]) {
+      const ile = kontrakt.towary[t]!;
+      if (g.maxKupno(t) < ile) {
+        const d0 = g.graf.dijkstra(g.stan.pozycja);
+        const zrodlo = g.swiat.wezly
+          .filter((w) => w.typ === 'planeta' && w.cywilizacja !== cel.id && g.rynekZnany(w.id) && g.stan.rynki[w.id][t].zapas >= ile)
+          .sort((a, b) => (d0.get(a.id)?.dystans ?? Infinity) - (d0.get(b.id)?.dystans ?? Infinity))[0];
+        expect(zrodlo).toBeDefined();
+        lecDo(zrodlo.id);
+      }
+      expect(g.maxKupno(t)).toBeGreaterThanOrEqual(ile);
+      g.kup(t, ile);
+      expect(g.ladunekSpoza(t, cel.id)).toBeGreaterThanOrEqual(ile);
+    }
+    // Naukowiec: z planety celu innej niż akademia (lub sąsiedniej); tu (cywilizacja startowa) tylko jeśli sąsiednia.
+    const d = g.graf.dijkstra(g.stan.pozycja);
+    const planetaNaukowca = cel.planety.filter((id) => id !== cel.stolica).sort((a, b) => (d.get(a)?.dystans ?? Infinity) - (d.get(b)?.dystans ?? Infinity))[0];
+    expect(g.naukowiecDostepny(cel.id, cel.stolica)).toBe(false);
+    expect(g.naukowiecDostepny(cel.id, planetaNaukowca)).toBe(true);
+    lecDo(planetaNaukowca);
+    g.zabierzNaukowca(cel.id);
+    expect(g.statek().naukowiec?.cywilizacja).toBe(cel.id);
+    expect(g.objetoscZajeta()).toBeGreaterThanOrEqual(P.runda3.statek.naukowiecM3);
+    lecDo(cel.stolica);
+    const dd = g.kontraktDoDostarczenia()!;
+    expect(dd.brakuje).toEqual([]);
+    const przed = g.stan.rynki[cel.stolica].Minerals;
+    expect(przed.produkcja).toBe(0);
+    const konsumpcjaMineralowPrzed = przed.konsumpcja;
+    const konsumpcjaPaliwaPrzed = g.stan.rynki[cel.stolica].Fuel.konsumpcja;
+    g.dostarczKontrakt();
+    expect(g.tierCywilizacji(cel.id)).toBe(2);
+    expect(g.statek().naukowiec).toBeNull();
+    expect(g.rozwoj(cel.id).kontrakt).toBeNull();
+    expect(g.rozwoj(cel.id).nadwyzkaWU).toBe(0);
+    // T2 otwiera górnictwo i przemysł (SectorMinTier 2): produkcja minerałów rusza, popyt rośnie według koszyka (minerały ×6,38, paliwo ×3,46).
+    const po = g.stan.rynki[cel.stolica].Minerals;
+    expect(po.produkcja).toBeGreaterThan(0);
+    expect(po.konsumpcja / konsumpcjaMineralowPrzed).toBeCloseTo(6.38, 6);
+    expect(g.stan.rynki[cel.stolica].Fuel.konsumpcja / konsumpcjaPaliwaPrzed).toBeCloseTo(3.46, 6);
+    expect(g.stan.rynki[cel.stolica].Electronics.produkcja).toBe(0);
+    expect(g.stan.kamienie[`tier:${cel.id}:2`]).toBeDefined();
+    expect(g.stan.kamienie['cywilizacja:pierwsza:T2']).toBeDefined();
+    const r = g.stan.raporty[g.stan.raporty.length - 1];
+    expect(r.linie.reduce((s, l) => s + l.kr, 0)).toBe(r.zmianaSalda);
+  });
+
+  it('bramka G: po awansie na T2 minerały pojawiają się na rynku cywilizacji', () => {
+    const g = new Gra('r3-bramka-awans', { skala: 'L', runda3: true, bramkaTowaru: 'G' });
+    const cywStart = g.wezel(g.stan.pozycja).cywilizacja!;
+    const cel = g.swiat.cywilizacje.find((c) => c.id !== cywStart && g.cywilizacjaZnana(c.id))!;
+    expect(g.stan.rynki[cel.stolica].Minerals.dostepny).toBe(false);
+    g.rozwoj(cel.id).nadwyzkaWU = g.progGotowosciWU(cel.id, 2);
+    g.czekaj(0.01);
+    // Dostawa „na skróty” dla testu bramki: symulujemy spełniony kontrakt przez bezpośrednie wywołanie prywatnego awansu.
+    (g as unknown as { awansujCywilizacje: (c: string, t: number) => void }).awansujCywilizacje(cel.id, 2);
+    expect(g.stan.rynki[cel.stolica].Minerals.dostepny).toBe(true);
+    expect(g.stan.rynki[cel.stolica].Minerals.konsumpcja).toBeGreaterThan(0);
+    expect(g.stan.rynki[cel.stolica].Electronics.dostepny).toBe(false);
+    expect(g.ceny(cel.stolica, 'Minerals')).not.toBeNull();
+  });
+});

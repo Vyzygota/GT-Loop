@@ -70,6 +70,28 @@ export interface PozycjaRynku {
   konsumpcjaUspiona: number;
   /** Otwartość handlowa cywilizacji: sufit dobowej wymiany NPC = otwartość × konsumpcja × mnożnik. */
   otwartosc: number;
+  /** Runda 3: czy towar w ogóle jest na tym rynku (bramka G: towar wyższego tieru nie istnieje poniżej tego tieru). */
+  dostepny?: boolean;
+  /** Runda 3: mnożnik specjalizacji planety × normalizacja (produkcja = konsumpcja × stosunek × ten mnożnik), do otwierania sektorów. */
+  mnoznikSpecjalizacji?: number;
+}
+
+/** Runda 3: kontrakt rozwojowy wystawiony przez cywilizację po osiągnięciu gotowości. */
+export interface Kontrakt {
+  /** Tier docelowy. */
+  tier: number;
+  /** Receptura: towar → m³ do dostarczenia (kupione u innej cywilizacji). */
+  towary: Partial<Record<Towar, number>>;
+  otwartyDoba: number;
+}
+
+/** Runda 3: stan rozwoju cywilizacji (drabina kanonu). */
+export interface RozwojCywilizacji {
+  /** Z₀_start = Σ populacja × zamożność × PkbToWaterUnits (WU), zamrożone w dobie 0. */
+  z0WU: number;
+  /** Skumulowana nadwyżka (WU) od ostatniego awansu. */
+  nadwyzkaWU: number;
+  kontrakt: Kontrakt | null;
 }
 
 /** Co gracz wie o rynku planety: na żywo, ostatni odczyt (z wiekiem w dobach) albo nic. */

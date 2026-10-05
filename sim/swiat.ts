@@ -287,7 +287,7 @@ function nazwaZSylab(rng: Losowosc, sylaby: string[], zajete: Set<string>): stri
   return nazwa;
 }
 
-function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
+function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L', tryb: TrybRynku): Wygenerowany | null {
   const cfg = P.skale[skala];
   const G = P.galaktyka;
   const R = K.promienGalaktyki;
@@ -491,8 +491,9 @@ function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
   const graf = new Graf(wezly, kraw);
   if (!graf.spojny()) return null;
 
-  // 5. Rynki portowe cywilizacji kanonu.
-  const rynki = rynkiGalaktyki(rng.odgalezienie('rynki'), terytoria, idUkladu);
+  // 5. Rynki portowe cywilizacji kanonu (runda 3: z ludności planet).
+  const populacje = uklady.map((_, i) => wezly.find((w) => w.id === idUkladu[i])?.populacjaMln ?? 0);
+  const rynki = rynkiGalaktyki(rng.odgalezienie('rynki'), terytoria, idUkladu, populacje, tryb);
   const cywilizacje: ProfilCywilizacji[] = terytoria.map((t) => {
     const kanon = K.cywilizacje[t.id];
     const planety = t.uklady.map((i) => idUkladu[i]);
@@ -540,7 +541,27 @@ function probaGalaktyki(rng: Losowosc, skala: 'M' | 'L'): Wygenerowany | null {
  * produkcja = konsumpcja × (produkcja/potrzeby cywilizacji; dla Żywności SSR z kanonu) × specjalizacja układu,
  * znormalizowana tak, by suma produkcji cywilizacji była dokładnie równa stosunkowi × suma konsumpcji.
  */
-function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string[]): Record<string, Rynek> {
+/** Runda 3: minimalny tier sektora produkującego towar (`SectorMinTier` kanonu przez mapowanie sektorów prototypu); Infinity, gdy brak sektora. */
+export function minTierTowaru(g: TowarLubPaliwo): number {
+  const i = P.runda3.rynek.sektory.findIndex((s) => s.towar === g);
+  return i >= 0 ? K.SectorMinTier[i] : Infinity;
+}
+
+/**
+ * Runda 3: konsumpcja planety z ludności = konsumpcjaNaMlnNaDobe × potrzeby rasy × populacja (mln) × koszyk tieru.
+ */
+export function konsumpcjaZLudnosci(idCyw: string, populacjaMln: number, g: TowarLubPaliwo, tier: number): number {
+  const R = P.runda3.rynek;
+  const koszyk = R.koszykTieru[Math.min(tier, R.koszykTieru.length) - 1];
+  return R.konsumpcjaNaMlnNaDobe[g] * P.cywilizacjeKanonu[idCyw].potrzeby[g] * populacjaMln * koszyk[g];
+}
+
+export interface TrybRynku {
+  runda3: boolean;
+  bramka: 'G' | 'P';
+}
+
+function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string[], populacje: number[], tryb: TrybRynku): Record<string, Rynek> {
   const G = P.galaktyka;
   const rynki: Record<string, Rynek> = {};
   for (const t of terytoria) {
@@ -550,7 +571,10 @@ function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string
     const specjalnosci: Towar[] = t.uklady.map(() => rng.wybierz(TOWARY));
     for (const g of TOWARY_I_PALIWO) {
       const stosunek = g === 'Food' ? kanon.ssr : (profil.produkcjaDoPotrzeb[g] ?? 1);
-      const konsumpcje = t.uklady.map((_, r) => G.portNaUkladM3NaDobe[g] * profil.potrzeby[g] * t.wagi[r] * (g === 'Fuel' ? 1 : glebokosc));
+      // Runda 3: konsumpcja z ludności (populacja planety × koszyk T1), bez głębokości portu; sektor otwarty, gdy T1 ≥ SectorMinTier.
+      const otwarty = !tryb.runda3 || minTierTowaru(g) <= 1;
+      const naRynku = !tryb.runda3 || tryb.bramka === 'P' || otwarty;
+      const konsumpcje = t.uklady.map((i, r) => (tryb.runda3 ? (naRynku ? konsumpcjaZLudnosci(t.id, populacje[i], g, 1) : 0) : G.portNaUkladM3NaDobe[g] * profil.potrzeby[g] * t.wagi[r] * (g === 'Fuel' ? 1 : glebokosc)));
       const spec = t.uklady.map((_, r) => (g !== 'Fuel' && specjalnosci[r] === g ? G.specjalizacjaMnoznik : g === 'Fuel' ? 1 : G.specjalizacjaReszta));
       const sumaK = konsumpcje.reduce((s, k) => s + k, 0);
       const sumaKS = konsumpcje.reduce((s, k, r) => s + k * spec[r], 0);
@@ -559,7 +583,8 @@ function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string
         const id = idUkladu[i];
         rynki[id] ??= {} as Rynek;
         const konsumpcja = konsumpcje[r];
-        const produkcja = konsumpcja * stosunek * spec[r] * normalizacja;
+        const mnoznikSpecjalizacji = spec[r] * normalizacja;
+        const produkcja = otwarty ? konsumpcja * stosunek * mnoznikSpecjalizacji : 0;
         const norma = K.normaZapasu * konsumpcja;
         const start = G.zapasStartowyUlamekNormy + G.zapasStartowyJitter * rng.zakres(-1, 1);
         const uspiona = !t.znanaNaStarcie && g === 'Electronics';
@@ -570,6 +595,7 @@ function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string
           konsumpcja: uspiona ? 0 : konsumpcja,
           konsumpcjaUspiona: uspiona ? konsumpcja : 0,
           otwartosc: kanon.otwartosc,
+          ...(tryb.runda3 ? { dostepny: naRynku, mnoznikSpecjalizacji } : {}),
         };
       });
     }
@@ -587,10 +613,10 @@ function rynkiGalaktyki(rng: Losowosc, terytoria: Terytorium[], idUkladu: string
   return rynki;
 }
 
-function generujGalaktyke(ziarno: string, skala: 'M' | 'L'): Wygenerowany {
+function generujGalaktyke(ziarno: string, skala: 'M' | 'L', tryb: TrybRynku): Wygenerowany {
   const rngBaza = new Losowosc(ziarno).odgalezienie(`galaktyka:${skala}`);
   for (let proba = 0; proba < P.galaktyka.maxProbUkladu; proba++) {
-    const wynik = probaGalaktyki(rngBaza.odgalezienie(`proba:${proba}`), skala);
+    const wynik = probaGalaktyki(rngBaza.odgalezienie(`proba:${proba}`), skala, tryb);
     if (wynik) {
       wynik.swiat.ziarno = ziarno;
       return wynik;
@@ -599,6 +625,6 @@ function generujGalaktyke(ziarno: string, skala: 'M' | 'L'): Wygenerowany {
   throw new Error(`Nie udało się wygenerować galaktyki ${skala} dla ziarna "${ziarno}"`);
 }
 
-export function generujSwiat(ziarno: string, skala: Skala = P.skala): Wygenerowany {
-  return skala === 'S' ? generujSwiatS(ziarno) : generujGalaktyke(ziarno, skala);
+export function generujSwiat(ziarno: string, skala: Skala = P.skala, tryb: TrybRynku = { runda3: false, bramka: 'G' }): Wygenerowany {
+  return skala === 'S' ? generujSwiatS(ziarno) : generujGalaktyke(ziarno, skala, tryb);
 }

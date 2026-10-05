@@ -3,9 +3,9 @@
 - [x] Faza 1: rozpoznanie — notatki w `findings.md`.
 - [x] Faza 2: przełącznik `runda3` (+ `paliwo`, `bramkaTowaru`, `pamiecFloty`), liczby kanonu statku i `SectorMinTier` w `kanon.json`, stan floty `stan.statki[]` z aktywnym statkiem (dotychczasowe pola to widok), moduły per szczebel, obsada, pamięć floty, okna stoczni, `kupStatek`, poziomy firmy.
 - [x] Faza 3: `sim/lot.ts` (postać zamknięta R i D, zasięgi), lot jako start → przewinięcie czasu → przylot (czas ciągły, statki asynchroniczne, raport sumuje się do przepływów statku), pusty bak na starcie; 6 testów kontrolnych zielonych, 66 dotychczasowych bez zmian.
-- [ ] Faza 4: rynek z ludności, sektory, bramka G/P.
-- [ ] Faza 5: drabina rozwoju kanonu (gotowość, kontrakt, naukowiec, akademia).
-- [ ] Faza 6: firma i flota, czas ciągły, okna stoczni, pamięć floty A/B/C.
+- [x] Faza 4: `rynkiGalaktyki` w trybie rundy 3: konsumpcja z ludności (populacja planety × koszyk T1), sektory z `SectorMinTier` (mapowanie w `prototyp.json`), bramka G (`dostepny`) / P, bez głębokości portu; `mnoznikSpecjalizacji` w pozycji rynku do otwierania sektorów.
+- [x] Faza 5: `stan.rozwoj` (Z₀ z kalibrowanego PkbToWaterUnits, nadwyżka od ostatniego awansu, kontrakt), gotowość w upływie czasu, receptura, naukowiec (40 m³, nie z akademii), `dostarczKontrakt` w stolicy, awans otwiera sektory i mnoży koszyk; 5 nowych testów.
+- [x] Faza 6: w modelu: poziomy firmy (`progFirmy`), `kupStatek`, tier stoczni per szczebel, okna stoczni, pamięć floty A/B/C (`licznikPamieci`), czas ciągły (`wystartuj`/`nastepnyPrzylot`/`czekaj`).
 - [ ] Faza 7: bot floty.
 - [ ] Faza 8: testy.
 - [ ] Faza 9: pomiary (siatka 12 × 30 ziaren, przegląd k).
