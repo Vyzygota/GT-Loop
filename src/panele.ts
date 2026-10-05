@@ -38,8 +38,10 @@ export function panelRynku(gra: Gra, ilosci: Record<string, number>): string {
   }
   const ef = gra.efekty();
   const wiersze = TOWARY.map((t) => {
-    const c = gra.ceny(tu, t)!;
+    const c = gra.ceny(tu, t);
     const l = gra.stan.ladownia[t];
+    // Runda 3, bramka G: towar sektora, którego tier cywilizacji jeszcze nie otworzył, nie istnieje na tym rynku.
+    if (!c) return `<tr data-towar="${t}"><td class="lewo"><b>${nazwaTowaru(t)}</b><div class="szary maly">${liczba1(K.towary[t].gestosc)} t/m³${l.m3 > 0 ? ` · w ładowni ${liczba1(l.m3)} m³` : ''}</div></td><td colspan="5" class="szary">— (sektor zamknięty na tym tierze: ani kupna, ani sprzedaży)</td></tr>`;
     const il = ilosci[t] ?? 0;
     const maxK = Math.floor(gra.maxKupno(t));
     const wk = il > 0 && il <= maxK ? gra.wycenaKupna(t, il) : null;
@@ -201,7 +203,7 @@ export function tablicaCen(gra: Gra, pokazWszystkie: boolean): string {
     .map(({ w, d, info }) => {
       const komorki = TOWARY.map((t: Towar) => {
         const c = gra.ceny(w.id, t);
-        if (!c) return '<td class="szary">?</td>';
+        if (!c) return `<td class="szary">${gra.rynekZnany(w.id) && gra.stan.rynki[w.id][t].dostepny === false ? '—' : '?'}</td>`;
         const moj = gra.stan.ladownia[t].m3 > 0;
         return `<td><span class="${moj ? 'pogrubienie' : ''}">${Math.round(c.sprzedazKr).toLocaleString('pl-PL')}</span><span class="szary"> / ${Math.round(c.kupnoKr).toLocaleString('pl-PL')}</span><div class="szary maly">n ${liczba2(c.nacisk)}</div></td>`;
       }).join('');

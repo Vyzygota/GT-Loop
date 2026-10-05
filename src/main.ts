@@ -21,7 +21,7 @@ const SKALE: Skala[] = ['S', 'M', 'L'];
 const TRYBY: TrybInformacji[] = ['pelna', 'zasieg'];
 const WARIANTY: WariantSpreadu[] = ['A', 'B', 'C', 'D', 'E'];
 
-function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; progresja: boolean; szybko: boolean } {
+function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInformacji; spread: WariantSpreadu; progresja: boolean; runda3: boolean; szybko: boolean } {
   const h = location.hash;
   const wez = (k: string) => {
     const m = new RegExp(`${k}=([^&]+)`).exec(h);
@@ -36,6 +36,7 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
     informacja: TRYBY.includes(informacja as TrybInformacji) ? (informacja as TrybInformacji) : P.informacja,
     spread: WARIANTY.includes(spread as WariantSpreadu) ? (spread as WariantSpreadu) : P.spread,
     progresja: wez('progresja') === null ? P.progresja.wlaczona : wez('progresja') === '1',
+    runda3: wez('runda3') === null ? P.runda3.wlaczona : wez('runda3') === '1',
     szybko: wez('szybko') === '1',
   };
 }
@@ -43,11 +44,12 @@ function parametryZAdresu(): { ziarno: string; skala: Skala; informacja: TrybInf
 /** Flaga #szybko=1 skraca animację lotu (używa jej smoke test). */
 const szybko = parametryZAdresu().szybko;
 
-let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja, parametryZAdresu().spread, parametryZAdresu().progresja);
+let ui: StanUI = nowaGra(parametryZAdresu().ziarno, parametryZAdresu().skala, parametryZAdresu().informacja, parametryZAdresu().spread, parametryZAdresu().progresja, parametryZAdresu().runda3);
 
-function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji, spread: WariantSpreadu, progresja: boolean): StanUI {
-  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}&progresja=${progresja ? 1 : 0}${szybko ? '&szybko=1' : ''}`;
-  const gra = new Gra(ziarno, { skala, informacja, spread, progresja });
+function nowaGra(ziarno: string, skala: Skala, informacja: TrybInformacji, spread: WariantSpreadu, progresja: boolean, runda3 = false): StanUI {
+  location.hash = `ziarno=${encodeURIComponent(ziarno)}&skala=${skala}&informacja=${informacja}&spread=${spread}&progresja=${progresja || runda3 ? 1 : 0}&runda3=${runda3 ? 1 : 0}${szybko ? '&szybko=1' : ''}`;
+  // Runda 3 (mechanizmy kanonu: lot z masy, rynek z ludności, kontrakty, flota) włącza też progresję; UI gra statkiem aktywnym.
+  const gra = new Gra(ziarno, { skala, informacja, spread, progresja: progresja || runda3, runda3 });
   return { gra, trasa: [], ilosci: {}, raport: null, wLocie: false, komunikat: '', ekranKonca: false, widok: widokStartowy(gra), pokazWszystkieCeny: false };
 }
 
@@ -77,6 +79,7 @@ function naglowek(): string {
       <label class="maly">Informacja <select id="informacja">${opcje(TRYBY, g.informacja)}</select></label>
       <label class="maly" title="${esc(P.wariantySpreadu[g.wariantSpreadu].opis ?? '')}">Spread <select id="spread">${opcje(WARIANTY, g.wariantSpreadu)}</select></label>
       <label class="maly" title="Tiery cywilizacji (awans przez dostawy koszyka), drabina kadłubów w stoczni stolicy, XP i tiery załogi; horyzont ${P.progresja.horyzontDob} dób">Progresja <select id="progresja"><option value="0" ${g.progresja ? '' : 'selected'}>wył.</option><option value="1" ${g.progresja ? 'selected' : ''}>wł.</option></select></label>
+      <label class="maly" title="Runda 3: lot z hierarchii ciągu i masy (paliwo ${P.runda3.paliwo === 'R' ? '4 m³/dobę' : '1 m³/pc'}), pusty bak na starcie, rynek z ludności z bramką towaru ${P.runda3.bramkaTowaru}, drabina T1–T4 z kontraktem i naukowcem, flota według poziomu firmy; włącza progresję">Runda 3 <select id="runda3"><option value="0" ${g.runda3 ? '' : 'selected'}>wył.</option><option value="1" ${g.runda3 ? 'selected' : ''}>wł.</option></select></label>
       <label class="maly">Ziarno <input type="text" id="ziarno" value="${esc(g.swiat.ziarno)}" /></label>
       <button data-akcja="nowa-gra">Nowa gra</button>
     </div>
@@ -286,7 +289,8 @@ app.addEventListener('click', (ev) => {
       const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
       const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
       const progresja = (document.getElementById('progresja') as HTMLSelectElement).value === '1';
-      ui = nowaGra(ziarno, skala, informacja, spread, progresja);
+      const runda3 = (document.getElementById('runda3') as HTMLSelectElement).value === '1';
+      ui = nowaGra(ziarno, skala, informacja, spread, progresja, runda3);
       break;
     }
     case 'zoom-plus':
@@ -382,7 +386,8 @@ app.addEventListener('keydown', (ev) => {
     const informacja = (document.getElementById('informacja') as HTMLSelectElement).value as TrybInformacji;
     const spread = (document.getElementById('spread') as HTMLSelectElement).value as WariantSpreadu;
     const progresja = (document.getElementById('progresja') as HTMLSelectElement).value === '1';
-    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja, spread, progresja);
+    const runda3 = (document.getElementById('runda3') as HTMLSelectElement).value === '1';
+    ui = nowaGra(pole.value.trim() || String(P.bot.pierwszeZiarno), skala, informacja, spread, progresja, runda3);
     renderuj();
   }
 });

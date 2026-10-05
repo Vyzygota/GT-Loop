@@ -51,7 +51,7 @@ export function modalRaportu(gra: Gra, r: Raport): string {
     ${transakcje ? `<h3>Transakcje w ${esc(gra.wezel(r.z).nazwa)} i ich wpływ na ceny</h3><table><thead><tr><th>Transakcja</th><th>Ilość</th><th>Kwota</th><th>Śr. cena</th><th>Cena jedn. przed → po</th><th>Nacisk przed → po</th></tr></thead><tbody>${transakcje}</tbody></table>` : ''}
     <h3>Paliwo i czas</h3>
     <div class="maly">Zużyto ${m3(r.paliwo.zuzytoM3)} (bez załogi byłoby ${m3(r.paliwo.bezZalogiM3)}); w baku zostało ${m3(r.paliwo.wBakuPo)}. Oszczędności wyceniono po ${kr(r.paliwo.cenaOdniesieniaKr)}/m³ (cena paliwa w porcie startu).
-      Prędkość ${liczba2(r.zaloga.predkosc)} pc/dobę; płace ${kr(r.zaloga.placeNaDobe)}/dobę.</div>
+      ${r.predkoscStart !== undefined && r.predkoscMeta !== undefined ? `Prędkość z masy: ${liczba2(r.predkoscStart)} pc/dobę na starcie → ${liczba2(r.predkoscMeta)} na mecie (lżejszy o spalone paliwo)` : `Prędkość ${liczba2(r.zaloga.predkosc)} pc/dobę`}; płace ${kr(r.zaloga.placeNaDobe)}/dobę.</div>
     ${r.kontakt ? `<h3>Kontakt: ${esc(r.kontakt.nazwa)}</h3><div class="maly">${esc(r.kontakt.opis)}</div>` : ''}
     ${koniec}
     <div class="stopka"><button class="glowny" data-akcja="zamknij-raport">${r.koniecGry ? 'Pokaż stan końcowy' : 'Wróć do doku'}</button></div>
