@@ -228,6 +228,7 @@
         "velhari": 1.0
       },
       "ilosciKontraktu": 0.0005,
+      "maxIloscKontraktuM3": 960,
       "naukowiecZInnejPlanety": true
     },
     "firma": {
@@ -977,6 +978,8 @@
     "maxDobyCzekaniaFloty": 90,
     "karaWspolnegoCelu": 0.1,
     "maxDobyEkspedycji": 150,
-    "maxDobyDrogiMisji": 240
+    "maxDobyDrogiMisji": 240,
+    "rezerwaZasieguMisji": 0.15,
+    "maxStrataMisjiUlamek": 0.1
   }
 }

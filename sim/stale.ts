@@ -152,6 +152,8 @@ export interface KonfiguracjaRundy3 {
     dobyGotowosciT2: number;
     zamoznosc: Record<string, number>;
     ilosciKontraktu: number;
+    /** Górny limit ilości jednego towaru w recepturze (m³): kontrakt da się dowieźć w ≤ 2 kursach kadłuba szczebla 0. */
+    maxIloscKontraktuM3: number;
     naukowiecZInnejPlanety: boolean;
   };
   firma: {
@@ -297,6 +299,10 @@ export interface Prototyp {
     maxDobyEkspedycji: number;
     /** Runda 3: misja kontraktowa tylko, gdy droga po recepturę i do akademii trwa nie dłużej niż tyle dób. */
     maxDobyDrogiMisji: number;
+    /** Runda 3: zapas zasięgu (ułamek najdłuższego odcinka drogi do akademii), jaki musi zostać po załadunku receptury (wariant R: masa skraca zasięg). */
+    rezerwaZasieguMisji: number;
+    /** Runda 3: etap misji, którego plan traci więcej niż ten ułamek wartości firmy, kończy misję (zamiast spalić kasę na jednym locie). */
+    maxStrataMisjiUlamek: number;
   };
 }
 

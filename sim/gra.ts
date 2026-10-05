@@ -111,9 +111,9 @@ interface Okres {
   wartoscNaStarcie: number;
   /** Przepływy gotówki tego statku w okresie (przy flocie inne statki też ruszają kasę). */
   deltaKr: number;
-  kadlub: { szczebel: number; kwotaKr: number } | null;
-  /** Runda 3: statek kupiony w tym okresie przez statek aktywny (okno stoczni). */
-  nowyStatek: { id: number; kwotaKr: number } | null;
+  kadluby: { szczebel: number; kwotaKr: number }[];
+  /** Runda 3: statki kupione w tym okresie przez statek aktywny (okno stoczni). */
+  noweStatki: { id: number; kwotaKr: number }[];
   awanse: { cywilizacja: string; nazwa: string; tier: number }[];
 }
 
@@ -290,7 +290,7 @@ export class Gra {
 
   /**
    * Receptura kontraktu na tier T: towary sektorów otwartych na bieżącym tierze (bez paliwa) plus towary, które otwiera tier T,
-   * jeśli jakaś sąsiednia cywilizacja już je produkuje; ilość = ilosciKontraktu × dzienna konsumpcja stolicy przy koszyku tieru T.
+   * jeśli jakaś sąsiednia cywilizacja już je produkuje; ilość = min(maxIloscKontraktuM3, ilosciKontraktu × dzienna konsumpcja stolicy przy koszyku tieru T).
    */
   recepturaKontraktu(idCyw: string, tier: number): { towary: Partial<Record<Towar, number>>; odSasiada: Partial<Record<Towar, number>> } {
     const cyw = this.cywilizacja(idCyw)!;
@@ -304,7 +304,7 @@ export class Gra {
       const wlasny = min <= obecny;
       const sasiada = min === tier && sasiedziZTierem;
       if (!wlasny && !sasiada) continue;
-      const ilosc = Math.max(1, Math.ceil(P.runda3.awans.ilosciKontraktu * konsumpcjaZLudnosci(idCyw, pop, t, tier)));
+      const ilosc = Math.min(P.runda3.awans.maxIloscKontraktuM3, Math.max(1, Math.ceil(P.runda3.awans.ilosciKontraktu * konsumpcjaZLudnosci(idCyw, pop, t, tier))));
       towary[t] = ilosc;
       if (sasiada) odSasiada[t] = ilosc;
     }
@@ -546,7 +546,7 @@ export class Gra {
       wLocie: null,
     };
     this.stan.statki.push(statek);
-    this.okresy.push({ transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.stan.kr, deltaKr: 0, kadlub: null, nowyStatek: null, awanse: [] });
+    this.okresy.push({ transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.stan.kr, deltaKr: 0, kadluby: [], noweStatki: [], awanse: [] });
     this.ostatnieRaporty.push(null);
     return statek;
   }
@@ -588,7 +588,7 @@ export class Gra {
     this.okres.deltaKr -= cena;
     this.stan.wydanoNaKadlub += cena;
     const s = this.dodajStatek(this.stan.pozycja);
-    this.okres.nowyStatek = { id: s.id, kwotaKr: cena };
+    this.okres.noweStatki.push({ id: s.id, kwotaKr: cena });
     this.oknoStoczni('statek');
     this.kamien(`flota:${this.stan.statki.length}`);
     // Nowy statek dokuje tu i dostaje własnych kandydatów (czas stoi w oknie stoczni).
@@ -759,7 +759,7 @@ export class Gra {
     this.stan.zyskiKursow[w.nastepny] ??= [];
     this.stan.wydanoNaKadlub += w.kwotaKr;
     this.stan.kursStart.kadlubKr += w.kwotaKr;
-    this.okres.kadlub = { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
+    this.okres.kadluby.push({ szczebel: w.nastepny, kwotaKr: w.kwotaKr });
     this.kamien(`szczebel:${w.nastepny}`);
     return { szczebel: w.nastepny, kwotaKr: w.kwotaKr };
   }
@@ -1482,8 +1482,9 @@ export class Gra {
     if (ef.synergia) linie.push({ klucz: 'synergia', etykieta: `Synergia „trasa zgrana” (${oszczSyn.toFixed(1)} m³)`, kr: oszczSynKr, opis: 'pilot i nawigator z tej samej cywilizacji' });
     linie.push({ klucz: 'place', etykieta: `Płace załogi za ${w.dobyNominalne.toFixed(1)} doby przy prędkości nominalnej`, kr: -placeNominalne, opis: `${ef.placeNaDobe} kr/dobę` });
     if (ef.najlepszy.pilot) linie.push({ klucz: 'pilot', etykieta: `Pilot: lot ${w.doby < w.dobyNominalne ? 'krótszy' : 'dłuższy'} o ${Math.abs(w.dobyNominalne - w.doby).toFixed(1)} doby`, kr: pilotKr, opis: `prędkość ${(this.runda3 ? w.predkoscStart : ef.predkosc).toFixed(2)} pc/dobę` });
-    if (okres.kadlub) linie.push({ klucz: 'stocznia', etykieta: `Stocznia: kadłub szczebla ${okres.kadlub.szczebel}`, kr: -okres.kadlub.kwotaKr, opis: `ładownia ${Math.round(this.ladownia())} m³, bak ${Math.round(this.bak())} m³` });
-    if (okres.nowyStatek) linie.push({ klucz: 'nowy_statek', etykieta: `Stocznia: nowy statek (${this.stan.statki[okres.nowyStatek.id].nazwa})`, kr: -okres.nowyStatek.kwotaKr, opis: `poziom firmy ${this.stan.poziomFirmy}: do ${this.limitStatkow()} statków` });
+    // W jednym oknie stoczni statek może kupić kilka szczebli i kilka statków (skok poziomu firmy): po linii na zakup.
+    for (const k of okres.kadluby) linie.push({ klucz: 'stocznia', etykieta: `Stocznia: kadłub szczebla ${k.szczebel}`, kr: -k.kwotaKr, opis: `ładownia ${Math.round(this.ladownia())} m³, bak ${Math.round(this.bak())} m³` });
+    for (const n of okres.noweStatki) linie.push({ klucz: 'nowy_statek', etykieta: `Stocznia: nowy statek (${this.stan.statki[n.id].nazwa})`, kr: -n.kwotaKr, opis: `poziom firmy ${this.stan.poziomFirmy}: do ${this.limitStatkow()} statków` });
     for (const a of okres.awanse) linie.push({ klucz: 'awans', etykieta: `Awans cywilizacji ${a.nazwa} na tier ${a.tier}`, kr: 0, opis: this.runda3 ? `kontrakt rozwojowy tieru ${a.tier} dostarczony do akademii z naukowcem` : `dostarczony koszyk tieru ${a.tier}: popyt portów na towary koszyka × ${P.progresja.mnoznikKonsumpcjiAwansu}` });
     if (kontakt) linie.push({ klucz: 'kontakt', etykieta: `Kontakt z cywilizacją ${kontakt.nazwa}`, kr: 0, opis: kontakt.opis });
 
@@ -1539,7 +1540,7 @@ export class Gra {
       },
       kontakt,
       awanse: okres.awanse.length ? [...okres.awanse] : undefined,
-      kadlub: okres.kadlub ?? undefined,
+      kadlub: okres.kadluby.length ? okres.kadluby[okres.kadluby.length - 1] : undefined,
       statek: this.runda3 ? statek.id : undefined,
       predkoscStart: this.runda3 ? w.predkoscStart : undefined,
       predkoscMeta: this.runda3 ? w.predkoscMeta : undefined,
@@ -1553,7 +1554,7 @@ export class Gra {
   // ---------- Pomocnicze ----------
 
   private nowyOkres(): Okres {
-    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy(), deltaKr: 0, kadlub: null, nowyStatek: null, awanse: [] };
+    return { transakcje: [], paliwoKupioneM3: 0, paliwoKosztKr: 0, saldoNaStarcie: this.stan.kr, wartoscNaStarcie: this.wartoscFirmy(), deltaKr: 0, kadluby: [], noweStatki: [], awanse: [] };
   }
 
   /** Zapamiętuje odczyt rynku odwiedzonej planety (tylko w trybie `zasieg`). */
