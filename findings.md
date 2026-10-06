@@ -42,6 +42,16 @@ Po tych regułach ziarna 1, 2, 4 (R) i 2 (D) kończą 4 800 dób bez zastojów: 
 
 Po tych regułach ziarna 1–4 w R i D kończą 1 200 dób bez bankructwa (22–534 mln kr, 2–8 statków), z 2–4 awansami cywilizacji na T2 i pojedynczymi T3; o wyniku na 30 ziarnach — DECYZJE, sekcja „Runda 3”.
 
+## Faza 9: wynik pomiarów (szczegóły i tabele w DECYZJE, sekcja „Runda 3 … (cel 4000 dób)”)
+
+- **Cywilizacja**: pierwsza na T4 w medianie 2 778 dób (R:G:A, 70% do 4 000); `k` 1,3 → 4 043 (okno), 1,5 → 4 361; `k` ≥ 1,75 wypycha medianę poza horyzont.
+- **Galaktyka (a)/(b)**: 0% ziaren do 4 000 przy każdym `k` (1,05–2,00), 5% do 4 800; średnio 2,5–3,6 cywilizacji na T4 po 4 800 dobach. Barierą jest przepustowość kontraktów (11–16 dostarczonych na 4 800 dób, 27 potrzebnych) i receptury T4 wymagające 1–2 m³ rozpuszczalników/elektroniki z nadwyżkowych cywilizacji 500+ pc od akademii — nie próg gotowości (218–407 dób dla każdego `k`).
+- **Firma**: T4 (8 statków) w 1 451 dób; `progFirmy` ×5 → 3 403, ×25 → poza horyzont; okno ≈ ×8. **Kadłub**: szczebel 5 w 3 622 dób (okno) przy cenie 5× — ograniczony stocznią cywilizacji T4, nie ceną; droższe kadłuby (20–200×) tylko opóźniają wszystko. **Załoga**: pierwszy Legenda w oknie przy xp 2,5 (4 084); pierwszy statek z pełną załogą na Legendzie w oknie przy xp 5 (3 606).
+- **Warianty**: R vs D to jedyna istotna oś (T2 pierwszej cywilizacji 551 vs 1 250 dób; na końcu 2,9 vs 2,4 cywilizacji na T4); bramka G/P i pamięć A/B/C w szumie. Bankructwa 7,5% (R) / 10% (D), wszystkie w pierwszych 600 dobach (żywność i rozpuszczalniki ledwie pokrywają paliwo).
+- **Paliwo i masa**: zysk/dobę rośnie z dystansem dla towarów T2+ w R i D (pułap ceny 2,5× w każdym deficytowym porcie, duże kadłuby), udział paliwa maleje z dystansem; masa widoczna na ciężkich towarach (minerały: udział paliwa 0,61 R vs 0,47 D).
+- **Pojemność rynku**: konsumpcja stolic / dostawy 8 statków szczebla 5 = 196 / 899 / 35 / 6,1 / 1,9 (Food…Electronics) — popyt bezdenny; podaż (zapas 0 towarów deficytowych) jest granicą. Okna stoczni 0,10 / 0,87 / 0,46 / 0,67 na 100 dób przy 1 / 2 / 4 / 8 statkach.
+- **Stabilność**: 0 NaN; PKB rośnie schodkami awansów (druga połowa szybsza dla ras awansowanych późno), nowe sufity 0–5 pozycji na rasę, pozycje pełne (6 norm) 0 → 8–35 (stan ustalony z sufitem NPC).
+
 ---
 
 # Archiwum: ustalenia zadania progresja

@@ -521,3 +521,252 @@ Pytanie projektantów: czy na mechanizmach kanonu (lot z hierarchii ciągu i mas
 86. **Czas zawsze płynie**: lot to start → przewinięcie świata do najbliższego przylotu (rynki żyją, gotowość rośnie, inne statki dokują w kolejności przylotu) → przylot; w doku czas stoi tylko w oknie stoczni (zakup kadłuba/statku); flota bez planu czeka po `dobyCzekaniaFloty` = 5 dób, a horyzont mija także bez przylotu. Okna stoczni (`stan.oknaStoczni`: doba, liczba statków, rodzaj) liczone na 100 dób przy 1/2/4/8 statkach.
 87. **Bot floty** (`bot/flota.ts`, pętla zdarzeń: każdy statek w doku decyduje planistą z rund 1–2 na statku aktywnym — paliwo pierwsze, handel, inwestycje — a świat przewija się do najbliższego przylotu). Nowe reguły rundy 3, każda z sondy na pojedynczych ziarnach (`findings.md`): (a) **klaster dystrybucji = sam cel** (na bezdennych rynkach objazd po sąsiadach był czystym kosztem, który zaniżał każdy plan i wpychał bota w odwrót z regionu, w którym wahadło żywność ↔ rozpuszczalniki dawało 100 tys. kr/dobę); (b) **drugi krok liczy też powrót do doku startu** i ocenia do `planowDoDrugiegoKrokuRunda3` = 60 planów (na L 25 najbliższych planet celu to ta sama cywilizacja z tym samym profilem nadwyżek, a pętla handlowa bywa poza pierwszą piątką stopy pierwszego kroku); dojazdy drugiego kroku liczone dla pustego statku (ładunek sprzedaje się w celu) i pamiętane między krokami floty (zasięg odcinka zaokrąglony w dół do 2 pc; 10 s zamiast 45 s na 1 200 dób); (c) **odwrót** dopiero, gdy nawet dwa kroki nie zarabiają; (d) **podział floty** przez karę `karaWspolnegoCelu` = 10% oceny celu, do którego leci już inny statek (twarde wykluczenie wysyłało statki w puste loty w drugą stronę); (e) **ekspedycje**: jedna naraz w całej flocie, nie na misji, dopiero od 4 statków (`maxDobyEkspedycji` = {0, 0, 400, 400} dób przy 1 / 2–3 / 4–7 / 8 statkach: flota 1–2 statków, która poznawała Velhari i Duhari w 100.–400. dobie, kupowała drugi statek w obcej stolicy i bankrutowała), gdy gotówka z ładunkiem ≥ `mnoznikGotowkiNaEkspedycjeRunda3` = 5 × koszt pustego lotu (rytm co `dobyMiedzyEkspedycjami` = 100 dób, do 0,6 horyzontu); przy pełnej informacji kontakt przychodzi też z planów handlowych do planet nieznanej cywilizacji; (f) **misje kontraktowe**: statek w doku bierze najbliższy nieprzydzielony kontrakt, dla którego droga stąd do najbliższego źródła każdego brakującego towaru i ze źródła do akademii (najdłuższa z nich) ≤ `maxDystansKontraktuPc` = 2 000 pc i ≤ `maxDobyDrogiMisji` = {150, 250, 400, 500} dób według wielkości floty (liczone z masą receptury), wykonalny (każdy towar ma znane źródło z zapasem, naukowiec w zasięgu) i tani: koszt (receptura po cenie bazowej + paliwo) ≤ `maxUdzialKosztuMisji` = 10% wartości firmy i ≤ gotówki / `mnoznikGotowkiNaKontrakt` = 2; sprzedaje ładunek handlowy (lekki statek), kupuje recepturę tam, gdzie wolno (towar sąsiada tylko u sąsiada), ale **tylko tyle, ile uniesie na najdłuższym odcinku drogi do akademii** z zapasem `rezerwaZasieguMisji` = 15% (w R 840 m³ minerałów zbijało zasięg do 22 pc), bierze naukowca, dowozi częściami, a etap o planie (z doliczoną wartością receptury na pokładzie) gorszym niż −`maxStrataMisjiUlamek` = 10% wartości firmy podzielone przez liczbę statków, albo cel poza grafem tankowania po odciążeniu, kończy misję; misja po `maxDobyMisji` = 800 dobach jest porzucana (dostarczone części zostają w akademii); (g) **inwestycje**: kadłub przy `mnoznikGotowkiNaSzczebel` = 1,5 × ceny w stoczni o wystarczającym tierze, nowy statek przy `mnoznikGotowkiNaStatek` = 3 × 6,8 mln, gdy poziom firmy pozwala (przy 1,5× nowy statek zostawał bez kapitału obrotowego i dwa statki tonęły w paliwie); wyprawa do stoczni ma pierwszeństwo przed misją (jeden statek na misjach nigdy nie dojeżdżał po drugi), a statek, który przy obecnej masie nie dojedzie do stoczni, sprzedaje ładunek i jedzie pusty; (i) **wspólna kasa**: każdy statek liczy zakupy (ładunek, receptura, kadłub, statek) z gotówki pomniejszonej o rezerwę = pełny bak każdego innego statku po cenie bazowej paliwa plus **rezerwacje** innych statków w locie na zakupy zaplanowane w celu (drugi krok planu, nie więcej niż udział statku w kasie: bez tego statek leciał 100 pc, żeby kupić nic, bo kolega wydał gotówkę), ale sam lot ze sprzedażą tutaj jest dozwolony, gdy starcza realnej gotówki (rezerwa jako warunek lotu blokowała całą flotę naraz); **flota w biedzie** (gotówka poniżej dwóch rezerw paliwa) nie lata ze stratą: bez dodatniego planu statek sprzedaje ładunek tutaj i czeka w doku po 5 dób, zamiast spalić resztę kasy na pustych przelotach (bankructwa z pustymi ładowniami i 0 kr); (h) paliwo: pierwszy zakup to paliwo na pierwszy odcinek, planista liczy doby i paliwo każdego odcinka z masy po doborze ładunku (`obliczLot`), a maksymalną masę dodatkową z wykonalności pierwszego odcinka z pełnym bakiem.
 88. **Miary** (`npm run runda3`): kamienie milowe (`stan.kamienie`: tiery każdej cywilizacji i „pierwsza cywilizacja na T”, poziomy firmy, liczba statków, szczeble, tiery załogi, kontakty) jako mediana i zakres 10–90% po ziarnach (ziarno bez kamienia = ∞) i odsetek ziaren z kamieniem do doby 4 000; galaktyka (a) = wszystkie 9 cywilizacji na T4, (b) = wszystkie poznane na T4 (doba ostatniego awansu, gdy każda znana jest na T4); doby lotu do najdalszej stolicy (najkrótsza ścieżka grafu od startu) pustym statkiem każdego szczebla i z pełną ładownią żywności; zysk na dobę vs dystans per towar w R i D (kosze 0–50 / 50–100 / 100–200 / 200+ pc, mediana po lotach bota), udział paliwa w kosztach lotu (paliwo / (paliwo + płace)) i zwrot paliwa = marża brutto lotu / koszt paliwa na pc (pc, na które starcza marża); pojemność rynku dla 8 statków szczebla 5 = mediana konsumpcji stolic znanych cywilizacji / dostawy floty (8 × ładownia / czas kursu tam z ładunkiem i z powrotem pusto na medianie dystansu lotów); okna stoczni na 100 dób przy 1/2/4/8 statkach (okna w przedziałach wielkości floty / doby w tych przedziałach); krzywa wartości firmy co 200 dób (mediana po ziarnach; z kadłubami i statkami po cenie zakupu); stabilność per cywilizacja w d0/d2400/d4800: zamożność = dzienny PKB (Σ konsumpcja × cena bazowa, WU/dobę) i wartość zapasów po cenach bazowych, wzrost w d2400–4800 vs d0–2400, pozycje rynku, puste (zapas 0, cena na pułapie), pełne (6 norm), puste wśród dostępnych w dobie 0 („nowe sufity”), NaN.
+
+## Wynik (L, 4 800 dób, spread B, informacja pełna; siatka 12 wariantów × 20 ziaren „r3-1”…„r3-20”, przeglądy parametrów w R:G:A × 30 ziaren)
+
+Siatkę policzyłem po **20 ziaren na wariant** zamiast 30 (zgoda projektanta z 05.10 na skrócenie, gdy cała siatka trwa zbyt długo): przebieg 4 800 dób z flotą 8 statków trwa 25–150 s, a siatka z przeglądami to 879 przebiegów (ok. 5 h na 4 procesach). Przeglądy `k`, `xpNaDobeLotu`, `progFirmy` i `kKadluba` mają po 30 ziaren; wiersz wartości domyślnej (k 1,15; xp 11; progFirmy ×1; kKadluba 5) to wariant bazowy R:G:A (20 ziaren). Bankructwo = wartość firmy < 1 mln kr na końcu. Wszystkie tabele składa `npm run runda3 -- tabele` z `wyniki/runda3/*.json`.
+
+### Kamienie milowe — wariant bazowy R:G:A (20 ziaren, horyzont 4800 dób, cel 4000)
+
+| Kamień milowy | mediana doby | 10–90% | do 4000 | do 4800 | w oknie 3600–4400? |
+|---|---|---|---|---|---|
+| pierwsza gotowość T2 (kontrakt otwarty) | 235 | 233–243 | 100.0% | 100.0% |  |
+| pierwsza cywilizacja T2 | 565 | 394–> horyzont | 90.0% | 90.0% |  |
+| pierwsza cywilizacja T3 | 1572 | 947–> horyzont | 80.0% | 80.0% |  |
+| pierwsza cywilizacja T4 **(maksimum osi: cywilizacja)** | 2778 | 1446–> horyzont | 70.0% | 75.0% | za wcześnie |
+| galaktyka (b): wszystkie poznane na T4 **(maksimum osi: galaktyka (b))** | > horyzont | > horyzont–> horyzont | 0.0% | 5.0% | poza horyzontem |
+| galaktyka (a): wszystkie 9 na T4 **(maksimum osi: galaktyka (a))** | > horyzont | > horyzont–> horyzont | 0.0% | 5.0% | poza horyzontem |
+| firma T2 (2 statki) | 55 | 30–72 | 95.0% | 95.0% |  |
+| firma T3 (4 statki) | 275 | 122–705 | 95.0% | 95.0% |  |
+| firma T4 (8 statków) **(maksimum osi: firma)** | 1451 | 483–> horyzont | 85.0% | 90.0% | za wcześnie |
+| flota: 2. statek | 131 | 37–297 | 95.0% | 95.0% |  |
+| flota: 4. statek | 309 | 152–739 | 95.0% | 95.0% |  |
+| flota: 8. statek **(maksimum osi: flota)** | 1474 | 518–> horyzont | 85.0% | 90.0% | za wcześnie |
+| kadłub: szczebel 1 | 116 | 69–670 | 95.0% | 95.0% |  |
+| kadłub: szczebel 2 | 827 | 562–> horyzont | 85.0% | 85.0% |  |
+| kadłub: szczebel 3 | 2083 | 1238–> horyzont | 60.0% | 70.0% |  |
+| kadłub: szczebel 4 | 2887 | 1432–> horyzont | 60.0% | 65.0% |  |
+| kadłub: szczebel 5 **(maksimum osi: kadłub)** | 3622 | 1827–> horyzont | 55.0% | 65.0% | **tak** |
+| załoga: pierwszy Mistrz (1 500 XP) | 145 | 140–164 | 95.0% | 95.0% |  |
+| załoga: pierwszy Legenda (9 999 XP) | 932 | 914–1095 | 95.0% | 95.0% |  |
+| załoga: pierwszy statek z pełną załogą (≥ 4) na Legendzie **(maksimum osi: załoga)** | 1215 | 1019–1846 | 95.0% | 95.0% | za wcześnie |
+| kontakt: 4. cywilizacja | 460 | 280–906 | 100.0% | 100.0% |  |
+| kontakt: 6. cywilizacja | 1262 | 734–> horyzont | 90.0% | 90.0% |  |
+| kontakt: wszystkie 9 | 1997 | 1433–> horyzont | 85.0% | 85.0% |  |
+
+### Siatka wariantów
+
+| Wariant | n | mediana wartości (mln) | bankructwa | statki (mediana) | firma T4 do 4000 | szczebel 5 do 4000 | mediana T2 / T3 / T4 pierwszej cyw. | cyw. T2 / T3 / T4 (śr. liczba) | galaktyka (b): mediana / do 4000 | galaktyka (a) do 4000 | misje dostarczone (śr.) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| D:G:A | 20 | 7756.5 | 10.0% | 8 | 80.0% | 60.0% | 1274 / 2094 / 3015 | 5.5 / 3.3 / 2.3 | > horyzont / 0.0% | 0.0% | 10.9 |
+| D:G:B | 20 | 10873.8 | 10.0% | 8 | 80.0% | 55.0% | 1230 / 1863 / 2931 | 5.5 / 3.5 / 2.3 | > horyzont / 0.0% | 0.0% | 11.3 |
+| D:G:C | 20 | 7783.1 | 10.0% | 8 | 80.0% | 60.0% | 1274 / 2094 / 2525 | 5.3 / 3.6 / 2.7 | > horyzont / 0.0% | 0.0% | 11.6 |
+| D:P:A | 20 | 10343.7 | 10.0% | 8 | 90.0% | 40.0% | 1274 / 2436 / 2937 | 5.2 / 3.8 / 2.5 | > horyzont / 0.0% | 0.0% | 11.6 |
+| D:P:B | 20 | 6696.5 | 10.0% | 8 | 90.0% | 40.0% | 1230 / 2433 / 2929 | 5.0 / 3.5 / 2.3 | > horyzont / 0.0% | 0.0% | 10.8 |
+| D:P:C | 20 | 5572.3 | 10.0% | 8 | 90.0% | 50.0% | 1274 / 2597 / 3121 | 5.0 / 3.2 / 2.3 | > horyzont / 0.0% | 0.0% | 10.4 |
+| R:G:A | 20 | 4702.7 | 5.0% | 8 | 85.0% | 55.0% | 565 / 1572 / 2778 | 6.3 / 3.6 / 2.5 | > horyzont / 0.0% | 0.0% | 12.3 |
+| R:G:B | 20 | 34032.0 | 5.0% | 8 | 90.0% | 70.0% | 565 / 1428 / 2298 | 6.3 / 3.9 / 3.0 | > horyzont / 0.0% | 0.0% | 13.1 |
+| R:G:C | 20 | 10200.1 | 5.0% | 8 | 85.0% | 55.0% | 565 / 1624 / 3145 | 6.3 / 3.5 / 2.1 | > horyzont / 0.0% | 0.0% | 11.9 |
+| R:P:A | 20 | 18920.5 | 10.0% | 8 | 90.0% | 55.0% | 545 / 1560 / 2888 | 6.2 / 4.0 / 3.1 | > horyzont / 0.0% | 0.0% | 13.4 |
+| R:P:B | 20 | 12775.4 | 15.0% | 8 | 85.0% | 55.0% | 545 / 1725 / 3158 | 6.2 / 3.9 / 2.9 | > horyzont / 0.0% | 0.0% | 12.9 |
+| R:P:C | 20 | 26450.8 | 5.0% | 8 | 95.0% | 75.0% | 545 / 1495 / 2405 | 7.0 / 4.8 / 3.6 | > horyzont / 0.0% | 0.0% | 15.6 |
+
+#### Osie zbiorczo
+
+| Wariant | n | mediana wartości (mln) | bankructwa | statki (mediana) | firma T4 do 4000 | szczebel 5 do 4000 | mediana T2 / T3 / T4 pierwszej cyw. | cyw. T2 / T3 / T4 (śr. liczba) | galaktyka (b): mediana / do 4000 | galaktyka (a) do 4000 | misje dostarczone (śr.) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| paliwo D | 120 | 7503.6 | 10.0% | 8 | 85.0% | 50.8% | 1250 / 2358 / 2928 | 5.2 / 3.5 / 2.4 | > horyzont / 0.0% | 0.0% | 11.1 |
+| paliwo R | 120 | 15333.2 | 7.5% | 8 | 88.3% | 60.8% | 551 / 1547 / 2703 | 6.4 / 4.0 / 2.9 | > horyzont / 0.0% | 0.0% | 13.2 |
+| bramka G | 120 | 9934.4 | 7.5% | 8 | 83.3% | 59.2% | 837 / 1718 / 2703 | 5.8 / 3.5 / 2.5 | > horyzont / 0.0% | 0.0% | 11.8 |
+| bramka P | 120 | 10324.5 | 10.0% | 8 | 90.0% | 52.5% | 763 / 1980 / 2901 | 5.8 / 3.9 / 2.8 | > horyzont / 0.0% | 0.0% | 12.4 |
+| pamięć A | 80 | 8446.3 | 8.8% | 8 | 86.3% | 52.5% | 822 / 1932 / 2873 | 5.8 / 3.7 / 2.6 | > horyzont / 0.0% | 0.0% | 12.1 |
+| pamięć B | 80 | 10858.6 | 10.0% | 8 | 86.3% | 55.0% | 822 / 1914 / 2921 | 5.7 / 3.7 / 2.6 | > horyzont / 0.0% | 0.0% | 12.0 |
+| pamięć C | 80 | 10320.5 | 7.5% | 8 | 87.5% | 60.0% | 822 / 1842 / 2710 | 5.9 / 3.8 / 2.7 | > horyzont / 0.0% | 0.0% | 12.4 |
+
+### Paliwo i odległość — wariant R
+
+**R: zysk na dobę vs dystans, udział paliwa, zwrot paliwa**
+
+| Towar | kosz dystansu (pc) | lotów | mediana zysku/dobę (kr) | mediana udziału paliwa w kosztach | mediana zwrotu paliwa (pc) |
+|---|---|---|---|---|---|
+| Food | 0–50 | 7324 | -21293 | 0.76 | 6 |
+| Food | 50–100 | 1463 | -38274 | 0.80 | -144 |
+| Food | 100–200 | 631 | 34520 | 0.64 | 501 |
+| Food | 200–∞ | 509 | 3590104 | 0.44 | 127447 |
+| Minerals | 0–50 | 5546 | 348201 | 0.59 | 761 |
+| Minerals | 50–100 | 1228 | 280195 | 0.65 | 1406 |
+| Minerals | 100–200 | 582 | 602375 | 0.47 | 9364 |
+| Minerals | 200–∞ | 391 | 1664884 | 0.38 | 61345 |
+| Solvents | 0–50 | 7286 | 443119 | 0.83 | 616 |
+| Solvents | 50–100 | 985 | 96464 | 0.79 | 654 |
+| Solvents | 100–200 | 461 | 277370 | 0.62 | 2854 |
+| Solvents | 200–∞ | 538 | 2875896 | 0.49 | 94647 |
+| Explosives | 0–50 | 8975 | 2362462 | 0.67 | 3579 |
+| Explosives | 50–100 | 938 | 1324369 | 0.74 | 5510 |
+| Explosives | 100–200 | 581 | 919824 | 0.62 | 11318 |
+| Explosives | 200–∞ | 501 | 3025859 | 0.34 | 134955 |
+| Electronics | 0–50 | 3218 | 6235144 | 0.75 | 4018 |
+| Electronics | 50–100 | 547 | 7998332 | 0.78 | 19841 |
+| Electronics | 100–200 | 428 | 6315147 | 0.69 | 47834 |
+| Electronics | 200–∞ | 636 | 8480268 | 0.53 | 223756 |
+
+### Paliwo i odległość — wariant D
+
+**D: zysk na dobę vs dystans, udział paliwa, zwrot paliwa**
+
+| Towar | kosz dystansu (pc) | lotów | mediana zysku/dobę (kr) | mediana udziału paliwa w kosztach | mediana zwrotu paliwa (pc) |
+|---|---|---|---|---|---|
+| Food | 0–50 | 3841 | 124971 | 0.61 | 397 |
+| Food | 50–100 | 816 | -19601 | 0.79 | -50 |
+| Food | 100–200 | 810 | -4183 | 0.60 | 70 |
+| Food | 200–∞ | 403 | 868958 | 0.32 | 52830 |
+| Minerals | 0–50 | 2592 | 207911 | 0.50 | 956 |
+| Minerals | 50–100 | 1240 | 622759 | 0.44 | 7326 |
+| Minerals | 100–200 | 491 | 516706 | 0.36 | 22601 |
+| Minerals | 200–∞ | 455 | 861175 | 0.31 | 85290 |
+| Solvents | 0–50 | 3529 | 207737 | 0.69 | 393 |
+| Solvents | 50–100 | 693 | 2309 | 0.78 | 165 |
+| Solvents | 100–200 | 537 | 4017 | 0.62 | 318 |
+| Solvents | 200–∞ | 461 | 2005517 | 0.39 | 92021 |
+| Explosives | 0–50 | 4541 | 4239035 | 0.53 | 12741 |
+| Explosives | 50–100 | 602 | 1499180 | 0.62 | 13741 |
+| Explosives | 100–200 | 425 | 721092 | 0.55 | 11531 |
+| Explosives | 200–∞ | 513 | 1343153 | 0.37 | 85953 |
+| Electronics | 0–50 | 2229 | 13254654 | 0.68 | 18962 |
+| Electronics | 50–100 | 676 | 11434499 | 0.63 | 84282 |
+| Electronics | 100–200 | 482 | 4699969 | 0.63 | 51277 |
+| Electronics | 200–∞ | 536 | 4958302 | 0.45 | 228962 |
+
+### Krzywa wartości firmy (R:G:A)
+
+| Doba | mediana wartości firmy (kr + ładunek) | mediana z kadłubami i statkami | × kapitał startowy | 10–90% (z kadłubem, mln) |
+|---|---|---|---|---|
+| 0 | 6.8 mln | 6.8 mln | ×1.0 | 6.8–6.8 |
+| 200 | 50.8 mln | 58.8 mln | ×8.6 | 34.7–144.5 |
+| 400 | 55.6 mln | 100.0 mln | ×14.7 | 48.4–261.3 |
+| 600 | 82.9 mln | 176.5 mln | ×25.9 | 58.7–351.3 |
+| 800 | 69.2 mln | 191.9 mln | ×28.2 | 60.7–595.4 |
+| 1000 | 71.4 mln | 229.1 mln | ×33.7 | 53.0–688.7 |
+| 1200 | 75.3 mln | 257.1 mln | ×37.8 | 84.6–885.8 |
+| 1400 | 118.2 mln | 329.4 mln | ×48.4 | 84.4–1427.9 |
+| 1600 | 196.6 mln | 507.1 mln | ×74.6 | 146.9–2195.8 |
+| 1800 | 298.3 mln | 645.3 mln | ×94.9 | 136.3–3615.1 |
+| 2000 | 530.4 mln | 961.2 mln | ×141.4 | 127.9–5032.6 |
+| 2200 | 417.6 mln | 1178.7 mln | ×173.3 | 160.9–5399.6 |
+| 2400 | 419.2 mln | 1248.4 mln | ×183.6 | 181.0–6838.6 |
+| 2600 | 466.0 mln | 1299.4 mln | ×191.1 | 155.9–8969.9 |
+| 2800 | 918.0 mln | 1787.4 mln | ×262.8 | 166.6–12814.8 |
+| 3000 | 543.1 mln | 2012.5 mln | ×296.0 | 147.6–20515.1 |
+| 3200 | 1101.6 mln | 2295.4 mln | ×337.6 | 182.4–22230.4 |
+| 3400 | 1057.6 mln | 2428.8 mln | ×357.2 | 171.7–25106.9 |
+| 3600 | 1200.4 mln | 2845.1 mln | ×418.4 | 217.5–27488.1 |
+| 3800 | 1267.4 mln | 2913.5 mln | ×428.4 | 231.9–30492.9 |
+| 4000 | 1321.2 mln | 3055.5 mln | ×449.3 | 255.0–35242.2 |
+| 4200 | 1681.2 mln | 3415.7 mln | ×502.3 | 264.0–40078.3 |
+| 4400 | 1591.4 mln | 4825.1 mln | ×709.6 | 276.3–44902.6 |
+| 4600 | 2216.1 mln | 6138.9 mln | ×902.8 | 276.3–49739.9 |
+| 4800 | 4702.7 mln | 9288.5 mln | ×1366.0 | 276.3–59729.1 |
+
+### Pojemność rynku dla 8 statków szczebla 5 (R:G:A)
+
+| Towar | dostawy 8 statków szczebla 5 (m³/dobę, mediana) | mediana konsumpcji stolic (m³/dobę) | min konsumpcji stolic | stosunek konsumpcja / dostawy (mediana) |
+|---|---|---|---|---|
+| Food | 1198 | 231665 | 3260 | 195.9 |
+| Minerals | 720 | 788052 | 5705 | 898.7 |
+| Solvents | 1074 | 35382 | 334 | 34.8 |
+| Explosives | 974 | 5663 | 196 | 6.1 |
+| Electronics | 1312 | 3486 | 40 | 1.9 |
+
+### Okna stoczni na 100 dób (R:G:A)
+
+| Statków | dób floty tej wielkości (suma po ziarnach) | okien stoczni | okien na 100 dób |
+|---|---|---|---|
+| 1 | 7240 | 7 | 0.10 |
+| 2 | 4361 | 38 | 0.87 |
+| 4 | 22329 | 103 | 0.46 |
+| 8 | 61354 | 412 | 0.67 |
+
+### Stabilność 4800 dób na cywilizację (R:G:A, mediany po ziarnach)
+
+| Cywilizacja | PKB (WU/dobę) d0 → d2400 → d4800 | wzrost PKB d0–2400 / d2400–4800 | zapasy (WU) wzrost d0–2400 / d2400–4800 | pozycje d0 → d4800 | puste d0 / d2400 / d4800 | puste wśród dostępnych w d0: d0 → d4800 | pełne (6 norm) d0 → d4800 | NaN |
+|---|---|---|---|---|---|---|---|---|
+| ludzie | 10625.8 → 10625.8 → 35248.9 mln | ×1.00 / ×1.15 **(szybciej w 2. połowie)** | ×1.22 / ×1.25 | 57 → 93 | 14 / 20 / 35 | 14 → 19 | 0 → 23 | nie |
+| vreth | 63.1 → 255.1 → 311.0 mln | ×4.04 / ×1.00 | ×7.97 / ×1.00 | 39 → 77 | 13 / 29 / 32 | 13 → 13 | 0 → 26 | nie |
+| corrath | 1424.6 → 3800.2 → 6175.7 mln | ×2.67 / ×1.00 | ×2.44 / ×1.20 | 51 → 88 | 0 / 0 / 0 | 0 → 0 | 0 → 22 | nie |
+| szkarni | 208.6 → 208.6 → 767.8 mln | ×1.00 / ×1.00 | ×1.82 / ×1.21 | 45 → 75 | 0 / 0 / 0 | 0 → 0 | 0 → 31 | nie |
+| orak | 13.0 → 13.0 → 54.2 mln | ×1.00 / ×2.64 **(szybciej w 2. połowie)** | ×1.00 / ×4.22 | 39 → 70 | 26 / 26 / 43 | 26 → 26 | 13 → 26 | nie |
+| ai | 6554.2 → 6554.2 → 30173.7 mln | ×1.00 / ×1.54 **(szybciej w 2. połowie)** | ×1.00 / ×2.33 | 54 → 85 | 0 / 0 / 0 | 0 → 0 | 0 → 0 | nie |
+| planta | 3387.6 → 3387.6 → 13764.2 mln | ×1.00 / ×1.99 **(szybciej w 2. połowie)** | ×1.74 / ×1.79 | 54 → 93 | 0 / 0 / 0 | 0 → 0 | 4 → 35 | nie |
+| duhari | 682.3 → 682.3 → 2463.0 mln | ×1.00 / ×1.39 **(szybciej w 2. połowie)** | ×1.68 / ×1.27 | 48 → 85 | 14 / 17 / 31 | 14 → 16 | 0 → 32 | nie |
+| velhari | 2137.0 → 2137.0 → 8712.3 mln | ×1.00 / ×4.08 **(szybciej w 2. połowie)** | ×1.00 / ×3.74 | 51 → 85 | 0 / 0 / 0 | 0 → 0 | 0 → 8 | nie |
+
+### Zasięg kadłubów: doby do najdalszej stolicy
+
+| Szczebel | prędkość pusty (pc/dobę) | prędkość z pełną ładownią żywności | doby do najdalszej stolicy: pusty (mediana po ziarnach) | z ładunkiem |
+|---|---|---|---|---|
+| 0 | 3.14 | 2.08 | 652 | 981 |
+| 1 | 2.12 | 1.33 | 965 | 1541 |
+| 2 | 2.83 | 1.87 | 722 | 1092 |
+| 3 | 2.81 | 1.84 | 728 | 1111 |
+| 4 | 3.11 | 2.07 | 657 | 986 |
+| 5 | 2.93 | 1.95 | 697 | 1050 |
+
+Najdalsza stolica od startu (najkrótsza ścieżka grafu): mediana 2045 pc, zakres 1649–2298 pc.
+
+### Przegląd k (R:G:A; próg gotowości Z₀ × k^(T−1))
+
+| k (próg gotowości Z₀ × k^(T−1)) | n | gotowość T2: mediana (10–90%), do 4000 | 1. cyw. T2: mediana (10–90%), do 4000 | 1. cyw. T3: mediana (10–90%), do 4000 | 1. cyw. T4: mediana (10–90%), do 4000, w oknie? | galaktyka (b): mediana (10–90%), do 4000, w oknie? | galaktyka (a): mediana (10–90%), do 4000, w oknie? | cyw. T2 / T3 / T4 (śr.) | mediana wartości (mln) |
+|---|---|---|---|---|---|---|---|---|---|
+| 1.05 | 30 | 218 (214–228), 100.0% | 479 (353–1875), 93.3% | 1927 (728–> horyzont), 70.0% | 3166 (1417–> horyzont), 60.0%, za wcześnie | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.3 / 3.3 / 2.4 | 7025.9 |
+| 1.1 | 30 | 228 (223–239), 100.0% | 473 (368–> horyzont), 90.0% | 1584 (725–> horyzont), 73.3% | 3107 (1684–> horyzont), 60.0%, za wcześnie | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.3 / 3.1 / 2.2 | 2730.2 |
+| 1.15 | 20 | 235 (233–243), 100.0% | 565 (394–> horyzont), 90.0% | 1572 (947–> horyzont), 80.0% | 2778 (1446–> horyzont), 70.0%, za wcześnie | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 6.3 / 3.6 / 2.5 | 4702.7 |
+| 1.2 | 30 | 246 (243–255), 100.0% | 674 (405–> horyzont), 86.7% | 2075 (1083–> horyzont), 70.0% | 3010 (1534–> horyzont), 56.7%, za wcześnie | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.4 / 3.4 / 2.6 | 7640.6 |
+| 1.3 | 30 | 266 (263–278), 100.0% | 635 (420–> horyzont), 90.0% | 1798 (933–> horyzont), 73.3% | 4043 (1518–> horyzont), 46.7%, **tak** | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.6 / 3.0 / 1.9 | 2691.7 |
+| 1.5 | 30 | 306 (304–318), 100.0% | 666 (483–> horyzont), 86.7% | 2375 (1107–> horyzont), 63.3% | 4361 (1816–> horyzont), 46.7%, **tak** | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.0 / 2.4 / 1.6 | 5588.0 |
+| 1.75 | 30 | 358 (354–368), 100.0% | 733 (552–> horyzont), 80.0% | 2559 (1281–> horyzont), 66.7% | > horyzont (1946–> horyzont), 40.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 5.1 / 2.7 / 1.3 | 2072.9 |
+| 2 | 30 | 407 (404–413), 100.0% | 781 (623–> horyzont), 86.7% | 3113 (1332–> horyzont), 56.7% | > horyzont (2696–> horyzont), 36.7%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 4.9 / 2.2 / 1.1 | 5020.4 |
+
+### Przegląd xp (R:G:A; xpNaDobeLotu; wiersz 4 ma 19 ziaren z tego samego powodu)
+
+| xp (xpNaDobeLotu) | n | pierwszy Mistrz (1 500 XP): mediana (10–90%), do 4000 | pierwszy Legenda (9 999 XP): mediana (10–90%), do 4000, w oknie? | pierwszy statek z pełną załogą (≥ 4) na Legendzie: mediana (10–90%), do 4000, w oknie? | cyw. T2 / T3 / T4 (śr.) | mediana wartości (mln) |
+|---|---|---|---|---|---|---|
+| 2 | 30 | 782 (752–> horyzont), 83.3% | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 4.8 / 2.5 / 1.7 | 2306.3 |
+| 2.5 | 30 | 622 (600–663), 93.3% | 4084 (4001–> horyzont), 10.0%, **tak** | > horyzont (> horyzont–> horyzont), 3.3%, poza horyzontem | 5.2 / 2.8 / 2.0 | 3444.3 |
+| 3 | 30 | 527 (501–555), 93.3% | 3418 (3312–> horyzont), 76.7%, za wcześnie | > horyzont (3922–> horyzont), 13.3%, poza horyzontem | 5.3 / 2.6 / 1.7 | 2496.1 |
+| 3.5 | 30 | 444 (429–478), 96.7% | 2963 (2860–> horyzont), 80.0%, za wcześnie | > horyzont (3137–> horyzont), 30.0%, poza horyzontem | 5.6 / 2.8 / 1.9 | 5978.2 |
+| 4 | 19 | 390 (378–419), 94.7% | 2572 (2464–> horyzont), 84.2%, za wcześnie | 4631 (2712–> horyzont), 31.6%, za późno | 5.9 / 3.7 / 2.5 | 8646.7 |
+| 5 | 30 | 316 (302–349), 96.7% | 2096 (2013–> horyzont), 76.7%, za wcześnie | 3606 (2362–> horyzont), 56.7%, **tak** | 4.9 / 2.9 / 2.2 | 3150.7 |
+| 6 | 30 | 265 (253–298), 96.7% | 1706 (1667–> horyzont), 80.0%, za wcześnie | 2734 (1781–> horyzont), 66.7%, za wcześnie | 5.4 / 3.2 / 2.2 | 3997.9 |
+| 11 | 20 | 145 (140–164), 95.0% | 932 (914–1095), 95.0%, za wcześnie | 1215 (1019–1846), 95.0%, za wcześnie | 6.3 / 3.6 / 2.5 | 4702.7 |
+
+### Przegląd progFirmy (R:G:A; mnożnik progów poziomu firmy (progFirmy × m))
+
+| progFirmy (mnożnik progów poziomu firmy (progFirmy × m)) | n | firma T2: mediana (10–90%), do 4000 | firma T3: mediana (10–90%), do 4000 | firma T4: mediana (10–90%), do 4000, w oknie? | 8. statek: mediana (10–90%), do 4000, w oknie? | cyw. T2 / T3 / T4 (śr.) | mediana wartości (mln) |
+|---|---|---|---|---|---|---|---|
+| 1 | 20 | 55 (30–72), 95.0% | 275 (122–705), 95.0% | 1451 (483–> horyzont), 85.0%, za wcześnie | 1474 (518–> horyzont), 85.0%, za wcześnie | 6.3 / 3.6 / 2.5 | 4702.7 |
+| 5 | 30 | 654 (266–> horyzont), 90.0% | 1962 (1119–> horyzont), 66.7% | 3403 (1663–> horyzont), 56.7%, za wcześnie | 3428 (1681–> horyzont), 56.7%, za wcześnie | 4.3 / 2.0 / 1.1 | 3928.1 |
+| 25 | 30 | 2833 (1318–> horyzont), 53.3% | > horyzont (2205–> horyzont), 30.0% | > horyzont (3128–> horyzont), 23.3%, poza horyzontem | > horyzont (3194–> horyzont), 23.3%, poza horyzontem | 2.2 / 1.2 / 0.8 | 563.9 |
+| 100 | 30 | > horyzont (1934–> horyzont), 40.0% | > horyzont (3637–> horyzont), 20.0% | > horyzont (4427–> horyzont), 6.7%, poza horyzontem | > horyzont (4466–> horyzont), 6.7%, poza horyzontem | 1.7 / 0.7 / 0.5 | 805.1 |
+| 500 | 30 | > horyzont (4114–> horyzont), 10.0% | > horyzont (> horyzont–> horyzont), 6.7% | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 1.5 / 0.5 / 0.4 | 805.1 |
+
+### Przegląd kKadluba (R:G:A; cena szczebla = k × mediana zysku na kurs; wiersz 100 ma 20 ziaren, bo proces przeglądu został ubity po 20. ziarnie)
+
+| kKadluba (cena szczebla = k × mediana zysku na kurs) | n | szczebel 1: mediana (10–90%), do 4000 | szczebel 2: mediana (10–90%), do 4000 | szczebel 3: mediana (10–90%), do 4000 | szczebel 4: mediana (10–90%), do 4000 | szczebel 5: mediana (10–90%), do 4000, w oknie? | cyw. T2 / T3 / T4 (śr.) | mediana wartości (mln) |
+|---|---|---|---|---|---|---|---|---|
+| 5 | 20 | 116 (69–670), 95.0% | 827 (562–> horyzont), 85.0% | 2083 (1238–> horyzont), 60.0% | 2887 (1432–> horyzont), 60.0% | 3622 (1827–> horyzont), 55.0%, **tak** | 6.3 / 3.6 / 2.5 | 4702.7 |
+| 20 | 30 | 548 (108–1429), 93.3% | 2770 (1090–> horyzont), 63.3% | 4433 (2067–> horyzont), 36.7% | > horyzont (2602–> horyzont), 33.3% | > horyzont (3058–> horyzont), 16.7%, poza horyzontem | 4.2 / 2.1 / 1.3 | 772.5 |
+| 50 | 30 | 1080 (127–> horyzont), 86.7% | 3791 (1637–> horyzont), 53.3% | > horyzont (2913–> horyzont), 26.7% | > horyzont (4408–> horyzont), 10.0% | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 3.6 / 1.5 / 0.8 | 353.5 |
+| 100 | 20 | 1988 (546–> horyzont), 90.0% | > horyzont (4082–> horyzont), 10.0% | > horyzont (4337–> horyzont), 10.0% | > horyzont (> horyzont–> horyzont), 5.0% | > horyzont (> horyzont–> horyzont), 5.0%, poza horyzontem | 3.9 / 1.3 / 0.6 | 1880.4 |
+| 200 | 30 | 2731 (1006–> horyzont), 63.3% | > horyzont (2712–> horyzont), 13.3% | > horyzont (> horyzont–> horyzont), 6.7% | > horyzont (> horyzont–> horyzont), 0.0% | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 3.5 / 1.0 / 0.6 | 757.9 |
+
+## Odpowiedzi
+
+89. **Jedno zdanie na oś (R:G:A, mediany po ziarnach; cel ok. 4 000 dób, okno 3 600–4 400).** *Cywilizacja*: pierwsza cywilizacja osiąga T4 w 2 778 dób (70% ziaren do doby 4 000) — za wcześnie wobec okna, a `k` 1,3–1,5 przesuwa ją w okno (4 043 / 4 361). *Galaktyka (b)* (wszystkie poznane na T4) i *(a)* (wszystkie 9): **0% ziaren do doby 4 000 przy każdym `k`** i 5% (jedno ziarno) do 4 800; po 4 800 dobach średnio 2,5–3,6 cywilizacji jest na T4, 3,5–4,8 na T3, 5–7 na T2, choć kontakt ze wszystkimi dziewięcioma przychodzi w 1 997 dób. *Firma*: T4 (8 statków) w 1 451 dób (85% do 4 000) — trzy razy za wcześnie. *Kadłub*: szczebel 5 w 3 622 dób (55% do 4 000) — **w oknie**, ale dlatego, że czeka na pierwszą cywilizację T4 (stocznia szczebla 5 wymaga tieru 4), nie dlatego, że jest drogi. *Załoga*: przy `xpNaDobeLotu` 11 pierwszy Legenda w 932 dób, pierwszy statek z pełną załogą na Legendzie w 1 215 — cztery razy za wcześnie; wartości w oknie niżej (92).
+90. **Które warianty zmieniają wynik.** *Paliwo R/D*: najmocniejsza oś. W D pierwsza cywilizacja T2 przychodzi w 1 250 dób zamiast 551 (T3 2 358 vs 1 547), bo tanie długie loty (1 m³/pc niezależnie od masy) rozpraszają flotę po galaktyce, zamiast trzymać ją przy wahadle między dwiema cywilizacjami; w R masa karze dalekie loty z ładunkiem, więc bot buduje kapitał lokalnie i zaczyna kontrakty wcześniej. Po 4 800 dobach różnica maleje (T4 pierwszej cywilizacji 2 928 vs 2 703; 2,4 vs 2,9 cywilizacji na T4; wartość 7,5 vs 15 mld), a bankructwa są podobne (10% vs 7,5%). *Bramka G/P*: prawie bez różnicy na końcu (T4 2 703 vs 2 901; 2,5 vs 2,8 cywilizacji na T4); P daje szybszy start (T2 763 vs 837), bo towary T2 istnieją na rynkach T1 jako deficyt i da się nimi handlować od pierwszej cywilizacji T2 u sąsiada; G blokuje popyt, dopóki tier nie otworzy sektora. *Pamięć floty A/B/C*: bez różnicy w granicach szumu (T4 2 873 / 2 921 / 2 710; wartość 8,4 / 10,9 / 10,3 mld) — rynki z ludności są bezdenne wobec floty, więc odsprzedaż w miejscu zakupu i tak nie jest kuszącym kursem i reguła wygasania nie ma na czym działać. Wniosek: dla celu 4 000 dób liczy się tylko R/D, i to głównie przez tempo startu.
+91. **`k` dla ok. 4 000 dób.** Gotowość T2 (otwarcie kontraktu) przychodzi w 218–407 dób dla `k` 1,05–2,00 (mediany; z `dobyGotowosciT2` = 250 i kalibracją PkbToWaterUnits), więc próg gotowości nigdy nie jest wąskim gardłem: cywilizacja jest gotowa setki dób przed tym, jak bot dowozi kontrakt. Dla **pierwszej cywilizacji na T4** okno 3 600–4 400 trafia `k` = **1,3** (mediana 4 043, 47% ziaren do 4 000) i 1,5 (4 361, 47%); `k` 1,75 i 2,00 wypychają medianę poza horyzont (40% / 37% do 4 000), więc nie ma potrzeby rozszerzać przeglądu w górę. Dla **galaktyki (a) i (b)** żadne `k` nie daje nic: 0% ziaren do 4 000 przy każdej wartości, a liczba cywilizacji na T4 po 4 800 dobach spada z 2,4 (k 1,05) do 1,1 (k 2,00). Barierą jest przepustowość kontraktów bota — 11–16 dostarczonych na 4 800 dób przy 27 potrzebnych (9 cywilizacji × 3 tiery) — i receptury, których składników nie ma w pobliżu (93, 97).
+92. **`xpNaDobeLotu` dla Legendy w 3 600–4 400 dób.** Progi XP kanonu bez zmian (0 / 500 / 1 500 / 9 999). Pierwszy załogant na Legendzie: xp 2 → poza horyzontem, 2,5 → 4 084 (10% do 4 000), 3 → 3 418 (77%), 3,5 → 2 963, 4 → 2 572, 11 → 932; **okno trafia xp ≈ 2,5–3 (ok. 2,7)** — załogant z pierwszego statku lata ok. 90% dób, więc 9 999 XP ≈ 2,7 × 0,9 × 4 000. Pierwszy statek z pełną (≥ 4) załogą na Legendzie przychodzi później, bo flota dokupuje statki i miejsca w większych kadłubach, a każdy nowy załogant startuje od 0 XP: xp 4 → 4 631 (32% do 4 000), 3,5 → poza horyzontem (30%), 5 → **3 606 (57% do 4 000, w oknie)**, 6 → 2 734 (67%). Dla kamienia „cała załoga statku na Legendzie” trzeba więc xp ≈ 5; dla samego założyciela 2,5–3.
+93. **Ceny szczebli kadłuba i `progFirmy`.** *Firma*: przy `progFirmy` = {0; 20; 60; 200} mln T4 (8 statków) przychodzi w 1 451 dób, bo wartość firmy rośnie ×142 do doby 2 000 i ×1 366 do 4 800 (krzywa niżej); ×5 ({0; 100; 300; 1 000} mln) daje 3 403 dób (57% do 4 000), ×25 — poza horyzontem (23% do 4 000), ×100 i ×500 — pojedyncze ziarna. Okno 3 600–4 400 leży między ×5 a ×25: po interpolacji logarytmicznej **`progFirmy` × ok. 8**, czyli {0; 160; 480; 1 600} mln kr; ale uwaga — wyższe progi trzymają flotę mniejszą, a to psuje oś cywilizacji (×5: 1,1 cywilizacji na T4 zamiast 2,5; ×25: 0,8), bo kontrakty wozi ta sama flota. *Kadłub*: przy cenie 5 × mediana zysku na kurs szczebel 5 przychodzi w 3 622 dób — **już w oknie** (55% do 4 000); droższe kadłuby (20 / 50 / 100 / 200 ×) dają szczebel 5 w poza horyzontem (17% / 0% / 5% / 0% ziaren do 4 000) — poza horyzontem — i hamują wszystko inne (szczebel 1 w 519–2 971 dób zamiast 116). Cena nie jest tu dźwignią: szczebel 5 ogranicza `tierSzczebla` (stocznia szczebla 5 tylko w stolicy cywilizacji T4), więc jego data to data pierwszego T4 + dojazd; szczeble 3–4 (stocznia T3) przychodzą w 2 083 / 2 887 dób z tego samego powodu.
+94. **Czy wnioski o paliwie i odległości zmieniają się z masą (R vs D).** Zmieniają się w szczegółach, nie w kierunku. W obu wariantach zysk na dobę **rośnie z dystansem** dla towarów T2+ (R: minerały 355 tys. → 1,9 mln kr/dobę od kosza 0–50 do 200+ pc, materiały wybuchowe 3,0 → 4,2 mln, rozpuszczalniki 0,7 → 3,0 mln; D podobnie), a udział paliwa w kosztach **maleje** z dystansem (R: 0,78 → 0,38 dla żywności, 0,70 → 0,37 dla materiałów wybuchowych) — odwrotnie niż w rundach 1–2 (korelacja ujemna), bo rynki z ludności płacą pułap 2,5 × ceny bazowej w każdym deficytowym porcie, a duże kadłuby wożą tysiące m³. Masa działa tam, gdzie towar jest ciężki: w R minerały (3 t/m³) mają udział paliwa 0,61 w koszu 0–50 pc i zysk 355 tys./dobę, w D 0,47 i 437 tys.; materiały wybuchowe 0,70 vs 0,58. Żywność (0,7 t/m³, marża ok. 800 kr/m³) nie pokrywa paliwa w koszu 50–100 pc w żadnym wariancie (−27 tys. i −19 tys. kr/dobę). Zwrot paliwa (pc, na które starcza marża brutto lotu): żywność 32–36 pc w koszu 0–50 (dlatego bot wozi ją tylko na krótko), minerały 806 (R) / 2 459 (D), materiały wybuchowe 4 756 / 12 371, elektronika 16,7 tys. / 50,8 tys. — towary T2+ płacą za każdą odległość w galaktyce.
+95. **Okna stoczni na 100 dób i pojemność rynku.** Okien stoczni (zakup kadłuba albo statku, jedyne chwile, gdy czas stoi): 0,10 na 100 dób przy 1 statku, 0,87 przy 2, 0,46 przy 4, **0,67 przy 8 statkach** — przy 8 statkach gracz zatrzymuje czas raz na ok. 150 dób, bo każdy z ośmiu statków wspina się po drabinie osobno (6 szczebli × 8 statków = 48 zakupów kadłuba na grę plus 7 statków). Pojemność rynku dla 8 statków szczebla 5 (3 600 m³ ładowni każdy, kurs tam z ładunkiem i z powrotem pusto na medianie dystansu lotów): flota dostarcza 0,7–1,3 tys. m³ dziennie na towar, a mediana konsumpcji stolic to 232 tys. m³ żywności, 788 tys. minerałów, 35 tys. rozpuszczalników, 5,7 tys. materiałów wybuchowych i 3,5 tys. elektroniki — stosunek konsumpcja / dostawy **196 / 899 / 35 / 6,1 / 1,9**: rynki wchłaniają wszystko, co 8 statków wozi (zapisane jako wynik, zgodnie z promptem); jedynie elektronika zbliża się do granicy na najmniejszych stolicach (minimum 40 m³/dobę). Granicą nie jest popyt, lecz **podaż**: statek może kupić tylko z zapasu, a zapas towaru, który cywilizacja produkuje poniżej potrzeb, jest zerowy — stąd rozpuszczalników i elektroniki do receptur trzeba szukać u nadwyżkowych cywilizacji 500+ pc dalej.
+96. **Stabilność 4 800 dób.** Zero NaN w 879 przebiegach; wzrost zamożności w d2400–4800 ≤ wzrost w d0–2400 **nie zachodzi dla każdej rasy**, i to z konstrukcji: jedynym źródłem wzrostu PKB (Σ konsumpcja × cena bazowa) jest awans tieru (koszyk ×6,38 minerałów itd.), a awanse dalekich cywilizacji gracz dowozi w drugiej połowie gry — Vreth i Corrath rosną w pierwszej połowie (×4,0 / ×2,7) i stoją w drugiej (×1,00), Ludzie, Orak, AI, Planta, Duhari i Velhari stoją w pierwszej (×1,00) i rosną w drugiej (×1,15–×4,08). Nie jest to ucieczka: PKB jest schodkowy i ograniczony tierem 4 (ostatni schodek), bez wzrostu autonomicznego. „Nowe sufity” (pozycje rynku dostępne w dobie 0, które opróżniły się do doby 4 800): Ludzie 14 → 19, Duhari 14 → 16, reszta bez zmian — to deficytowe towary, których konsumpcja wzrosła po awansie; rośnie natomiast liczba pozycji **pełnych** (6 norm): 0 → 8–35 na cywilizację, bo nadwyżkowe towary nie mają dokąd odpłynąć (sufit wymiany NPC z otwartości, DECYZJE 36) — stan ustalony znany z rundy 2 (73), nie nowy sufit. Krzywa wartości firmy rośnie przez cały horyzont (×14,7 w 400. dobie, ×141 w 2 000., ×449 w 4 000., ×1 366 w 4 800. z kadłubami; 10–90%: 0,28–60 mld), gra nie kończy się ekonomicznie wcześniej, ale pieniądze przestają mieć znaczenie po ok. 1 000 dobach.
+97. **Które liczby kanonu wymusza cel 4 000 dób.** (a) **Profile produkcji ras i receptura T4**: rozpuszczalniki produkują ponad potrzeby tylko Corrath (1,7), Planta (2,6) i AI (1,1), elektronikę AI (4,0), Velhari (2,2) i Ludzie na T3 (1,4); kontrakt T4 Vreth albo Ludzi potrzebuje 1–2 m³ tych towarów, a najbliższe źródło z zapasem bywa 500+ pc od akademii — jeden kontrakt to 300–500 dób statku. Przy 11–16 kontraktach na 4 800 dób i 27 potrzebnych galaktyka na T4 wymaga albo dwukrotnie większej przepustowości (więcej niż 8 statków na kontrakty albo receptury z towarów dostępnych lokalnie), albo awansu bez składnika spoza regionu; sam `k` nic tu nie zmienia. (b) **`tierSzczebla`** (szczebel 5 tylko w stoczni cywilizacji T4): wiąże oś kadłuba z osią cywilizacji — szczebel 5 przychodzi 850 dób po pierwszym T4; przy celu 4 000 dla obu osi to spójne, ale przy niższym `k` kadłub też przyjdzie wcześniej. (c) **9 999 XP Legendy** ⇒ ok. 2,7 XP na dobę lotu dla załogi startowej, ok. 5 dla ostatnich zatrudnionych w rosnącej flocie (każdy nowy statek i większy kadłub zaczyna od zera). (d) **Pułap ceny 2,5 × cena bazowa i konsumpcja z ludności**: po otwarciu minerałów i materiałów wybuchowych u pierwszej cywilizacji T2 (565. doba) deficytowy port sąsiada płaci 15 tys. kr/m³ za minerały i 157 tys. za materiały wybuchowe przy bezdennym popycie, więc firma rośnie ×140 do 2 000. doby i `progFirmy` {20; 60; 200} mln mija w 1 451 dób; cel 4 000 wymaga progów ×8 ({160; 480; 1 600} mln) albo pułapu ceny poniżej 2,5. (e) **Ciąg 230 tf i masy kadłubów**: pełne kadłuby lecą 1,3–2,1 pc/dobę (szczebel 1 najwolniej), najdalsza stolica leży 2 045 pc od startu (650–980 dób lotu w jedną stronę), więc kontakt ze wszystkimi dziewięcioma zajmuje ok. 2 000 dób nawet flocie 8 statków — mieści się w 4 000, ale każdy kontrakt dla dalekiej cywilizacji to setki dób. (f) **Paliwo 4 m³/dobę (R) vs 1 m³/pc (D)**: R wymusza handel lokalny i szybszy start (T2 w 551 dób zamiast 1 250), D rozprasza flotę; dla celu 4 000 dób R jest bezpieczniejszy. (g) **`SectorMinTier` i bramka G**: silnik pieniędzy (minerały, materiały wybuchowe, elektronika) nie istnieje przed pierwszym awansem T2, więc pierwsze 500–600 dób to żywność i rozpuszczalniki z marżą, która ledwie pokrywa paliwo (zwrot 32–36 pc) — to one decydują o 7–10% bankructw, nie dalsza gra.
