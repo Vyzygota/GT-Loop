@@ -24,7 +24,7 @@ const KROK_KRZYWEJ = 200;
 export type Przeglad = 'k' | 'xp' | 'progFirmy' | 'kKadluba';
 const PRZEGLADY: Record<Przeglad, { opis: string; domyslne: number[] }> = {
   k: { opis: 'próg gotowości Z₀ × k^(T−1)', domyslne: [1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0] },
-  xp: { opis: 'xpNaDobeLotu', domyslne: [1.5, 2, 2.5, 3, 4] },
+  xp: { opis: 'xpNaDobeLotu', domyslne: [2, 2.5, 3, 3.5, 4, 5, 6] },
   progFirmy: { opis: 'mnożnik progów poziomu firmy (progFirmy × m)', domyslne: [1, 5, 25, 100, 500] },
   kKadluba: { opis: 'cena szczebla = k × mediana zysku na kurs', domyslne: [5, 20, 50, 100, 200] },
 };
@@ -331,9 +331,9 @@ const KAMIENIE: { klucz: string; nazwa: string; os?: string }[] = [
   { klucz: 'szczebel:3', nazwa: 'kadłub: szczebel 3' },
   { klucz: 'szczebel:4', nazwa: 'kadłub: szczebel 4' },
   { klucz: 'szczebel:5', nazwa: 'kadłub: szczebel 5', os: 'kadłub' },
-  { klucz: 'zaloga:tier:2', nazwa: 'załoga: pierwszy tier 2' },
-  { klucz: 'zaloga:tier:3', nazwa: 'załoga: pierwszy tier 3' },
-  { klucz: 'zaloga:wszyscy:legenda', nazwa: 'załoga: wszyscy na tierze 3', os: 'załoga' },
+  { klucz: 'zaloga:tier:2', nazwa: 'załoga: pierwszy Mistrz (1 500 XP)' },
+  { klucz: 'zaloga:tier:3', nazwa: 'załoga: pierwszy Legenda (9 999 XP)' },
+  { klucz: 'zaloga:wszyscy:legenda', nazwa: 'załoga: pierwszy statek z pełną załogą (≥ 4) na Legendzie', os: 'załoga' },
   { klucz: 'kontakt:4', nazwa: 'kontakt: 4. cywilizacja' },
   { klucz: 'kontakt:6', nazwa: 'kontakt: 6. cywilizacja' },
   { klucz: 'kontakt:9', nazwa: 'kontakt: wszystkie 9' },
@@ -472,9 +472,9 @@ const KAMIENIE_PRZEGLADU: Record<Przeglad, { klucz: string; nazwa: string; cel?:
     { klucz: 'galaktyka:a', nazwa: 'galaktyka (a)', cel: true },
   ],
   xp: [
-    { klucz: 'zaloga:tier:2', nazwa: 'pierwszy Weteran' },
-    { klucz: 'zaloga:tier:3', nazwa: 'pierwszy Mistrz' },
-    { klucz: 'zaloga:wszyscy:legenda', nazwa: 'wszyscy na Legendzie', cel: true },
+    { klucz: 'zaloga:tier:2', nazwa: 'pierwszy Mistrz (1 500 XP)' },
+    { klucz: 'zaloga:tier:3', nazwa: 'pierwszy Legenda (9 999 XP)', cel: true },
+    { klucz: 'zaloga:wszyscy:legenda', nazwa: 'pierwszy statek z pełną załogą (≥ 4) na Legendzie', cel: true },
   ],
   progFirmy: [
     { klucz: 'firma:T2', nazwa: 'firma T2' },
