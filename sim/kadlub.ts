@@ -32,11 +32,15 @@ export interface KadlubSzczebla {
   krokWymuszajacy: KrokProcedury;
 }
 
-/** Gęstość konstrukcji (t/m³) z jedynki: (421,99 − reaktor − 4 moduły) / 100 m³ konstrukcji. */
+/**
+ * Gęstość konstrukcji (t/m³) z jedynki: (421,99 − reaktor) / 100 m³ konstrukcji = 3,2199. Jak w rundzie 3 (DECYZJE 76) i w liczbach
+ * kontrolnych kanonu (jedynka + 4 puste ładownie: zasięg 78,4 pc; z 1 440 t minerałów 0,99 pc/dobę): 421,99 t to jedynka bez
+ * modułów ładowni, 4 moduły × 36 t dochodzą — kadłub szczebla 0 waży 565,99 t.
+ */
 export function gestoscKonstrukcjiTNaM3(): number {
   const S = P.runda3.statek;
   const C = K.kadlub;
-  return (K.statek.masaJedynkiSuchaT - S.masaReaktoraT - C.modulyJedynki * S.masaModuluLadowniT) / (C.konstrukcjaUlamekObrysu * C.obrysJedynkiM3);
+  return (K.statek.masaJedynkiSuchaT - S.masaReaktoraT) / (C.konstrukcjaUlamekObrysu * C.obrysJedynkiM3);
 }
 
 /** Krok 6: ładownia = reszta obrysu po napędzie, kajutach, konstrukcji i baku, w pełnych modułach; luz = reszta poniżej modułu. */

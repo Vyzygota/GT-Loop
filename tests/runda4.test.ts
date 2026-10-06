@@ -5,7 +5,7 @@ import { zagrajFlote } from '../bot/flota';
 const stanRef = (k: { masaSuchaT: number; bakM3: number; ladowniaM3: number }) => k.masaSuchaT + k.bakM3 * K.towary.Fuel.gestosc + k.ladowniaM3 * P.runda4.gestoscReferencyjnaTNaM3;
 
 describe('runda 4: procedura wyprowadzenia kadłuba', () => {
-  it('BaseShip krok po kroku: obrys 1 000, napęd 271, kajuty 40, konstrukcja 100, bak 100, ładownia 480 m³ (4 moduły, luz 9), masa 421,99 t', () => {
+  it('BaseShip krok po kroku: obrys 1 000, napęd 271, kajuty 40, konstrukcja 100, bak 100, ładownia 480 m³ (4 moduły, luz 9), masa 421,99 t + 4 moduły × 36 t = 565,99 t (jak szczebel 0 rundy 3)', () => {
     const j = jedynka();
     expect(j.obrysM3).toBe(1000);
     expect(j.reaktory).toBe(1);
@@ -18,7 +18,8 @@ describe('runda 4: procedura wyprowadzenia kadłuba', () => {
     expect(j.ladowniaM3).toBe(480);
     expect(j.moduly).toBe(4);
     expect(j.luzM3).toBeCloseTo(9, 9);
-    expect(j.masaSuchaT).toBeCloseTo(K.statek.masaJedynkiSuchaT, 9);
+    expect(j.masaSuchaT).toBeCloseTo(K.statek.masaJedynkiSuchaT + 4 * P.runda3.statek.masaModuluLadowniT, 9);
+    expect(j.masaSuchaT).toBeCloseTo(drabinaRundy3()[0].masaSuchaT, 9);
     expect(j.ciagTf).toBe(2 * K.statek.ciagDyszyTf);
   });
 
@@ -68,7 +69,7 @@ describe('runda 4: procedura wyprowadzenia kadłuba', () => {
     expect(g4.ladownia()).toBe(480);
     expect(g4.bak()).toBe(100);
     expect(g4.miejscaZalogi()).toBe(2);
-    expect(g4.masaSuchaT()).toBeCloseTo(K.statek.masaJedynkiSuchaT, 9);
+    expect(g4.masaSuchaT()).toBeCloseTo(K.statek.masaJedynkiSuchaT + 4 * P.runda3.statek.masaModuluLadowniT, 9);
     expect(g4.drabina[1].ladowniaM3).toBe(960);
     expect(g4.drabina[5].ladowniaM3).toBe(15360);
     const g3 = new Gra('r4-gra', { skala: 'M', runda3: true, paliwo: 'R' });
