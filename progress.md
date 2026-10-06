@@ -3,9 +3,9 @@
 - [x] Faza 1: rozpoznanie — ładownia/bak/masa/ciąg/obsada w `gra.ts` szły przez `lot.ts` i `P.runda3.statek` (konfiguracje × 1,5^N); CLI liczy prędkości szczebli z tych samych funkcji.
 - [x] Faza 2: kanon (`kadlub`) i `prototyp.runda4`.
 - [x] Faza 3: `sim/kadlub.ts` (procedura, jedynka, `wyprowadzDrabine(g, wariant)`, `drabinaRundy3()`), `Gra.drabina`, `zakupyKadlubow`; `tsc` zielony.
-- [ ] Faza 4: testy.
-- [ ] Faza 5: statystyka misji i CLI rundy 4.
-- [ ] Faza 6: pomiary.
+- [x] Faza 4: testy — `tests/runda4.test.ts` (BaseShip 1 000/271/40/100/100/480, ładownia = reszta, prędkość i zasięg każdego szczebla ≥ jedynki dla g 1,5–4 w R i D z rozliczeniem obrysu i minimalnością reaktorów, gra bierze kadłub z drabiny, determinizm floty w rundzie 4 na 4 800 dób); 83 dotychczasowe zielone.
+- [x] Faza 5: statystyka misji (`MisjaDostarczona`), CLI `runda4` / `tabele4` (tabela kadłubów z ceną szczebla, kamienie, kontrakty wobec 27, pojemność, krzywa); sondy g = 2 wykazały, że misje nie kupowały receptur (limit masy z zapasem 15% ponad odcinek równy zasięgowi) → ładunek receptury z osiągalności akademii przy masie, bez ładunku handlowego na misji we flocie, połowa floty na misjach; 27/27 kontraktów w 3 sondach z 4 (`findings.md`, faza 5).
+- [ ] Faza 6: pomiary — g ∈ {1,5; 2; 2,5; 3; 4} × {R, D} × 20 ziaren (4 procesy) — w toku.
 - [ ] Faza 7: DECYZJE, push, PR.
 
 ---
