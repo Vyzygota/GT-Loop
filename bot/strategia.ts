@@ -537,6 +537,13 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
       const zysk = premiaEksploracji - koszty + (rynekTu ? przychodTu - wartoscLadowniTu : 0);
       // Trasa, na którą nie starcza gotówki (paliwo liczone ostrożnie po cenie bazowej za dalsze odcinki), nie jest planem.
       if (gra.stan.kr + przychodTu - koszty < 0) continue;
+      // Runda 3/4: zwiad z własnej woli (nie ekspedycja floty) tylko za ułamek firmy i z poduszką jak przy ekspedycji.
+      // Na horyzoncie 4 800 dób premia za kontakt (×10 wobec skali L) przewyższa kapitał startowy, więc samotny statek
+      // palił całą kasę na kolejnych pustych przelotach (ziarno r3-18: 9 zwiadów, bankructwo w 133. dobie przy każdym g).
+      if (gra.runda3 && !filtr.ekspedycja) {
+        if (koszty > P.bot.maxUdzialKosztuMisji * gra.wartoscFirmy()) continue;
+        if (gra.stan.kr + przychodTu - koszty < P.bot.mnoznikGotowkiNaEkspedycjeRunda3 * koszty) continue;
+      }
       plany.push({ ...wspolne, sprzedaze: sprzedazeTu, zakupy: [], zyskNetto: zysk, naDobe: zysk / doby, eksploracja: true, gotowkaPo: gra.stan.kr + przychodTu - koszty, premiaAwansuKr: 0 });
       continue;
     }

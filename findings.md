@@ -13,6 +13,12 @@
 - **„Flota w biedzie nie lata ze stratą”** zostawiała statki z pełnymi ładowniami i pustą kasą u plemion do końca gry (D, r3-1: 2 statki, 3 700 dób czekania): teraz lot, który przynosi gotówkę (sprzedaż w celu), jest dozwolony także w biedzie. Ziarno r3-1 D mimo to bankrutuje w 1 100. dobie (2 statki, loty 90–100 pc po 2,4 pc/dobę w D nie pokrywają paliwa i płac 25-osobowej załogi) — słabość wariantu D znana z rundy 3.
 - Pomiary rundy 4 (siatka g) liczą się na tym kodzie; liczby rundy 3 w DECYZJE zostają z kodu, na którym je zmierzono (commit `62008ce`…`c5ed660`), bo to zmiany reguł bota, nie modelu.
 
+## Faza 6: pierwsza siatka g (1,5–4 × R/D × 20 ziaren) i bankructwa, które nie zależą od g
+
+- Pierwsza siatka (przed poprawką niżej): w R galaktyka (a) = (b) w oknie przy g = 2 (mediana 3 934, 55% ziaren do 4 000) i g = 2,5 (3 719, 65%), g = 3–4 „za wcześnie” (3 574 / 3 504), g = 1,5 poza horyzontem (25% do 4 000); w D żadne g nie wchodzi w okno (mediany > 4 800, 15–25% do 4 000, 12–15 kontraktów wobec 27). Bankructwa 15–20% (R) i 20–25% (D).
+- **Bankrutują te same ziarna przy każdym g** (R: r3-12, r3-13, r3-18, czasem r3-14; D: r3-5, r3-8, r3-18, r3-19, czasem r3-1), zwykle zanim kupią pierwszy kadłub (r3-18: 14 lotów, 0 kadłubów, 6–9 zwiadów po −0,4…−0,6 mln, bankructwo w 133. dobie w R i D). Straty idą na **zwiad z własnej woli** (plan `eksploracja` do nieznanej planety nieznanej cywilizacji, nie ekspedycja floty): na horyzoncie 4 800 dób premia za kontakt skaluje się z horyzontem (800 tys. × 10 = 8 mln kr na starcie, więcej niż kapitał startowy 6,8 mln) i zasięg zwiadu też (260 pc × 10), więc każdy pusty przelot wygląda w planiście na zyskowny, a jedynym warunkiem było „starczy gotówki na paliwo”. Ekspedycje floty mają od rundy 3 poduszkę 5× koszt i próg 4 statków — zwiad nie miał nic. W rundzie 3 ten sam mechanizm dawał 5–13% bankructw (R:G:A 1/20, D:G:A 2/20, przegląd k 1,3: 4/30 — r3-8, r3-17, r3-18, r3-29).
+- Poprawka (bot, nie model): w rundzie 3/4 zwiad z własnej woli tylko, gdy koszt lotu ≤ `maxUdzialKosztuMisji` (10%) wartości firmy i gotówka po locie ≥ `mnoznikGotowkiNaEkspedycjeRunda3` (5) × koszt — te same parametry, co dla misji i ekspedycji, bez nowych. Ekspedycje floty (cel z `celEkspedycji`) bez zmian. Walidacja na dawniej bankrutujących ziarnach i powtórka całej siatki na jednym kodzie: niżej.
+
 ---
 
 # Archiwum: ustalenia zadania runda 3

@@ -6,7 +6,7 @@
  * npm run runda3 -- siatka [ziaren] [warianty R:G:A,D:P:C,… | all]        zapisuje wyniki/runda3/<wariant>.json
  * npm run runda3 -- przeglad k|xp|progFirmy|kKadluba [ziaren] [w1,w2,…]  zapisuje wyniki/runda3/<param>-<wartość>.json
  * npm run runda3 -- tabele                                                 składa tabele (markdown) z wyniki/runda3/*.json
- * npm run runda3 -- runda4 [ziaren] [g1,g2,…] [R,D]                       runda 4: drabina z procedury kanonu, wyniki/runda4/g-<g>-<paliwo>.json
+ * npm run runda3 -- runda4 [ziaren] [g1,g2,…] [R,D]                       runda 4: drabina z procedury kanonu, wyniki/runda4/g-<g>-<paliwo>.json (g = 0: drabina rundy 3 z botem i k/xp rundy 4 — kontrola)
  * npm run runda3 -- tabele4                                                tabele rundy 4
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -235,7 +235,7 @@ export function zagrajRunde3(ziarno: string, wariant: Wariant): WynikRundy3 {
   let koncowa: Gra | null = null;
   let w;
   try {
-    w = zagrajFlote(ziarno, { skala: 'L', informacja: 'pelna', spread: 'B', paliwo: wariant.paliwo, bramkaTowaru: wariant.bramka, pamiecFloty: wariant.pamiec, ...(wariant.runda4 ? { runda4: true, g: wariant.runda4.g } : {}) }, { naStarcie, poLocie, naKoniec: (gra) => (koncowa = gra) });
+    w = zagrajFlote(ziarno, { skala: 'L', informacja: 'pelna', spread: 'B', paliwo: wariant.paliwo, bramkaTowaru: wariant.bramka, pamiecFloty: wariant.pamiec, ...(wariant.runda4 && wariant.runda4.g > 0 ? { runda4: true, g: wariant.runda4.g } : {}) }, { naStarcie, poLocie, naKoniec: (gra) => (koncowa = gra) });
   } finally {
     przywroc();
   }
@@ -653,14 +653,14 @@ function tabele4(): string {
   const mapa = wczytajWyniki4();
   if (!mapa.size) return `Brak wyników w ${KATALOG4}. Uruchom: npm run runda3 -- runda4 20`;
   const grupy = [...mapa.entries()]
-    .map(([nazwa, wyniki]) => ({ nazwa, wyniki, g: wyniki[0].wariant.runda4?.g ?? 0, paliwo: wyniki[0].wariant.paliwo }))
+    .map(([nazwa, wyniki]) => ({ nazwa: wyniki[0].wariant.runda4?.g ? nazwa : `drabina r3 (kontrola) ${wyniki[0].wariant.paliwo}`, wyniki, g: wyniki[0].wariant.runda4?.g ?? 0, paliwo: wyniki[0].wariant.paliwo }))
     .sort((a, b) => (a.paliwo < b.paliwo ? -1 : a.paliwo > b.paliwo ? 1 : a.g - b.g));
   const out: string[] = [];
   out.push(`## Kamienie rundy 4 (cel ${HORYZONT_CELU}, okno ${OKNO[0]}–${OKNO[1]}; k ${RUNDA4.k}, xpNaDobeLotu ${RUNDA4.xpNaDobeLotu}, progFirmy ×1, bramka G, pamięć A)`, '', tabelaKamieni4(grupy), '');
   out.push('## Kontrakty wobec 27 potrzebnych', '', tabelaKontraktow(grupy), '');
   out.push('## Pojemność rynku dla 8 statków szczebla 5 przy każdym g', '', tabelaPojemnosci4(grupy), '');
   out.push('## Krzywa wartości firmy (mediana z kadłubami i statkami)', '', tabelaKrzywej4(grupy), '');
-  for (const g of grupy) out.push(`## Tabela kadłubów: g = ${g.g}, paliwo ${g.paliwo} (${g.wyniki.length} ziaren)`, '', tabelaKadlubow(g.wyniki), '');
+  for (const g of grupy) out.push(`## Tabela kadłubów: ${g.g ? `g = ${g.g}` : 'drabina rundy 3 (kontrola)'}, paliwo ${g.paliwo} (${g.wyniki.length} ziaren)`, '', tabelaKadlubow(g.wyniki), '');
   return out.join('\n');
 }
 
