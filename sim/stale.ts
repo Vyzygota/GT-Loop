@@ -323,14 +323,14 @@ export interface Prototyp {
     maxDobyEkspedycji: number[];
     /** Runda 3: misja kontraktowa tylko, gdy droga po recepturę i do akademii trwa nie dłużej niż tyle dób; indeks = wielkość floty (1 / 2–3 / 4–7 / 8). */
     maxDobyDrogiMisji: number[];
-    /** Runda 3: zapas zasięgu (ułamek najdłuższego odcinka drogi do akademii), jaki musi zostać po załadunku receptury (wariant R: masa skraca zasięg). */
-    rezerwaZasieguMisji: number;
     /** Runda 3: etap misji, którego plan traci więcej niż ten ułamek wartości firmy, kończy misję (zamiast spalić kasę na jednym locie). */
     maxStrataMisjiUlamek: number;
     /** Runda 3: koszt misji (receptura po cenie bazowej + paliwo drogi) nie może przekraczać tego ułamka wartości firmy. */
     maxUdzialKosztuMisji: number;
     /** Runda 3: ekspedycja tylko, gdy gotówka z ładunkiem ≥ tyle × koszt pustego lotu (flota w słabym regionie bankrutowała na dwóch ekspedycjach z rzędu przy 3×). */
     mnoznikGotowkiNaEkspedycjeRunda3: number;
+    /** Runda 3/4: misja startuje tylko, gdy po sprzedaży tutaj ładunek waży ≤ ten ułamek masy suchej statku (niesprzedawalny towar = odłożona misja). */
+    maxMasaStartuMisjiUlamek: number;
   };
 }
 

@@ -4,7 +4,7 @@
  * świat przewija się do najbliższego przylotu, a przylatujący statek decyduje następny.
  */
 import { Gra, K, P, TOWARY, kr, type OpcjeGry, type Towar } from '../sim/index';
-import { dojazdyZ, inwestuj, limitFloty, nowyStanBota, rezerwaFloty, rezerwacjeFloty, wykonaj, zaplanuj, type Dojazd, type HakiRozgrywki, type LotBota, type Plan, type StanBota, type WynikZiarna } from './strategia';
+import { dojazdyZ, inwestuj, limitFloty, nowyStanBota, rezerwaFloty, rezerwacjeFloty, wykonaj, zaplanuj, type HakiRozgrywki, type LotBota, type Plan, type StanBota, type WynikZiarna } from './strategia';
 
 export interface Misja {
   cywilizacja: string;
@@ -91,40 +91,6 @@ function kontraktWykonalny(gra: Gra, idCyw: string, doj: ReturnType<typeof dojaz
   return true;
 }
 
-/** Najdłuższy odcinek (pc) drogi statku aktywnego do celu po grafie tankowania; Infinity, gdy cel poza grafem. */
-function najdluzszyOdcinek(gra: Gra, doj: Map<string, Dojazd>, cel: string): number {
-  const d = doj.get(cel);
-  if (!d) return Infinity;
-  let max = 0;
-  let a = gra.stan.pozycja;
-  for (const b of d.odcinki) {
-    if (b === a) continue;
-    max = Math.max(max, gra.graf.dijkstra(a).get(b)?.dystans ?? Infinity);
-    a = b;
-  }
-  return max;
-}
-
-/**
- * Ile ton ładunku statek aktywny może jeszcze wziąć, żeby na pełnym baku przelecieć odcinek `legPc` z zapasem rezerwaZasieguMisji
- * (wariant R: masa skraca zasięg; wariant D: zasięg nie zależy od masy, więc limit jest praktycznie nieskończony).
- */
-function maxMasaNaOdcinek(gra: Gra, legPc: number): number {
-  if (!Number.isFinite(legPc)) return 0;
-  const potrzeba = legPc * (1 + P.bot.rezerwaZasieguMisji);
-  const zasieg = (masa: number) => gra.zasiegNaPaliwie(gra.bak(), gra.stan.zaloga, masa);
-  if (zasieg(0) < potrzeba) return 0;
-  let lo = 0;
-  let hi = 100000;
-  if (zasieg(hi) >= potrzeba) return hi;
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2;
-    if (zasieg(mid) >= potrzeba) lo = mid;
-    else hi = mid;
-  }
-  return lo;
-}
-
 /** Najbliższy węzeł spełniający warunek, po grafie tankowania statku aktywnego. */
 function najblizszy(gra: Gra, warunek: (id: string) => boolean, doj = dojazdyZ(gra, gra.stan.pozycja, gra.stan.zaloga)): string | null {
   let naj: { id: string; d: number } | null = null;
@@ -152,8 +118,9 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
     const kontrakt = gra.rozwoj(misja.cywilizacja).kontrakt;
     if (!kontrakt || kontrakt.tier !== misja.tier || gra.stan.doba - misja.start > P.bot.maxDobyMisji) zakoncz('misja-koniec');
   }
-  // Przydział nowej misji w doku ze znanym rynkiem.
-  if (!misja && gra.rynekZnany(gra.stan.pozycja) && stanBota.cel === null) {
+  // Przydział nowej misji w doku ze znanym rynkiem; naraz co najwyżej połowa floty na misjach (reszta handluje i zarabia na paliwo).
+  const misjiTeraz = f.misje.filter((m) => m !== null).length;
+  if (!misja && gra.rynekZnany(gra.stan.pozycja) && stanBota.cel === null && misjiTeraz < Math.max(1, Math.floor(gra.stan.statki.length / 2))) {
     const doj = dojazdyZ(gra, gra.stan.pozycja, gra.stan.zaloga);
     let naj: { cyw: string; tier: number; d: number } | null = null;
     for (const c of gra.swiat.cywilizacje) {
@@ -199,6 +166,14 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
         const jest = gra.stan.ladownia[t].m3;
         if (jest > 1e-9 && gra.stan.rynki[gra.stan.pozycja][t].dostepny !== false) gra.sprzedaj(t, jest);
       }
+      // Towar, którego tu nie da się sprzedać (bramka G: minerały przy cywilizacji T1), zostaje na pokładzie; ciężki statek
+      // nie dojedzie po recepturę ani do akademii (w rundzie 4 do 23 tys. t minerałów = kilka pc zasięgu) — misję odkłada.
+      if (gra.masaZajeta() > P.bot.maxMasaStartuMisjiUlamek * gra.masaSuchaT()) {
+        f.przydzial.delete(naj.cyw);
+        f.misje[i] = null;
+        misja = null;
+        akcje.push('misja-odlozona');
+      }
     }
   }
   if (!misja) return { celMisji: null, zarezerwowaneM3: 0, zarezerwowaneTowary: {}, akcje };
@@ -208,12 +183,36 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
   // 1. Zakup brakującej receptury tutaj (towar sąsiada tylko u sąsiada), ale tylko tyle, ile statek uniesie na najdłuższym
   //    odcinku drogi do akademii (w wariancie R minerały w pełnej ładowni skracają zasięg poniżej odcinka grafu).
   if (gra.rynekZnany(tu) && cywTu) {
-    const dojTu = dojazdyZ(gra, tu, gra.stan.zaloga);
-    let masaWolna = maxMasaNaOdcinek(gra, najdluzszyOdcinek(gra, dojTu, cyw.stolica));
-    for (const [t, brak] of Object.entries(stanReceptury(gra, misja).braki) as [Towar, number][]) {
+    const brakiTu = Object.entries(stanReceptury(gra, misja).braki) as [Towar, number][];
+    const masaBrakow = brakiTu.reduce((s, [t, brak]) => s + brak * K.towary[t].gestosc, 0);
+    // Ładunek handlowy na pokładzie zjada zasięg potrzebny na recepturę: sprzedaj go tutaj, zanim kupisz recepturę.
+    if (brakiTu.some(([t]) => zrodloReceptury(gra, misja!.cywilizacja, t, tu))) {
+      const { naPokladzie } = stanReceptury(gra, misja);
+      let sprzedano = false;
+      for (const t of TOWARY) {
+        const zbedne = gra.stan.ladownia[t].m3 - (naPokladzie[t] ?? 0);
+        if (zbedne > 1e-9 && gra.stan.rynki[tu][t].dostepny !== false) {
+          gra.sprzedaj(t, zbedne);
+          sprzedano = true;
+        }
+      }
+      if (sprzedano) akcje.push('misja-odciazenie');
+    }
+    // Ile masy receptury statek może wziąć, żeby akademia została w grafie tankowania (graf liczony z tą masą na pokładzie):
+    // cała, połowa, ćwierć… — zamiast zapasu 15% ponad najdłuższy odcinek, który przy odcinkach równych zasięgowi dawał zero.
+    let masaWolna = 0;
+    for (const ulamek of [1, 0.5, 0.25, 0.125]) {
+      if (dojazdyZ(gra, tu, gra.stan.zaloga, masaBrakow * ulamek).has(cyw.stolica)) {
+        masaWolna = masaBrakow * ulamek;
+        break;
+      }
+    }
+    if (masaBrakow <= 1e-9) masaWolna = Infinity;
+    for (const [t, brak] of brakiTu) {
       if (!zrodloReceptury(gra, misja.cywilizacja, t, tu)) continue;
       const cena = gra.ceny(tu, t)?.kupnoKr ?? Infinity;
-      const naKase = Math.max(0, Math.floor((gra.stan.kr - rezerwaFloty(gra)) / cena));
+      // Receptura ma pierwszeństwo przed rezerwacjami handlowymi innych statków (zostaje tylko rezerwa na ich paliwo).
+      const naKase = Math.max(0, Math.floor((gra.stan.kr - rezerwaFloty(gra, true)) / cena));
       const ile = Math.min(brak, Math.floor(gra.maxKupno(t)), Math.floor(masaWolna / K.towary[t].gestosc), naKase);
       if (ile > 0) {
         gra.kup(t, ile);
@@ -300,9 +299,11 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
       return { celMisji: null, zarezerwowaneM3: 0, zarezerwowaneTowary: {}, akcje };
     }
   }
-  // Rezerwa ładowni dla planisty handlu: miejsce na zakup receptury (gdy lecimy po nią) i na naukowca.
+  // Rezerwa ładowni dla planisty handlu: miejsce na zakup receptury (gdy lecimy po nią) i na naukowca; we flocie (≥ 2 statki)
+  // statek na misji nie bierze ładunku handlowego wcale — ciężki ładunek skracał zasięg poniżej odcinków drogi do akademii
+  // i misje gasły po 800 dobach bez jednego zakupu receptury (samotny statek handluje po drodze, bo inaczej firma stoi).
   const poRecepture = celMisji !== cyw.stolica && brakujace.length > 0;
-  const zarezerwowane = (poRecepture ? Object.values(braki).reduce((s, x) => s + x, 0) : 0) + (naukowiecPotrzebny ? P.runda3.statek.naukowiecM3 : 0);
+  const zarezerwowane = gra.stan.statki.length >= 2 ? gra.ladownia() : (poRecepture ? Object.values(braki).reduce((s, x) => s + x, 0) : 0) + (naukowiecPotrzebny ? P.runda3.statek.naukowiecM3 : 0);
   return { celMisji: celMisji === tu ? null : celMisji, zarezerwowaneM3: Math.min(zarezerwowane, gra.ladownia()), zarezerwowaneTowary: naPokladzie, akcje };
 }
 

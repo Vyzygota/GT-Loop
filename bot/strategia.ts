@@ -1,4 +1,3 @@
-import { bakSzczeblaM3 } from '../sim/lot';
 import {
   Gra,
   Graf,
@@ -822,10 +821,10 @@ export const rezerwacjeFloty = { kwoty: [] as number[] };
  * (pełny bak każdego z nich po cenie bazowej) ani na zakupy zaplanowane w celu (plan dwukrokowy liczył na gotówkę, którą
  * w międzyczasie wydał kolega: statek leciał 100 pc, żeby kupić nic).
  */
-export function rezerwaFloty(gra: Gra): number {
+export function rezerwaFloty(gra: Gra, bezRezerwacji = false): number {
   if (!gra.runda3) return 0;
   let suma = 0;
-  for (const s of gra.stan.statki) if (s.id !== gra.stan.aktywny) suma += bakSzczeblaM3(s.szczebel) * kr(K.towary.Fuel.basePrice) + (rezerwacjeFloty.kwoty[s.id] ?? 0);
+  for (const s of gra.stan.statki) if (s.id !== gra.stan.aktywny) suma += gra.kadlub(s).bakM3 * kr(K.towary.Fuel.basePrice) + (bezRezerwacji ? 0 : (rezerwacjeFloty.kwoty[s.id] ?? 0));
   return suma;
 }
 
@@ -1014,13 +1013,16 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
   const wiezie = !!najlepszyPlan && (najlepszyPlan.eksploracja || najlepszyPlan.zakupy.length > 0 || !sprzedaneWszystko(najlepszyPlan));
   // Flota w biedzie (gotówka poniżej dwóch rezerw paliwa floty) nie lata ze stratą: lepiej sprzedać tutaj i poczekać, aż inne
   // statki przywiozą gotówkę albo rynki się odbudują, niż spalić resztę kasy na pustych przelotach (bankructwa z 0 kr i pustymi ładowniami).
-  if (gra.runda3 && najlepszyPlan && !wyprawa && najlepszyPlan.zyskNetto < 0 && gra.stan.kr < 2 * ctx.rezerwaKr + rezerwaFloty(gra)) {
+  // Lot, który przynosi gotówkę (sprzedaż ładunku w celu: gotowkaPo > kasa), jest dozwolony także w biedzie — inaczej flota
+  // z ładowniami pełnymi towaru i pustą kasą u plemion stała do końca gry.
+  if (gra.runda3 && najlepszyPlan && !wyprawa && najlepszyPlan.zyskNetto < 0 && najlepszyPlan.gotowkaPo <= gra.stan.kr && gra.stan.kr < 2 * ctx.rezerwaKr + rezerwaFloty(gra)) {
     stanBota.cel = null;
     return { plan: null, opcja: bezZmian, rezerwaKr: 0 };
   }
   stanBota.cel = wiezie && najlepszyPlan!.cel !== najlepszyPlan!.pierwszyOdcinek ? najlepszyPlan!.cel : null;
-  // Rezerwacja na drugi krok nie większa niż udział statku w kasie (inaczej jeden plan na elektronikę blokował zakupy całej floty).
-  const rezerwa = najlepszyPlan ? Math.min(kosztDrugiegoKroku.get(najlepszyPlan) ?? 0, gra.stan.kr / Math.max(1, gra.stan.statki.length)) : 0;
+  // Rezerwacja na drugi krok nie większa niż połowa udziału statku w kasie (przy wielkich ładowniach rundy 4 rezerwacje
+  // ośmiu statków blokowały 7/8 kasy, w tym zakupy receptur misji).
+  const rezerwa = najlepszyPlan ? Math.min(kosztDrugiegoKroku.get(najlepszyPlan) ?? 0, gra.stan.kr / Math.max(1, 2 * gra.stan.statki.length)) : 0;
   return { plan: najlepszyPlan, opcja: najlepszaOpcja, rezerwaKr: rezerwa };
 }
 

@@ -986,9 +986,9 @@
     "karaWspolnegoCelu": 0.1,
     "maxDobyEkspedycji": [0, 0, 400, 400],
     "maxDobyDrogiMisji": [150, 250, 400, 500],
-    "rezerwaZasieguMisji": 0.15,
     "maxStrataMisjiUlamek": 0.1,
     "maxUdzialKosztuMisji": 0.1,
-    "mnoznikGotowkiNaEkspedycjeRunda3": 5.0
+    "mnoznikGotowkiNaEkspedycjeRunda3": 5.0,
+    "maxMasaStartuMisjiUlamek": 0.25
   }
 }
