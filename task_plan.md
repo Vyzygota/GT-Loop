@@ -1,3 +1,26 @@
+# Plan: PROMPT-runda4.md — drabina kadłubów z BaseShipa i z potrzeby (cel 4 000 dób)
+
+## Cel
+Wyprowadzić kadłuby szczebli 1–5 procedurą kanonu (obrys ← ładownia docelowa 480 m³ × g^N; napęd i bak nie gorsze niż jedynki z pełną ładownią referencyjną; kajuty z obsady; konstrukcja 10%; ładownia = reszta) i zmierzyć, jakie `g` daje galaktykę (a)/(b) na T4 w oknie 3 600–4 400 dób, osobno w R i D, przy flocie 1/2/4/8, `k` 1,3, `xpNaDobeLotu` 2,7, `progFirmy` ×1, bramce G, pamięci A.
+
+## Fazy
+1. Rozpoznanie: DECYZJE 89–97, `sim/lot.ts`, użycia kadłuba w `gra.ts` i CLI.
+2. Kanon i parametry: `kanon.json` blok `kadlub` (obrys 1 000, kajuta 20, konstrukcja 10%, zbiornik 50, moduł 120, jedynka: 2 osoby, 2 zbiorniki, 4 moduły); `prototyp.json` blok `runda4` (g, zaokrąglenie obrysu, gęstość referencyjna).
+3. Model: `sim/kadlub.ts` (procedura, jedynka, drabina z g, drabina rundy 3 w tym samym kształcie), `Gra.drabina` jako jedyne źródło ładowni / baku / masy / ciągu / obsady; `stan.zakupyKadlubow`.
+4. Testy: BaseShip 1 000 / 271 / 40 / 100 / 100 / 480; prędkość i zasięg każdego szczebla ≥ jedynki (R i D, każde g); ładownia = reszta; determinizm 4 800 dób w rundzie 4; 83 dotychczasowe zielone.
+5. Bot i miary: statystyka misji (czas kontraktu w dobach statku, udział ładowni floty), CLI `npm run runda3 -- runda4 …` (g × {R, D} × 20 ziaren), tabele kadłubów, kamieni, kontraktów, pojemności, krzywej.
+6. Pomiary: g ∈ {1,5; 2; 2,5; 3; 4} × {R, D} × 20 ziaren; jeśli żadne g nie daje galaktyki w oknie — g = 5 i 6.
+7. DECYZJE „Runda 4: drabina kadłubów z BaseShipa i z potrzeby”, README, push, opis PR.
+
+## Kryteria ukończenia
+- Tabela kadłubów dla każdego g (szczebel, obrys, reaktory, dysze, kajuty, bak, ładownia, masa, prędkości, zasięgi, cena, krok wymuszający) i wskazane g dla okna (albo „żadne” z liczbą kontraktów wobec 27).
+- Firma T4 i szczebel 5 przy wybranym g: w oknie czy uciekają; który krok procedury rośnie najszybciej.
+- Testy zielone, pliki planowania aktualne, PR opisany.
+
+---
+
+# Archiwum: plan zadania runda 3
+
 # Plan: PROMPT-runda3.md — progresja na mechanizmach kanonu (lot, awans, flota)
 
 Gałąź: `claude/blissful-planck-r8yb9d` (PR #1). Pliki robocze: `task_plan.md` (ten plan), `findings.md` (ustalenia), `progress.md` (dziennik). Poprzednie zadania w archiwum na końcu każdego pliku.

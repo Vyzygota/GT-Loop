@@ -1,3 +1,15 @@
+# Ustalenia (findings) — runda 4
+
+## Faza 1–3: procedura kadłuba
+
+- Jedynka z procedury: 1 000 − 271 − 40 − 100 − 100 = 489 → 4 moduły (480), luz 9 m³; masa 421,99 t z gęstości konstrukcji 1,7799 t/m³ (= (421,99 − 100 − 144) / 100 m³). Kajuty jedynki w tabeli kanonu to 40 m³ (2 osoby), a formuła obsady rundy 3 (kokpit 1 + 1 na reaktor + 1 na 4 moduły) dałaby 3 osoby / 60 m³ — jedynka bierze tabelę kanonu, szczeble 1–5 formułę (do decyzji projektanta).
+- Stan referencyjny jedynki (pełny bak 100 m³, 480 m³ towaru ρ = 1): 2,08 pc/dobę, zasięg 55 pc (R) / 100 pc (D). Procedura dla g = 2 daje: N1 1 900 m³, 2 reaktory, 5 osób, 960 m³; N3 7 220 m³, 8 reaktorów, 17 osób, 3 zbiorniki (R), 3 840 m³; N5 27 020 m³, 28 reaktorów, 61 osób, 15 360 m³, masa sucha 12 217 t; prędkość pusty 4,5–4,9 pc/dobę (szybciej niż jedynka 4,0), z ładunkiem referencyjnym 2,1–2,3, z minerałami 1,0–1,1. W D bak zostaje 100 m³ na każdym szczeblu (zasięg nie zależy od masy); w R od szczebla 3 trzeba 3 zbiorników.
+- Obrys minimalny jest mniejszy niż proporcjonalne skalowanie jedynki (250 m³ na moduł → 211 m³ na moduł przy g = 2, N5): napęd rośnie ~liniowo z ładownią (28 reaktorów na 32× ładowni), kajuty ×30, bak ×1–1,5. Krok wymuszający zmianę obrysu ponad proporcjonalny pojawia się tylko przy g = 1,5 (kajuty na N1–N2).
+
+---
+
+# Archiwum: ustalenia zadania runda 3
+
 # Ustalenia (findings) — runda 3
 
 ## Faza 1: rozpoznanie

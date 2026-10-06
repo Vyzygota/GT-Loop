@@ -6,14 +6,19 @@
  * npm run runda3 -- siatka [ziaren] [warianty R:G:A,D:P:C,… | all]        zapisuje wyniki/runda3/<wariant>.json
  * npm run runda3 -- przeglad k|xp|progFirmy|kKadluba [ziaren] [w1,w2,…]  zapisuje wyniki/runda3/<param>-<wartość>.json
  * npm run runda3 -- tabele                                                 składa tabele (markdown) z wyniki/runda3/*.json
+ * npm run runda3 -- runda4 [ziaren] [g1,g2,…] [R,D]                       runda 4: drabina z procedury kanonu, wyniki/runda4/g-<g>-<paliwo>.json
+ * npm run runda3 -- tabele4                                                tabele rundy 4
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Gra, K, P, TOWARY, TOWARY_I_PALIWO, type Towar } from '../sim/index';
-import { bakSzczeblaM3, ciagTf, konfiguracjaSzczebla, ladowniaM3, masaSuchaT, predkoscPrzyMasie } from '../sim/lot';
-import { zagrajFlote } from './flota';
+import { Gra, K, P, TOWARY, TOWARY_I_PALIWO, type KadlubSzczebla, type Towar } from '../sim/index';
+import { predkoscPrzyMasie, zasiegNaPaliwie } from '../sim/lot';
+import { zagrajFlote, type MisjaDostarczona } from './flota';
 
 const KATALOG = join('wyniki', 'runda3');
+const KATALOG4 = join('wyniki', 'runda4');
+/** Runda 4: stałe przeglądu g (prompt): k 1,3; xpNaDobeLotu 2,7; progFirmy ×1; bramka G; pamięć A. */
+const RUNDA4 = { k: 1.3, xpNaDobeLotu: 2.7, domyslneG: [1.5, 2, 2.5, 3, 4] };
 /** Cel projektanta: maksimum osi w ok. 4 000 dób; okno 3 600–4 400. */
 const HORYZONT_CELU = 4000;
 const OKNO: [number, number] = [3600, 4400];
@@ -34,6 +39,8 @@ export interface Wariant {
   bramka: 'G' | 'P';
   pamiec: 'A' | 'B' | 'C';
   przeglad?: { param: Przeglad; wartosc: number };
+  /** Runda 4: drabina kadłubów z procedury kanonu z ładownią 480 m³ × g^N. */
+  runda4?: { g: number };
 }
 
 export interface GospodarkaCyw {
@@ -94,6 +101,11 @@ export interface WynikRundy3 {
   /** (a) wszystkie 9 cywilizacji na T4; (b) wszystkie poznane na T4 — doba albo null. */
   galaktykaA: number | null;
   galaktykaB: number | null;
+  /** Drabina kadłubów tej gry (runda 3: z prototypu; runda 4: z procedury) i zakupy szczebli (doba, szczebel, cena). */
+  drabina: KadlubSzczebla[];
+  zakupyKadlubow: { doba: number; szczebel: number; kwotaKr: number }[];
+  /** Kontrakty dostarczone do końca (awans cywilizacji). */
+  misjeDostarczone: MisjaDostarczona[];
 }
 
 function kwantyl(xs: number[], q: number): number {
@@ -131,14 +143,10 @@ function gospodarka(gra: Gra, dostepneD0: Set<string>): Gospodarka3 {
   return { doba: gra.stan.doba, cywilizacje, nan: nanGlobal };
 }
 
-/** Prędkość statku szczebla N: pusty (pełny bak) i z pełną ładownią towaru, pilot 1 (bez załogi). */
-function predkosciSzczebla(n: number, towar: Towar = 'Food'): { pusty: number; zLadunkiem: number; ladowniaM3: number } {
-  const konf = konfiguracjaSzczebla(n);
-  const sucha = masaSuchaT(n, konf);
-  const bak = bakSzczeblaM3(n) * K.towary.Fuel.gestosc;
-  const ciag = ciagTf(konf);
-  const ladownia = ladowniaM3(konf);
-  return { pusty: predkoscPrzyMasie(sucha + bak, ciag), zLadunkiem: predkoscPrzyMasie(sucha + bak + ladownia * K.towary[towar].gestosc, ciag), ladowniaM3: ladownia };
+/** Prędkość kadłuba: pusty (pełny bak) i z pełną ładownią towaru, pilot 1 (bez załogi). */
+function predkosciKadluba(k: KadlubSzczebla, towar: Towar = 'Food'): { pusty: number; zLadunkiem: number; ladowniaM3: number } {
+  const bak = k.bakM3 * K.towary.Fuel.gestosc;
+  return { pusty: predkoscPrzyMasie(k.masaSuchaT + bak, k.ciagTf), zLadunkiem: predkoscPrzyMasie(k.masaSuchaT + bak + k.ladowniaM3 * K.towary[towar].gestosc, k.ciagTf), ladowniaM3: k.ladowniaM3 };
 }
 
 function najdalszaStolicaPc(gra: Gra): number {
@@ -149,11 +157,11 @@ function najdalszaStolicaPc(gra: Gra): number {
 }
 
 function pojemnosc(gra: Gra, medianaDystansu: number): Record<Towar, PojemnoscTowaru> {
-  const n = P.runda3.statek.konfiguracje.length - 1;
+  const szczyt = gra.drabina[gra.drabina.length - 1];
   const wynik = {} as Record<Towar, PojemnoscTowaru>;
   const dystans = Number.isFinite(medianaDystansu) && medianaDystansu > 0 ? medianaDystansu : 40;
   for (const t of TOWARY) {
-    const v = predkosciSzczebla(n, t);
+    const v = predkosciKadluba(szczyt, t);
     // Kurs: tam z pełnym ładunkiem, z powrotem pusto; dostawy na dobę = ładownia / czas kursu.
     const dobyKursu = dystans / v.zLadunkiem + dystans / v.pusty;
     const flota8 = (8 * v.ladowniaM3) / dobyKursu;
@@ -193,7 +201,18 @@ function ustawPrzeglad(przeglad: Wariant['przeglad']): () => void {
 }
 
 export function zagrajRunde3(ziarno: string, wariant: Wariant): WynikRundy3 {
-  const przywroc = ustawPrzeglad(wariant.przeglad);
+  const przywrocPrzeglad = ustawPrzeglad(wariant.przeglad);
+  const stareK = P.runda3.awans.k;
+  const stareXp = P.progresja.xpNaDobeLotu;
+  if (wariant.runda4) {
+    P.runda3.awans.k = RUNDA4.k;
+    P.progresja.xpNaDobeLotu = RUNDA4.xpNaDobeLotu;
+  }
+  const przywroc = () => {
+    przywrocPrzeglad();
+    P.runda3.awans.k = stareK;
+    P.progresja.xpNaDobeLotu = stareXp;
+  };
   const pomiary: Gospodarka3[] = [];
   const krzywa: WynikRundy3['krzywa'] = [];
   const dostepneD0 = new Set<string>();
@@ -216,7 +235,7 @@ export function zagrajRunde3(ziarno: string, wariant: Wariant): WynikRundy3 {
   let koncowa: Gra | null = null;
   let w;
   try {
-    w = zagrajFlote(ziarno, { skala: 'L', informacja: 'pelna', spread: 'B', paliwo: wariant.paliwo, bramkaTowaru: wariant.bramka, pamiecFloty: wariant.pamiec }, { naStarcie, poLocie, naKoniec: (gra) => (koncowa = gra) });
+    w = zagrajFlote(ziarno, { skala: 'L', informacja: 'pelna', spread: 'B', paliwo: wariant.paliwo, bramkaTowaru: wariant.bramka, pamiecFloty: wariant.pamiec, ...(wariant.runda4 ? { runda4: true, g: wariant.runda4.g } : {}) }, { naStarcie, poLocie, naKoniec: (gra) => (koncowa = gra) });
   } finally {
     przywroc();
   }
@@ -235,8 +254,8 @@ export function zagrajRunde3(ziarno: string, wariant: Wariant): WynikRundy3 {
   if (galaktykaA !== null) kamienie['galaktyka:a'] = galaktykaA;
   if (galaktykaB !== null) kamienie['galaktyka:b'] = galaktykaB;
   const najdalsza = najdalszaStolicaPc(gra);
-  const dniDoNajdalszej = P.runda3.statek.konfiguracje.map((_, n) => {
-    const v = predkosciSzczebla(n);
+  const dniDoNajdalszej = gra.drabina.map((k) => {
+    const v = predkosciKadluba(k);
     return { pusty: najdalsza / v.pusty, zLadunkiem: najdalsza / v.zLadunkiem };
   });
   const loty: LotZwarty[] = w.loty.map((l) => [l.towar ?? '', Math.round(l.dystans * 10) / 10, Math.round(l.doby * 10) / 10, Math.round(l.zyskWartosci), Math.round(l.paliwoKr), Math.round(l.placeKr), l.eksploracja ? 1 : 0]);
@@ -263,6 +282,9 @@ export function zagrajRunde3(ziarno: string, wariant: Wariant): WynikRundy3 {
     najdalszaPc: najdalsza,
     galaktykaA,
     galaktykaB,
+    drabina: gra.drabina,
+    zakupyKadlubow: gra.stan.zakupyKadlubow.map((z) => ({ doba: Math.round(z.doba * 10) / 10, szczebel: z.szczebel, kwotaKr: Math.round(z.kwotaKr) })),
+    misjeDostarczone: w.misje.map((m) => ({ ...m, start: Math.round(m.start * 10) / 10, koniec: Math.round(m.koniec * 10) / 10 })),
   };
 }
 
@@ -453,8 +475,8 @@ export function tabelaKrzywej(wyniki: WynikRundy3[]): string {
 
 export function tabelaZasiegu(wyniki: WynikRundy3[]): string {
   const linie = ['| Szczebel | prędkość pusty (pc/dobę) | prędkość z pełną ładownią żywności | doby do najdalszej stolicy: pusty (mediana po ziarnach) | z ładunkiem |', '|---|---|---|---|---|'];
-  P.runda3.statek.konfiguracje.forEach((_, n) => {
-    const v = predkosciSzczebla(n);
+  wyniki[0].drabina.forEach((k, n) => {
+    const v = predkosciKadluba(k);
     linie.push(`| ${n} | ${f2(v.pusty)} | ${f2(v.zLadunkiem)} | ${fd(kwantyl(wyniki.map((w) => w.dniDoNajdalszej[n].pusty), 0.5))} | ${fd(kwantyl(wyniki.map((w) => w.dniDoNajdalszej[n].zLadunkiem), 0.5))} |`);
   });
   linie.push('', `Najdalsza stolica od startu (najkrótsza ścieżka grafu): mediana ${fd(kwantyl(wyniki.map((w) => w.najdalszaPc), 0.5))} pc, zakres ${fd(Math.min(...wyniki.map((w) => w.najdalszaPc)))}–${fd(Math.max(...wyniki.map((w) => w.najdalszaPc)))} pc.`);
@@ -507,6 +529,141 @@ export function tabelaPrzegladu(param: Przeglad, grupy: { wartosc: number; wynik
   return linie.join('\n');
 }
 
+// ---------- Runda 4: tabele ----------
+
+const OKNO_LICZBA_KONTRAKTOW = 27;
+
+/** Tabela kadłubów dla grupy (ta sama drabina w każdym ziarnie grupy): kroki procedury, prędkości, zasięgi, mediana ceny szczebla. */
+export function tabelaKadlubow(wyniki: WynikRundy3[]): string {
+  const d = wyniki[0].drabina;
+  const wariant = wyniki[0].wariant.paliwo;
+  const linie = [
+    '| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+  ];
+  d.forEach((k, n) => {
+    const bak = k.bakM3 * K.towary.Fuel.gestosc;
+    const vP = predkoscPrzyMasie(k.masaSuchaT + bak, k.ciagTf);
+    const vR = predkoscPrzyMasie(k.masaSuchaT + bak + k.ladowniaM3 * P.runda4.gestoscReferencyjnaTNaM3, k.ciagTf);
+    const vM = predkoscPrzyMasie(k.masaSuchaT + bak + k.ladowniaM3 * K.towary.Minerals.gestosc, k.ciagTf);
+    const zP = zasiegNaPaliwie(k.bakM3, { masaStartT: k.masaSuchaT + bak, ciagTf: k.ciagTf, pilot: 1, mnoznikPaliwa: 1, wariant });
+    const zR = zasiegNaPaliwie(k.bakM3, { masaStartT: k.masaSuchaT + bak + k.ladowniaM3 * P.runda4.gestoscReferencyjnaTNaM3, ciagTf: k.ciagTf, pilot: 1, mnoznikPaliwa: 1, wariant });
+    const ceny = wyniki.flatMap((w) => w.zakupyKadlubow.filter((z) => z.szczebel === n).map((z) => z.kwotaKr / 1e6));
+    const cena = n === 0 ? '—' : ceny.length ? `${f1(kwantyl(ceny, 0.5))} mln (${f1(kwantyl(ceny, 0.1))}–${f1(kwantyl(ceny, 0.9))}), ${ceny.length}` : 'nikt nie kupił';
+    linie.push(`| ${n} | ${fd(k.obrysM3)} | ${k.reaktory} | ${k.dysze} | ${k.osoby} / ${fd(k.kajutyM3)} | ${fd(k.konstrukcjaM3)} | ${k.zbiorniki} / ${fd(k.bakM3)} | ${k.moduly} / ${fd(k.ladowniaM3)} | ${f1(k.luzM3)} | ${fd(k.masaSuchaT)} | ${f2(vP)} / ${f2(vR)} / ${f2(vM)} | ${fd(zP)} / ${fd(zR)} | ${cena} | ${k.krokWymuszajacy} |`);
+  });
+  return linie.join('\n');
+}
+
+/** Kamienie rundy 4 na grupę (g × paliwo): galaktyka (a)/(b), pierwsza cywilizacja T4, firma T4, szczebel 5. */
+export function tabelaKamieni4(grupy: { nazwa: string; wyniki: WynikRundy3[] }[]): string {
+  const kam = [
+    { klucz: 'galaktyka:a', nazwa: 'galaktyka (a)' },
+    { klucz: 'galaktyka:b', nazwa: 'galaktyka (b)' },
+    { klucz: 'cywilizacja:pierwsza:T4', nazwa: '1. cyw. T4' },
+    { klucz: 'firma:T4', nazwa: 'firma T4' },
+    { klucz: 'szczebel:5', nazwa: 'szczebel 5' },
+  ];
+  const linie = [`| g × paliwo | n | ${kam.map((k) => `${k.nazwa}: mediana (10–90%), do ${HORYZONT_CELU}, okno?`).join(' | ')} | cyw. T2 / T3 / T4 po ${HORYZONT()} (śr.) |`, `|---|---|${kam.map(() => '---').join('|')}|---|`];
+  for (const g of grupy) {
+    const w = g.wyniki;
+    const n = w.length;
+    const sr = (f: (x: WynikRundy3) => number) => w.reduce((s, x) => s + f(x), 0) / n;
+    const kom = kam.map((k) => {
+      const st = statKamienia(w, k.klucz);
+      return `${fd(st.mediana)} (${fd(st.p10)}–${fd(st.p90)}), ${f1(st.doCelu)}%, ${wOknie(st.mediana)}`;
+    });
+    linie.push(`| ${g.nazwa} | ${n} | ${kom.join(' | ')} | ${f1(sr((x) => x.kamienie['cywilizacji:T2:liczba'] ?? 0))} / ${f1(sr((x) => x.kamienie['cywilizacji:T3:liczba'] ?? 0))} / ${f1(sr((x) => x.kamienie['cywilizacji:T4:liczba'] ?? 0))} |`);
+  }
+  return linie.join('\n');
+}
+
+/** Kontrakty: dostarczone do 4 000 i 4 800 wobec 27, czas kontraktu w dobach statku, udział ładowni floty zajętej przez kontrakty. */
+export function tabelaKontraktow(grupy: { nazwa: string; wyniki: WynikRundy3[] }[]): string {
+  const linie = [
+    `| g × paliwo | n | kontrakty do ${HORYZONT_CELU}: śr. (mediana) wobec ${OKNO_LICZBA_KONTRAKTOW} | kontrakty do ${HORYZONT()}: śr. (mediana) | ziarna z ≥ ${OKNO_LICZBA_KONTRAKTOW} do ${HORYZONT_CELU} | czas kontraktu (doby statku): mediana (10–90%) | udział ładowni floty zajętej przez kontrakty (śr.) | bankructwa | mediana wartości (mln) |`,
+    '|---|---|---|---|---|---|---|---|---|',
+  ];
+  for (const g of grupy) {
+    const w = g.wyniki;
+    const n = w.length;
+    const do4000 = w.map((x) => x.misjeDostarczone.filter((m) => m.koniec <= HORYZONT_CELU).length);
+    const doKonca = w.map((x) => x.misjeDostarczone.length);
+    const czasy = w.flatMap((x) => x.misjeDostarczone.map((m) => m.koniec - m.start));
+    const udzialy = w.map((x) => {
+      const misji = x.misjeDostarczone.reduce((s, m) => s + (m.koniec - m.start) * m.ladowniaM3, 0);
+      let floty = 0;
+      x.szczeble.forEach((sz, i) => {
+        const od = i === 0 ? 0 : (x.kamienie[`flota:${i + 1}`] ?? HORYZONT());
+        floty += Math.max(0, HORYZONT() - od) * (x.drabina[Math.min(sz, x.drabina.length - 1)]?.ladowniaM3 ?? 0);
+      });
+      return floty > 0 ? misji / floty : 0;
+    });
+    const sr = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    linie.push(`| ${g.nazwa} | ${n} | ${f1(sr(do4000))} (${fd(kwantyl(do4000, 0.5))}) | ${f1(sr(doKonca))} (${fd(kwantyl(doKonca, 0.5))}) | ${f1((100 * do4000.filter((x) => x >= OKNO_LICZBA_KONTRAKTOW).length) / n)}% | ${fd(kwantyl(czasy, 0.5))} (${fd(kwantyl(czasy, 0.1))}–${fd(kwantyl(czasy, 0.9))}) | ${f1(100 * sr(udzialy))}% | ${f1((100 * w.filter((x) => x.wartoscKoncowa < 1e6).length) / n)}% | ${f1(kwantyl(w.map((x) => x.wartoscKoncowa / 1e6), 0.5))} |`);
+  }
+  return linie.join('\n');
+}
+
+export function tabelaPojemnosci4(grupy: { nazwa: string; wyniki: WynikRundy3[] }[]): string {
+  const linie = [`| g × paliwo | ładownia szczebla 5 (m³) | ${TOWARY.map((t) => `${t}: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek`).join(' | ')} |`, `|---|---|${TOWARY.map(() => '---').join('|')}|`];
+  for (const g of grupy) {
+    const w = g.wyniki;
+    const kom = TOWARY.map((t) => {
+      const p = w.map((x) => x.pojemnosc[t]);
+      return `${fd(kwantyl(p.map((x) => x.flota8M3NaDobe), 0.5))} / ${fd(kwantyl(p.map((x) => x.medianaKonsumpcjiStolicM3NaDobe).filter(Number.isFinite), 0.5))} / ${f1(kwantyl(p.map((x) => x.stosunek).filter(Number.isFinite), 0.5))}`;
+    });
+    linie.push(`| ${g.nazwa} | ${fd(w[0].drabina[w[0].drabina.length - 1].ladowniaM3)} | ${kom.join(' | ')} |`);
+  }
+  return linie.join('\n');
+}
+
+/** Krzywa wartości w skrócie: mediana (z kadłubami i statkami) w wybranych dobach na grupę. */
+export function tabelaKrzywej4(grupy: { nazwa: string; wyniki: WynikRundy3[] }[]): string {
+  const doby = [400, 1200, 2400, 3600, 4800];
+  const linie = [`| g × paliwo | ${doby.map((d) => `d${d}: mediana wartości z kadłubem (mln), × start`).join(' | ')} |`, `|---|${doby.map(() => '---').join('|')}|`];
+  for (const g of grupy) {
+    const kom = doby.map((d) => {
+      const i = d / KROK_KRZYWEJ;
+      const med = kwantyl(g.wyniki.map((w) => w.krzywa[Math.min(i, w.krzywa.length - 1)].zKadlubem), 0.5);
+      return `${fmln(med)} (×${(med / K.startingCredits).toFixed(0)})`;
+    });
+    linie.push(`| ${g.nazwa} | ${kom.join(' | ')} |`);
+  }
+  return linie.join('\n');
+}
+
+function wczytajWyniki4(): Map<string, WynikRundy3[]> {
+  const mapa = new Map<string, WynikRundy3[]>();
+  let pliki: string[] = [];
+  try {
+    pliki = readdirSync(KATALOG4).filter((f) => f.endsWith('.json'));
+  } catch {
+    return mapa;
+  }
+  for (const f of pliki) {
+    const lista = JSON.parse(readFileSync(join(KATALOG4, f), 'utf8')) as WynikRundy3[];
+    dopiszKamieniePochodne(lista);
+    mapa.set(f.replace(/\.json$/, ''), lista);
+  }
+  return mapa;
+}
+
+function tabele4(): string {
+  const mapa = wczytajWyniki4();
+  if (!mapa.size) return `Brak wyników w ${KATALOG4}. Uruchom: npm run runda3 -- runda4 20`;
+  const grupy = [...mapa.entries()]
+    .map(([nazwa, wyniki]) => ({ nazwa, wyniki, g: wyniki[0].wariant.runda4?.g ?? 0, paliwo: wyniki[0].wariant.paliwo }))
+    .sort((a, b) => (a.paliwo < b.paliwo ? -1 : a.paliwo > b.paliwo ? 1 : a.g - b.g));
+  const out: string[] = [];
+  out.push(`## Kamienie rundy 4 (cel ${HORYZONT_CELU}, okno ${OKNO[0]}–${OKNO[1]}; k ${RUNDA4.k}, xpNaDobeLotu ${RUNDA4.xpNaDobeLotu}, progFirmy ×1, bramka G, pamięć A)`, '', tabelaKamieni4(grupy), '');
+  out.push('## Kontrakty wobec 27 potrzebnych', '', tabelaKontraktow(grupy), '');
+  out.push('## Pojemność rynku dla 8 statków szczebla 5 przy każdym g', '', tabelaPojemnosci4(grupy), '');
+  out.push('## Krzywa wartości firmy (mediana z kadłubami i statkami)', '', tabelaKrzywej4(grupy), '');
+  for (const g of grupy) out.push(`## Tabela kadłubów: g = ${g.g}, paliwo ${g.paliwo} (${g.wyniki.length} ziaren)`, '', tabelaKadlubow(g.wyniki), '');
+  return out.join('\n');
+}
+
 // ---------- CLI ----------
 
 function ziarna(n: number): string[] {
@@ -529,19 +686,19 @@ function wczytajWyniki(): Map<string, WynikRundy3[]> {
   return mapa;
 }
 
-function zapisz(nazwa: string, lista: WynikRundy3[]): void {
-  mkdirSync(KATALOG, { recursive: true });
-  writeFileSync(join(KATALOG, `${nazwa}.json`), JSON.stringify(lista));
+function zapisz(nazwa: string, lista: WynikRundy3[], katalog = KATALOG): void {
+  mkdirSync(katalog, { recursive: true });
+  writeFileSync(join(katalog, `${nazwa}.json`), JSON.stringify(lista));
 }
 
-function licz(nazwa: string, wariant: Wariant, n: number): void {
+function licz(nazwa: string, wariant: Wariant, n: number, katalog = KATALOG): void {
   const lista: WynikRundy3[] = [];
   const t0 = Date.now();
   for (const z of ziarna(n)) {
     const w = zagrajRunde3(z, wariant);
     lista.push(w);
     console.error(`${nazwa} ${z}: wartość ${(w.wartoscKoncowa / 1e6).toFixed(1)} mln, statków ${w.statkow}, tiery ${Object.values(w.tiery).join('')}, misje ${w.misje.dostarczone}/${w.misje.rozpoczete}${w.utknal ? ', utknął' : ''} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
-    zapisz(nazwa, lista);
+    zapisz(nazwa, lista, katalog);
   }
 }
 
@@ -562,6 +719,17 @@ function main(): void {
       return { paliwo, bramka, pamiec };
     });
     for (const w of wybrane) licz(nazwaWariantu(w), w, n);
+    return;
+  }
+  if (tryb === 'runda4') {
+    const n = Number(reszta[0]) || 20;
+    const gi = reszta[1] ? reszta[1].split(',').map(Number) : RUNDA4.domyslneG;
+    const paliwa = (reszta[2] ? reszta[2].split(',') : ['R', 'D']) as Wariant['paliwo'][];
+    for (const paliwo of paliwa) for (const g of gi) licz(`g-${g}-${paliwo}`, { paliwo, bramka: 'G', pamiec: 'A', runda4: { g } }, n, KATALOG4);
+    return;
+  }
+  if (tryb === 'tabele4') {
+    console.log(tabele4());
     return;
   }
   if (tryb === 'przeglad' || tryb === 'k') {

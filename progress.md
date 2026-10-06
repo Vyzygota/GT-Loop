@@ -1,3 +1,17 @@
+# Dziennik (progress) — runda 4
+
+- [x] Faza 1: rozpoznanie — ładownia/bak/masa/ciąg/obsada w `gra.ts` szły przez `lot.ts` i `P.runda3.statek` (konfiguracje × 1,5^N); CLI liczy prędkości szczebli z tych samych funkcji.
+- [x] Faza 2: kanon (`kadlub`) i `prototyp.runda4`.
+- [x] Faza 3: `sim/kadlub.ts` (procedura, jedynka, `wyprowadzDrabine(g, wariant)`, `drabinaRundy3()`), `Gra.drabina`, `zakupyKadlubow`; `tsc` zielony.
+- [ ] Faza 4: testy.
+- [ ] Faza 5: statystyka misji i CLI rundy 4.
+- [ ] Faza 6: pomiary.
+- [ ] Faza 7: DECYZJE, push, PR.
+
+---
+
+# Archiwum: dziennik zadania runda 3
+
 # Dziennik (progress) — runda 3
 
 - [x] Faza 1: rozpoznanie — notatki w `findings.md`.

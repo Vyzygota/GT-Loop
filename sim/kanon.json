@@ -157,5 +157,15 @@
     2,
     3,
     1
-  ]
+  ],
+  "kadlub": {
+    "obrysJedynkiM3": 1000,
+    "kajutaNaOsobeM3": 20,
+    "osobyJedynki": 2,
+    "konstrukcjaUlamekObrysu": 0.1,
+    "zbiornikM3": 50,
+    "zbiornikiJedynki": 2,
+    "modulLadowniM3": 120,
+    "modulyJedynki": 4
+  }
 }

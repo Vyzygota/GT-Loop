@@ -11,7 +11,8 @@ import {
   zapasPo,
 } from './rynek';
 import { K, P, kr } from './stale';
-import { bakSzczeblaM3, ciagTf, konfiguracjaSzczebla, ladowniaM3, lot, masaSuchaT, obsada, zasiegNaPaliwie } from './lot';
+import { lot, zasiegNaPaliwie } from './lot';
+import { drabinaRundy3, wyprowadzDrabine, type KadlubSzczebla } from './kadlub';
 import { generujSwiat, konsumpcjaZLudnosci, minTierTowaru } from './swiat';
 import { Graf, odleglosc } from './trasa';
 import { aktualizujZaloganta, efektyZalogi, generujKandydatow, tierZalogi } from './zaloga';
@@ -97,6 +98,8 @@ export interface Stan {
   poziomFirmy: number;
   /** Okna stoczni (kupno kadłuba, zmiana modułów, nowy statek): doba i liczba statków w tej chwili. */
   oknaStoczni: { doba: number; statkow: number; rodzaj: string }[];
+  /** Runda 3/4: zakupy kadłubów (doba, szczebel, cena) — do tabeli cen szczebli. */
+  zakupyKadlubow: { doba: number; szczebel: number; kwotaKr: number }[];
   /** Runda 3: rozwój cywilizacji (drabina kanonu): Z₀, skumulowana nadwyżka, kontrakt. */
   rozwoj: Record<string, RozwojCywilizacji>;
   /** Runda 3: PkbToWaterUnits wykalibrowane w dobie 0 (założenie: średnia cywilizacja osiąga gotowość T2 po dobyGotowosciT2 × k dobach). */
@@ -152,6 +155,11 @@ export class Gra {
   readonly progresja: boolean;
   /** Runda 3: lot z hierarchii ciągu, rynek z ludności, drabina rozwoju kanonu, flota. */
   readonly runda3: boolean;
+  /** Runda 4: drabina kadłubów wyprowadzona z BaseShipa procedurą kanonu (ładownia 480 m³ × g^N). */
+  readonly runda4: boolean;
+  readonly g: number;
+  /** Kadłuby szczebli 0–5: jedno źródło ładowni, baku, masy, ciągu i obsady (runda 3: z prototyp.json; runda 4: z procedury). */
+  readonly drabina: KadlubSzczebla[];
   readonly wariantPaliwa: WariantPaliwa;
   readonly bramkaTowaru: BramkaTowaru;
   readonly wariantPamieciFloty: PamiecFloty;
@@ -172,8 +180,11 @@ export class Gra {
   constructor(ziarno: string, opcje: OpcjeGry = {}) {
     this.skala = opcje.skala ?? P.skala;
     this.informacja = opcje.informacja ?? P.informacja;
-    this.runda3 = opcje.runda3 ?? P.runda3.wlaczona;
+    this.runda4 = opcje.runda4 ?? P.runda4.wlaczona;
+    this.g = opcje.g ?? P.runda4.g;
+    this.runda3 = this.runda4 || (opcje.runda3 ?? P.runda3.wlaczona);
     this.wariantPaliwa = opcje.paliwo ?? P.runda3.paliwo;
+    this.drabina = this.runda4 ? wyprowadzDrabine(this.g, this.wariantPaliwa) : drabinaRundy3();
     this.bramkaTowaru = opcje.bramkaTowaru ?? P.runda3.bramkaTowaru;
     this.wariantPamieciFloty = opcje.pamiecFloty ?? P.runda3.pamiecFloty;
     this.progresja = this.runda3 || (opcje.progresja ?? P.progresja.wlaczona);
@@ -213,6 +224,7 @@ export class Gra {
       pamiecFloty: {},
       poziomFirmy: 1,
       oknaStoczni: [],
+      zakupyKadlubow: [],
       rozwoj: {},
       pkbToWaterUnits: 0,
     };
@@ -538,7 +550,7 @@ export class Gra {
       kandydaci: [],
       pamiecZakupu: {},
       szczebel: 0,
-      moduly: { ...konfiguracjaSzczebla(0) },
+      moduly: { reaktory: this.drabina[0].reaktory, ladownie: this.drabina[0].moduly },
       numerLotu: 0,
       skoki: 0,
       kursStart: { wartosc: this.stan.statki.length === 0 ? K.startingCredits : this.wartoscFirmy(), szczebel: 0, kadlubKr: 0 },
@@ -627,12 +639,17 @@ export class Gra {
 
   /** Pojemność ładowni (m³): runda 3 = moduły ładowni × 120 m³, inaczej BaseShip × mnoznikSzczebla^N. */
   ladownia(): number {
-    if (this.runda3) return ladowniaM3(this.statek().moduly);
+    if (this.runda3) return this.kadlub().ladowniaM3;
     return K.ladownia * this.mnoznikKadluba();
   }
 
+  /** Kadłub statku (szczebel z drabiny). */
+  kadlub(statek: Statek = this.statek()): KadlubSzczebla {
+    return this.drabina[Math.min(statek.szczebel, this.drabina.length - 1)];
+  }
+
   bak(): number {
-    if (this.runda3) return bakSzczeblaM3(this.stan.szczebel);
+    if (this.runda3) return this.kadlub().bakM3;
     return K.bak * this.mnoznikKadluba();
   }
 
@@ -645,11 +662,11 @@ export class Gra {
   // ---------- Runda 3: masa, ciąg, prędkość ----------
 
   masaSuchaT(statek: Statek = this.statek()): number {
-    return masaSuchaT(statek.szczebel, statek.moduly);
+    return this.kadlub(statek).masaSuchaT;
   }
 
   ciagTf(statek: Statek = this.statek()): number {
-    return ciagTf(statek.moduly);
+    return this.kadlub(statek).ciagTf;
   }
 
   /** Masa statku teraz: kadłub + moduły + paliwo (1 t/m³) + ładunek (gęstość × m³). */
@@ -668,7 +685,7 @@ export class Gra {
 
   /** Obsada statku (runda 3): miejsca w załodze wynikają z modułów; inaczej miejscaZalogi kanonu. */
   miejscaZalogi(statek: Statek = this.statek()): number {
-    return this.runda3 ? obsada(statek.moduly) : K.miejscaZalogi;
+    return this.runda3 ? this.kadlub(statek).osoby : K.miejscaZalogi;
   }
 
   /**
@@ -730,7 +747,7 @@ export class Gra {
     const m = Math.pow(P.progresja.mnoznikSzczebla, nastepny);
     const zyski = this.stan.zyskiKursow[this.stan.szczebel] ?? [];
     const baza = this.runda3
-      ? { nastepny, kursow: zyski.length, ladowniaM3: ladowniaM3(konfiguracjaSzczebla(nastepny)), bakM3: bakSzczeblaM3(nastepny) }
+      ? { nastepny, kursow: zyski.length, ladowniaM3: this.drabina[nastepny].ladowniaM3, bakM3: this.drabina[nastepny].bakM3 }
       : { nastepny, kursow: zyski.length, ladowniaM3: K.ladownia * m, bakM3: K.bak * m };
     if (zyski.length < P.progresja.minKursowDoWycenySzczebla) {
       return { ...baza, kwotaKr: null, medianaZyskuKr: null, powod: `stocznia wycenia kadłub po ${P.progresja.minKursowDoWycenySzczebla} kursach na obecnym szczeblu (masz ${zyski.length})` };
@@ -753,9 +770,10 @@ export class Gra {
     this.okres.deltaKr -= w.kwotaKr;
     this.stan.szczebel = w.nastepny;
     if (this.runda3) {
-      this.statek().moduly = { ...konfiguracjaSzczebla(w.nastepny) };
+      this.statek().moduly = { reaktory: this.drabina[w.nastepny].reaktory, ladownie: this.drabina[w.nastepny].moduly };
       this.oknoStoczni('kadlub');
     }
+    this.stan.zakupyKadlubow.push({ doba: this.stan.doba, szczebel: w.nastepny, kwotaKr: w.kwotaKr });
     this.stan.zyskiKursow[w.nastepny] ??= [];
     this.stan.wydanoNaKadlub += w.kwotaKr;
     this.stan.kursStart.kadlubKr += w.kwotaKr;

@@ -42,6 +42,17 @@ export interface Kanon {
   statek: { ciagDyszyTf: number; dyszNaReaktor: number; masaJedynkiSuchaT: number; stalaPredkosci: number; spalanieRM3NaDobe: number; dawkaDM3NaPc: number; objetoscReaktoraM3: number };
   /** Minimalny tier otwierający sektor produkcji (7 sektorów; mapowanie na towary w prototyp.json). */
   SectorMinTier: number[];
+  /** Procedura wyprowadzenia kadłuba (zasada-wyprowadzenie-kadluba): liczby BaseShipa i stałe kroków. */
+  kadlub: {
+    obrysJedynkiM3: number;
+    kajutaNaOsobeM3: number;
+    osobyJedynki: number;
+    konstrukcjaUlamekObrysu: number;
+    zbiornikM3: number;
+    zbiornikiJedynki: number;
+    modulLadowniM3: number;
+    modulyJedynki: number;
+  };
 }
 
 export interface PlanetaProfil {
@@ -122,6 +133,16 @@ export interface KonfiguracjaProgresji {
   nazwyTierowZalogi: string[];
 }
 
+/** Runda 4: drabina kadłubów wyprowadzona z BaseShipa procedurą kanonu; ładownia szczebla N = 480 m³ × g^N. */
+export interface KonfiguracjaRundy4 {
+  wlaczona: boolean;
+  g: number;
+  /** Obrys zaokrąglany w górę do wielokrotności tylu m³ (BaseShip: 990 → 1 000). */
+  zaokraglenieObrysuM3: number;
+  /** Gęstość towaru referencyjnego do kroków napędu i baku (t/m³). */
+  gestoscReferencyjnaTNaM3: number;
+}
+
 export interface KonfiguracjaRundy3 {
   /** Horyzont rundy 3 (dób); cel projektanta: maksimum osi w ok. 4 000 dób, horyzont 4 800 pokazuje przekroczenie. */
   horyzontDob: number;
@@ -173,6 +194,7 @@ export interface Prototyp {
   pamiecZakupuSkokow: number;
   progresja: KonfiguracjaProgresji;
   runda3: KonfiguracjaRundy3;
+  runda4: KonfiguracjaRundy4;
   skale: Record<Skala, KonfiguracjaSkali>;
   celMnoznikWartosci: number;
   nawigatorMaxRedukcjaPaliwa: number;

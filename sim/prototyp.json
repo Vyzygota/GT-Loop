@@ -78,6 +78,12 @@
       "Legenda"
     ]
   },
+  "runda4": {
+    "wlaczona": false,
+    "g": 2,
+    "zaokraglenieObrysuM3": 10,
+    "gestoscReferencyjnaTNaM3": 1.0
+  },
   "runda3": {
     "wlaczona": false,
     "horyzontDob": 4800,

@@ -12,9 +12,21 @@ export interface Misja {
   start: number;
 }
 
+export interface MisjaDostarczona {
+  cywilizacja: string;
+  tier: number;
+  start: number;
+  koniec: number;
+  statek: number;
+  /** Ładownia statku w chwili dostawy końcowej (m³). */
+  ladowniaM3: number;
+}
+
 export interface StanFloty {
   stany: StanBota[];
   misje: (Misja | null)[];
+  /** Kontrakty dostarczone do końca (awans): do miar czasu kontraktu i udziału ładowni floty. */
+  dostarczone: MisjaDostarczona[];
   /** Cywilizacja → statek, który realizuje jej kontrakt. */
   przydzial: Map<string, number>;
   /** Plan, z którym statek wystartował (do miar po przylocie). */
@@ -22,7 +34,7 @@ export interface StanFloty {
 }
 
 export function nowyStanFloty(): StanFloty {
-  return { stany: [], misje: [], przydzial: new Map(), planyWToku: [] };
+  return { stany: [], misje: [], dostarczone: [], przydzial: new Map(), planyWToku: [] };
 }
 
 function stanStatku(f: StanFloty, i: number, marze: StanBota['marzeNaM3']): StanBota {
@@ -234,6 +246,7 @@ function misjaWDoku(gra: Gra, f: StanFloty, i: number, stanBota: StanBota): { ce
     const w = gra.dostarczKontrakt();
     akcje.push(`${w.zamkniety ? 'misja-dostawa' : 'misja-dostawa-czesc'}:${w.cywilizacja}:T${w.tier}`);
     if (w.zamkniety) {
+      f.dostarczone.push({ cywilizacja: misja.cywilizacja, tier: misja.tier, start: misja.start, koniec: gra.stan.doba, statek: i, ladowniaM3: gra.ladownia() });
       f.przydzial.delete(misja.cywilizacja);
       f.misje[i] = null;
       return { celMisji: null, zarezerwowaneM3: 0, zarezerwowaneTowary: {}, akcje };
@@ -377,6 +390,8 @@ export interface WynikFloty extends WynikZiarna {
   misjeDostarczone: number;
   misjeRozpoczete: number;
   dobyCzekania: number;
+  /** Kontrakty dostarczone do końca (start i koniec misji, statek, jego ładownia). */
+  misje: MisjaDostarczona[];
 }
 
 /** Rozgrywka floty na jednym ziarnie (runda 3). */
@@ -472,5 +487,6 @@ export function zagrajFlote(ziarno: string, opcje: OpcjeGry = {}, haki: HakiFlot
     misjeDostarczone,
     misjeRozpoczete,
     dobyCzekania,
+    misje: f.dostarczone,
   };
 }

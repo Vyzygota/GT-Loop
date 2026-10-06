@@ -264,6 +264,9 @@ export interface OpcjeGry {
   limitDob?: number;
   /** Runda 3: lot z hierarchii ciągu, rynek z ludności, drabina rozwoju kanonu, flota; domyślnie z prototypu (wymusza progresję). */
   runda3?: boolean;
+  /** Runda 4: drabina kadłubów wyprowadzona procedurą kanonu (włącza rundę 3); `g` = mnożnik ładowni na szczebel. */
+  runda4?: boolean;
+  g?: number;
   paliwo?: WariantPaliwa;
   bramkaTowaru?: BramkaTowaru;
   pamiecFloty?: PamiecFloty;
