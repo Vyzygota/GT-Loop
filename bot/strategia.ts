@@ -532,7 +532,8 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
     if (eksploracja) {
       if (filtr.tylkoDalej && filtr.cele && !filtr.cele.has(cel)) continue;
       // Na ekspedycję bot nie wiezie ładunku (rynek celu nieznany): sprzedaje tutaj wszystko, co ma rynek.
-      const sprzedazeTu = rynekTu ? TOWARY.filter((t) => ladunek[t] > 0).map((t) => ({ towar: t, m3: ladunek[t] })) : [];
+      // Towar zamknięty bramką G w tym porcie (tier za niski) nie ma tu rynku: zostaje na pokładzie (sprzedaż rzuciłaby wyjątek).
+      const sprzedazeTu = rynekTu ? TOWARY.filter((t) => ladunek[t] > 0 && gra.stan.rynki[tu][t].dostepny !== false).map((t) => ({ towar: t, m3: ladunek[t] })) : [];
       const przychodTu = sprzedazeTu.reduce((s, x) => s + ctx.przychodTutaj(x.towar, x.m3, ef.udzialHandlowca), 0);
       const zysk = premiaEksploracji - koszty + (rynekTu ? przychodTu - wartoscLadowniTu : 0);
       // Trasa, na którą nie starcza gotówki (paliwo liczone ostrożnie po cenie bazowej za dalsze odcinki), nie jest planem.
@@ -569,7 +570,9 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
       for (let kk = 0; kk <= P.bot.krokiIlosci; kk++) {
         const k = gra.runda3 ? P.bot.krokiIlosci - kk : kk;
         const q = k === P.bot.krokiIlosci ? h : Math.floor((h * k) / P.bot.krokiIlosci);
-        if (q > 0 && (!rynekTu || filtr.tylkoDalej)) continue;
+        // Sprzedaż tutaj tylko, gdy port ma rynek na ten towar (bramka G: towar zamknięty daje przychód 0, a remis „sprzedaj teraz”
+        // wybierał sprzedaż całości w porcie, który jej nie przyjmuje — wyjątek w g = 6 D, ziarno r3-18).
+        if (q > 0 && (!rynekTu || filtr.tylkoDalej || gra.stan.rynki[tu][t].dostepny === false)) continue;
         const tuKwota = ctx.przychodTutaj(t, q, ef.udzialHandlowca);
         const tuPremia = ctx.premiaZa(tu, t, q);
         // Wieziony ładunek wyceniany jest tylko na samym celu: obietnica „rozwiozę po sąsiadach” realizuje się dopiero tam.
