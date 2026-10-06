@@ -184,7 +184,7 @@ export class Kontekst {
   private klastry = new Map<string, PlanetaKlastra[]>();
   private premie = new Map<string, Partial<Record<Towar, { naWU: number; pozostaloWU: number }>>>();
   readonly dojazdyCache = new Map<string, Map<string, Dojazd>>();
-  readonly drugiKrokCache = new Map<string, { zysk: number; doby: number }>();
+  readonly drugiKrokCache = new Map<string, { zysk: number; doby: number; koszt: number }>();
   constructor(
     readonly gra: Gra,
     /** Marże na m³ zaobserwowane przez bota na własnych sprzedażach (do wyceny przyszłego popytu po awansie). */
@@ -636,9 +636,9 @@ export function planyDlaZalogi(gra: Gra, zaloga: Zalogant[], ctx: Kontekst, filt
  * Najlepszy pojedynczy kurs z celu planu (po przylocie, z gotówką po sprzedaży): jeden towar, jeden cel.
  * Dzięki temu bot widzi wartość pozycjonowania się po stronie producenta, nawet gdy pierwszy etap sam w sobie nie zarabia.
  */
-export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zysk: number; doby: number } {
+export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]): { zysk: number; doby: number; koszt: number } {
   const gra = ctx.gra;
-  if (plan.eksploracja) return { zysk: 0, doby: 0 };
+  if (plan.eksploracja) return { zysk: 0, doby: 0, koszt: 0 };
   const kluczCache = `${plan.cel}:${Math.round(plan.doby)}:${Math.round(plan.gotowkaPo / 1e5)}`;
   const gotowe = ctx.drugiKrokCache.get(kluczCache);
   if (gotowe) return gotowe;
@@ -647,7 +647,7 @@ export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]
   // a stały zasięg pustego kadłuba trafia w pamięć dojazdów między krokami floty).
   const doj = ctx.dojazdyZ(plan.cel, zaloga, gra.runda3 ? -gra.masaZajeta() : 0);
   const cenaPaliwa = gra.cenaPaliwa(plan.cel) ?? gra.cenaPaliwaTutaj();
-  let najlepszy = { zysk: 0, doby: 0 };
+  let najlepszy = { zysk: 0, doby: 0, koszt: 0 };
   const cele2 = [...doj.entries()]
     .filter(([cel2]) => cel2 !== plan.cel && gra.wezel(cel2).typ === 'planeta' && gra.informacjaORynku(cel2) !== null)
     .sort((a, b) => a[1].dystans - b[1].dystans)
@@ -674,7 +674,7 @@ export function drugiKrok(ctx: Kontekst, plan: Plan, zaloga: readonly Zalogant[]
         const r = ctx.przychodSprzedazy(cel2, t, m3, plan.doby + doby2, ef.udzialHandlowca, true, plan.skoki + d.skoki);
         if (!r) continue;
         const zysk = r.kwota + r.premia - koszt - koszty;
-        if (zysk > najlepszy.zysk) najlepszy = { zysk, doby: doby2 };
+        if (zysk > najlepszy.zysk) najlepszy = { zysk, doby: doby2, koszt };
       }
     }
   }
@@ -708,6 +708,8 @@ function lepszy(a: Plan, b: Plan | null): boolean {
 export interface Decyzja {
   plan: Plan | null;
   opcja: OpcjaZalogi;
+  /** Flota: gotówka, którą plan chce wydać w celu (drugi krok) — do zarezerwowania na czas lotu, inaczej inny statek ją wyda. */
+  rezerwaKr?: number;
 }
 
 /** Pamięć bota między dokami: cel, do którego wiezie ładunek (trasa wieloetapowa), i własne marże per towar (progresja). */
@@ -812,14 +814,18 @@ function celStoczni(gra: Gra, stanBota: StanBota, ctx: Kontekst): string | null 
 }
 
 /** Szacowany koszt pustego lotu o danej długości: paliwo po cenie bazowej (u plemion tyle kosztuje) i płace. */
+/** Flota: gotówka zarezerwowana przez statki w locie na zakupy w celu (indeks = statek; ustawia bot floty). */
+export const rezerwacjeFloty = { kwoty: [] as number[] };
+
 /**
  * Rezerwa gotówki floty (runda 3): wspólna kasa, więc statek w doku nie wydaje pieniędzy, których inne statki potrzebują na paliwo
- * (pełny bak każdego z nich po cenie bazowej) — inaczej jeden zakup ładunku zostawiał resztę floty bez paliwa u plemion.
+ * (pełny bak każdego z nich po cenie bazowej) ani na zakupy zaplanowane w celu (plan dwukrokowy liczył na gotówkę, którą
+ * w międzyczasie wydał kolega: statek leciał 100 pc, żeby kupić nic).
  */
 export function rezerwaFloty(gra: Gra): number {
   if (!gra.runda3) return 0;
   let suma = 0;
-  for (const s of gra.stan.statki) if (s.id !== gra.stan.aktywny) suma += bakSzczeblaM3(s.szczebel) * kr(K.towary.Fuel.basePrice);
+  for (const s of gra.stan.statki) if (s.id !== gra.stan.aktywny) suma += bakSzczeblaM3(s.szczebel) * kr(K.towary.Fuel.basePrice) + (rezerwacjeFloty.kwoty[s.id] ?? 0);
   return suma;
 }
 
@@ -948,13 +954,16 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
   // 1. Plany dla obecnej załogi (misja, odwrót w toku albo droga do stoczni: tylko do tego celu); 2. dla najlepszych z nich
   // dolicz najlepszy kurs powrotny z celu (dwa kroki); 3. dok, w którym nawet dwa kroki nie zarabiają, liczy się jako słaby —
   // po progu odwrót; 4. dla wybranego celu sprawdź warianty załogi.
+  const kosztDrugiegoKroku = new Map<Plan, number>();
   const ocenPlany = (lista: Plan[]): { plan: Plan | null; ocena: number } => {
     lista.sort((a, b) => b.naDobe - a.naDobe);
     let naj: Plan | null = null;
     let najOcena = -Infinity;
     for (const p of lista.slice(0, gra.runda3 ? P.bot.planowDoDrugiegoKrokuRunda3 : P.bot.planowDoDrugiegoKroku)) {
       const dalej = drugiKrok(ctx, p, bezZmian.zaloga);
-      let ocena = Math.max(p.naDobe, (p.zyskNetto + dalej.zysk) / (p.doby + dalej.doby));
+      const dwaKroki = (p.zyskNetto + dalej.zysk) / (p.doby + dalej.doby);
+      let ocena = Math.max(p.naDobe, dwaKroki);
+      kosztDrugiegoKroku.set(p, dwaKroki > p.naDobe ? dalej.koszt : 0);
       // Flota: cel, do którego leci już inny statek firmy, jest gorszy o karaWspolnegoCelu (podział floty między trasy przy remisie,
       // ale nie kosztem pustego lotu w inną stronę: rynki z ludności wchłaniają ładunek kilku statków).
       if (ctx.wykluczoneCele.has(p.cel)) ocena -= Math.abs(ocena) * P.bot.karaWspolnegoCelu;
@@ -1003,8 +1012,16 @@ export function zaplanuj(gra: Gra, stanBota: StanBota = nowyStanBota(), obserwat
   }
   const sprzedaneWszystko = (p: Plan) => TOWARY.every((t) => gra.stan.ladownia[t].m3 <= (p.sprzedaze.find((x) => x.towar === t)?.m3 ?? 0));
   const wiezie = !!najlepszyPlan && (najlepszyPlan.eksploracja || najlepszyPlan.zakupy.length > 0 || !sprzedaneWszystko(najlepszyPlan));
+  // Flota w biedzie (gotówka poniżej dwóch rezerw paliwa floty) nie lata ze stratą: lepiej sprzedać tutaj i poczekać, aż inne
+  // statki przywiozą gotówkę albo rynki się odbudują, niż spalić resztę kasy na pustych przelotach (bankructwa z 0 kr i pustymi ładowniami).
+  if (gra.runda3 && najlepszyPlan && !wyprawa && najlepszyPlan.zyskNetto < 0 && gra.stan.kr < 2 * ctx.rezerwaKr + rezerwaFloty(gra)) {
+    stanBota.cel = null;
+    return { plan: null, opcja: bezZmian, rezerwaKr: 0 };
+  }
   stanBota.cel = wiezie && najlepszyPlan!.cel !== najlepszyPlan!.pierwszyOdcinek ? najlepszyPlan!.cel : null;
-  return { plan: najlepszyPlan, opcja: najlepszaOpcja };
+  // Rezerwacja na drugi krok nie większa niż udział statku w kasie (inaczej jeden plan na elektronikę blokował zakupy całej floty).
+  const rezerwa = najlepszyPlan ? Math.min(kosztDrugiegoKroku.get(najlepszyPlan) ?? 0, gra.stan.kr / Math.max(1, gra.stan.statki.length)) : 0;
+  return { plan: najlepszyPlan, opcja: najlepszaOpcja, rezerwaKr: rezerwa };
 }
 
 /** Ilości paliwa w pełnych dziesiątych m³, żeby UI (pole liczbowe) odtworzyło je bez reszty. */

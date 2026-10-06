@@ -4,7 +4,7 @@
  * świat przewija się do najbliższego przylotu, a przylatujący statek decyduje następny.
  */
 import { Gra, K, P, TOWARY, kr, type OpcjeGry, type Towar } from '../sim/index';
-import { dojazdyZ, inwestuj, limitFloty, nowyStanBota, rezerwaFloty, wykonaj, zaplanuj, type Dojazd, type HakiRozgrywki, type LotBota, type Plan, type StanBota, type WynikZiarna } from './strategia';
+import { dojazdyZ, inwestuj, limitFloty, nowyStanBota, rezerwaFloty, rezerwacjeFloty, wykonaj, zaplanuj, type Dojazd, type HakiRozgrywki, type LotBota, type Plan, type StanBota, type WynikZiarna } from './strategia';
 
 export interface Misja {
   cywilizacja: string;
@@ -352,10 +352,22 @@ export function krokStatku(gra: Gra, f: StanFloty, i: number, marze: StanBota['m
     stanBota.celMisji = null;
     decyzja = zaplanuj(gra, stanBota, undefined, { wykluczoneCele: wykluczone, bezEkspedycji: ekspedycjaTrwa });
   }
-  if (!decyzja.plan) return { statek: i, plan: null, wystartowal: false, akcje };
+  if (!decyzja.plan) {
+    // Bez planu: sprzedaj tutaj ładunek spoza receptury (gotówka dla floty) i czekaj w doku.
+    if (gra.rynekZnany(gra.stan.pozycja)) {
+      for (const t of TOWARY) {
+        const zbedne = gra.stan.ladownia[t].m3 - (m.zarezerwowaneTowary[t] ?? 0);
+        if (zbedne > 1e-9 && gra.stan.rynki[gra.stan.pozycja][t].dostepny !== false) gra.sprzedaj(t, zbedne);
+      }
+    }
+    rezerwacjeFloty.kwoty[i] = 0;
+    return { statek: i, plan: null, wystartowal: false, akcje };
+  }
   const { utknal } = wykonaj(gra, decyzja, true);
   const wystartowal = gra.statek(i).wLocie !== null;
   f.planyWToku[i] = decyzja.plan;
+  // Rezerwacja gotówki na zakupy w celu (drugi krok) na czas lotu; gaśnie przy przylocie.
+  rezerwacjeFloty.kwoty[i] = wystartowal ? (decyzja.rezerwaKr ?? 0) : 0;
   // Własne marże (kr/m³) ze sprzedaży w tym doku: wspólne dla floty.
   return { statek: i, plan: decyzja.plan, wystartowal: wystartowal && !utknal, akcje };
 }
@@ -375,6 +387,7 @@ export interface HakiFloty extends HakiRozgrywki {
 export function zagrajFlote(ziarno: string, opcje: OpcjeGry = {}, haki: HakiFloty = {}): WynikFloty {
   const gra = new Gra(ziarno, { ...opcje, runda3: true });
   const f = nowyStanFloty();
+  rezerwacjeFloty.kwoty = [];
   const marze: StanBota['marzeNaM3'] = {};
   const loty: LotBota[] = [];
   const marzeNaM3 = {} as Record<Towar, number[]>;
@@ -412,6 +425,7 @@ export function zagrajFlote(ziarno: string, opcje: OpcjeGry = {}, haki: HakiFlot
     const raport = gra.nastepnyPrzylot()!;
     czekanieZRzedu = 0;
     const id = raport.statek ?? 0;
+    rezerwacjeFloty.kwoty[id] = 0;
     const plan = f.planyWToku[id];
     f.planyWToku[id] = null;
     for (const w of raport.wynikHandlowy) if (w.m3 > 0) {
