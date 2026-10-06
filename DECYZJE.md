@@ -782,3 +782,256 @@ Pytanie projektantów: jaka ładownia na szczeblach 1–5 daje galaktykę na T4 
 100. **Krok wymuszający obrys**: dla każdego szczebla sprawdzam, który krok (2 napęd, 3 kajuty, 5 bak) jako pierwszy nie mieści się w obrysie skalowanym proporcjonalnie do ładowni (1 000 m³ × moduły / 4); „—” oznacza, że minimalny obrys jest **mniejszy** od proporcjonalnego — napęd rośnie wolniej niż ładownia, bo prędkość referencyjna wymaga ok. 1 reaktora na 4,6 modułu (jedynka ma 1 na 4), a bak prawie nie rośnie.
 101. **Bot** jak w rundzie 3 z poprawkami z sond rundy 4 (`findings.md`, faza 5): ładunek receptury dobierany z osiągalności akademii w grafie tankowania liczonym z tą masą na pokładzie (cała, połowa, ćwierć, ósma receptury), statek na misji we flocie nie bierze ładunku handlowego i sprzedaje go przed zakupem receptury, naraz na misjach najwyżej połowa floty, rezerwacje gotówki na drugi krok do 1/(2 × statki) kasy i nie blokują receptur, lot przynoszący gotówkę dozwolony także w biedzie, misja startuje tylko lekkim statkiem (`maxMasaStartuMisjiUlamek` = 0,25 masy suchej). Po pierwszej siatce dwie kolejne: **zwiad z własnej woli** (plan `eksploracja` do nieznanej planety, nie ekspedycja floty) tylko, gdy koszt lotu ≤ `maxUdzialKosztuMisji` (10%) wartości firmy i gotówka po locie ≥ `mnoznikGotowkiNaEkspedycjeRunda3` (5) × koszt — na horyzoncie 4 800 dób premia za kontakt (800 tys. kr × 10) przewyższała kapitał startowy i te same ziarna (r3-18, r3-12, r3-13 w R; r3-5, r3-8, r3-18, r3-19 w D) bankrutowały przy każdym g, zanim kupiły pierwszy kadłub (`findings.md`, faza 6); bot nie sprzedaje w porcie towaru zamkniętego bramką G (remis „sprzedaj teraz” przy przychodzie 0 kończył się wyjątkiem; raz na ok. 250 przebiegów). Te reguły działają też w rundzie 3, ale liczb rundy 3 nie przeliczałem (zmiana bota, nie modelu); wiersz „drabina r3 (kontrola)” niżej pokazuje rundę 3 na tym bocie.
 102. **Miary** (`npm run runda3 -- runda4 …`, `-- tabele4`): tabela kadłubów (obrys, reaktory, dysze, kajuty, konstrukcja, bak, ładownia, luz, masa sucha, prędkość pusty / ρ 1,0 / minerały, zasięg pusty / z ładunkiem ρ 1,0, cena szczebla = mediana zakupów bota, krok wymuszający); kamienie: galaktyka (a)/(b), pierwsza cywilizacja T4, firma T4, szczebel 5 (mediana, 10–90%, odsetek do 4 000, okno); kontrakty dostarczone do 4 000 i 4 800 wobec 27, czas kontraktu w dobach statku (start misji → dostawa końcowa), udział ładowni floty zajętej przez kontrakty = Σ czas misji × ładownia statku przy dostawie / Σ (horyzont − doba zakupu statku) × ładownia końcowa; pojemność rynku dla 8 statków szczebla 5 (jak DECYZJE 88); krzywa wartości co 200 dób i bankructwa.
+
+## Wynik (L, 4 800 dób, spread B, informacja pełna; g ∈ {1,5; 2; 2,5; 3; 4} × {R, D} plus g ∈ {5; 6} w D i kontrola „drabina rundy 3” w R i D; 20 ziaren „r3-1”…„r3-20” na wariant; `k` 1,3, `xpNaDobeLotu` 2,7, `progFirmy` ×1, bramka G, pamięć A)
+
+Siatka liczona trzy razy na 4 procesach (1,5–2,5 h każda): pierwsza wykazała bankructwa tych samych ziaren przy każdym g (zwiad z własnej woli bez poduszki gotówki — poprawka bota w 101); druga, po tej poprawce, szła z jedynką lżejszą o 144 t niż w rundzie 3 (moduły ładowni wliczone w 421,99 t) i poszła do kosza po wierszach R (skrót w `findings.md`, faza 6: przy lżejszej jedynce galaktyka przychodzi ok. 700–1 100 dób wcześniej — g = 2 w oknie, g ≥ 2,5 za wcześnie); trzecia, niżej, ma masę jak w rundzie 3 i liczby kontrolne kanonu (99). Wiersz **drabina r3 (kontrola)** to drabina kadłubów rundy 3 (`prototyp.json`, mnożnik 1,5 na szczebel) z tym samym botem, `k` i `xpNaDobeLotu` — oddziela wpływ drabiny od wpływu zmian bota. g = 5 i 6 policzyłem tylko w D (w R g = 2,5 i 4 są w oknie, więc większe g nie było potrzebne); wariant g = 6 D po awarii przy ziarnie r3-18 (sprzedaż towaru zamkniętego bramką, 101) policzony od nowa na poprawionym kodzie — 17 wcześniejszych ziaren dało identyczne wyniki. Galaktyka (a) i (b) mają te same liczby, bo kontakt ze wszystkimi dziewięcioma cywilizacjami przychodzi w 1 000–1 600 dób, dużo przed pierwszym T4 — „wszystkie poznane” to „wszystkie 9”. „Okno?” w tabeli: **tak** = mediana w 3 600–4 400; „za wcześnie” / „za późno” = mediana przed / po oknie, ale w horyzoncie; „poza horyzontem” = mediana > 4 800. Bankructwo = wartość końcowa < 1 mln kr. Cena szczebla w tabelach kadłubów to mediana kwot, jakie bot zapłacił (k × mediana zysku na kurs w chwili zakupu), więc zależy od zamożności firmy, nie od obrysu.
+
+### Kamienie rundy 4 (cel 4000, okno 3600–4400; k 1.3, xpNaDobeLotu 2.7, progFirmy ×1, bramka G, pamięć A)
+
+| g × paliwo | n | galaktyka (a): mediana (10–90%), do 4000, okno? | galaktyka (b): mediana (10–90%), do 4000, okno? | 1. cyw. T4: mediana (10–90%), do 4000, okno? | firma T4: mediana (10–90%), do 4000, okno? | szczebel 5: mediana (10–90%), do 4000, okno? | cyw. T2 / T3 / T4 po 4800 (śr.) |
+|---|---|---|---|---|---|---|---|
+| drabina r3 (kontrola) D | 20 | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 1840 (1136–> horyzont), 85.0%, za wcześnie | 1773 (1048–3056), 100.0%, za wcześnie | 4303 (3371–> horyzont), 30.0%, **tak** | 6.8 / 4.6 / 3.0 |
+| g-1.5-D | 20 | > horyzont (4456–> horyzont), 5.0%, poza horyzontem | > horyzont (4456–> horyzont), 5.0%, poza horyzontem | 1545 (1059–> horyzont), 90.0%, za wcześnie | 1222 (908–> horyzont), 90.0%, za wcześnie | 2710 (1893–> horyzont), 90.0%, za wcześnie | 8.2 / 7.6 / 6.6 |
+| g-2-D | 20 | > horyzont (4745–> horyzont), 5.0%, poza horyzontem | > horyzont (4745–> horyzont), 5.0%, poza horyzontem | 1561 (908–2545), 100.0%, za wcześnie | 1140 (678–2328), 100.0%, za wcześnie | 2978 (2337–3836), 95.0%, za wcześnie | 8.7 / 7.8 / 6.8 |
+| g-2.5-D | 20 | 4504 (3666–> horyzont), 20.0%, za późno | 4504 (3666–> horyzont), 20.0%, za późno | 1248 (1052–1768), 100.0%, za wcześnie | 896 (436–1692), 100.0%, za wcześnie | 2176 (1536–2913), 95.0%, za wcześnie | 8.9 / 8.4 / 8.0 |
+| g-3-D | 20 | 4615 (4108–> horyzont), 10.0%, za późno | 4615 (4108–> horyzont), 10.0%, za późno | 1562 (942–2134), 95.0%, za wcześnie | 956 (398–1674), 100.0%, za wcześnie | 2168 (1934–3403), 95.0%, za wcześnie | 8.6 / 8.3 / 8.2 |
+| g-4-D | 20 | > horyzont (4040–> horyzont), 10.0%, poza horyzontem | > horyzont (4040–> horyzont), 10.0%, poza horyzontem | 1467 (984–2277), 95.0%, za wcześnie | 807 (321–1536), 95.0%, za wcześnie | 2352 (1799–3215), 95.0%, za wcześnie | 8.6 / 8.3 / 7.7 |
+| g-5-D | 20 | 4611 (3797–> horyzont), 20.0%, za późno | 4611 (3797–> horyzont), 20.0%, za późno | 1275 (872–1986), 100.0%, za wcześnie | 803 (307–1479), 100.0%, za wcześnie | 2327 (1424–3102), 100.0%, za wcześnie | 9.0 / 9.0 / 8.3 |
+| g-6-D | 20 | 4436 (3820–> horyzont), 20.0%, za późno | 4436 (3820–> horyzont), 20.0%, za późno | 1251 (937–1598), 95.0%, za wcześnie | 769 (303–1170), 95.0%, za wcześnie | 2116 (1408–2726), 95.0%, za wcześnie | 8.7 / 8.6 / 8.1 |
+| drabina r3 (kontrola) R | 20 | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | > horyzont (> horyzont–> horyzont), 0.0%, poza horyzontem | 2744 (1074–> horyzont), 75.0%, za wcześnie | 1205 (576–3529), 95.0%, za wcześnie | 4070 (2727–> horyzont), 50.0%, **tak** | 6.8 / 4.4 / 3.0 |
+| g-1.5-R | 20 | > horyzont (3896–> horyzont), 15.0%, poza horyzontem | > horyzont (3896–> horyzont), 15.0%, poza horyzontem | 1641 (1053–> horyzont), 90.0%, za wcześnie | 802 (209–> horyzont), 85.0%, za wcześnie | 2052 (1604–> horyzont), 85.0%, za wcześnie | 7.8 / 7.1 / 6.5 |
+| g-2-R | 20 | > horyzont (3772–> horyzont), 15.0%, poza horyzontem | > horyzont (3772–> horyzont), 15.0%, poza horyzontem | 1288 (959–> horyzont), 90.0%, za wcześnie | 717 (208–> horyzont), 90.0%, za wcześnie | 1975 (1536–> horyzont), 90.0%, za wcześnie | 8.3 / 7.9 / 7.4 |
+| g-2.5-R | 20 | 4161 (3795–> horyzont), 40.0%, **tak** | 4161 (3795–> horyzont), 40.0%, **tak** | 1209 (857–2931), 95.0%, za wcześnie | 352 (181–1340), 95.0%, za wcześnie | 1822 (1236–3111), 95.0%, za wcześnie | 8.6 / 8.2 / 8.0 |
+| g-3-R | 20 | 4401 (3738–> horyzont), 30.0%, za późno | 4401 (3738–> horyzont), 30.0%, za późno | 1232 (710–2135), 100.0%, za wcześnie | 395 (177–1490), 100.0%, za wcześnie | 1922 (1293–2810), 100.0%, za wcześnie | 8.9 / 8.8 / 8.3 |
+| g-4-R | 20 | 4287 (3525–> horyzont), 40.0%, **tak** | 4287 (3525–> horyzont), 40.0%, **tak** | 1153 (806–2338), 95.0%, za wcześnie | 430 (161–1425), 95.0%, za wcześnie | 1826 (1418–2708), 95.0%, za wcześnie | 8.7 / 8.6 / 8.3 |
+
+### Kontrakty wobec 27 potrzebnych
+
+| g × paliwo | n | kontrakty do 4000: śr. (mediana) wobec 27 | kontrakty do 4800: śr. (mediana) | ziarna z ≥ 27 do 4000 | czas kontraktu (doby statku): mediana (10–90%) | udział ładowni floty zajętej przez kontrakty (śr.) | bankructwa | mediana wartości (mln) |
+|---|---|---|---|---|---|---|---|---|
+| drabina r3 (kontrola) D | 20 | 11.9 (12) | 14.4 (14) | 0.0% | 127 (38–435) | 5.9% | 0.0% | 1536.7 |
+| g-1.5-D | 20 | 19.0 (21) | 22.4 (25) | 5.0% | 212 (29–521) | 13.5% | 0.0% | 98970.2 |
+| g-2-D | 20 | 18.9 (21) | 23.3 (25) | 5.0% | 177 (30–508) | 11.5% | 0.0% | 118165.2 |
+| g-2.5-D | 20 | 22.9 (24) | 25.4 (27) | 20.0% | 211 (31–499) | 12.4% | 0.0% | 446020.5 |
+| g-3-D | 20 | 22.9 (24) | 25.1 (27) | 10.0% | 205 (35–485) | 11.1% | 0.0% | 686138.8 |
+| g-4-D | 20 | 21.8 (23) | 24.5 (26) | 10.0% | 243 (37–515) | 11.1% | 0.0% | 1265901.6 |
+| g-5-D | 20 | 24.1 (25) | 26.4 (27) | 20.0% | 246 (36–531) | 11.5% | 0.0% | 2192536.6 |
+| g-6-D | 20 | 23.6 (25) | 25.4 (27) | 20.0% | 234 (39–487) | 11.2% | 0.0% | 3000804.3 |
+| drabina r3 (kontrola) R | 20 | 11.1 (11) | 14.2 (16) | 0.0% | 124 (37–464) | 6.2% | 10.0% | 1608.7 |
+| g-1.5-R | 20 | 19.4 (23) | 21.4 (25) | 15.0% | 223 (26–558) | 13.6% | 5.0% | 111189.9 |
+| g-2-R | 20 | 21.5 (24) | 23.6 (27) | 15.0% | 268 (45–523) | 15.2% | 5.0% | 310178.5 |
+| g-2.5-R | 20 | 23.1 (26) | 24.6 (27) | 40.0% | 245 (37–491) | 14.0% | 0.0% | 813788.1 |
+| g-3-R | 20 | 24.1 (26) | 26.0 (27) | 30.0% | 257 (42–488) | 12.4% | 0.0% | 1016631.3 |
+| g-4-R | 20 | 23.9 (26) | 25.4 (27) | 40.0% | 254 (44–489) | 11.8% | 0.0% | 2362522.2 |
+
+### Pojemność rynku dla 8 statków szczebla 5 przy każdym g
+
+| g × paliwo | ładownia szczebla 5 (m³) | Food: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek | Minerals: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek | Solvents: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek | Explosives: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek | Electronics: dostawy 8 statków (m³/dobę) / konsumpcja stolic / stosunek |
+|---|---|---|---|---|---|---|
+| drabina r3 (kontrola) D | 3600 | 330 / 235880 / 693.6 | 198 / 846828 / 3306.4 | 296 / 53495 / 164.1 | 268 / 5507 / 18.4 | 361 / 2770 / 7.0 |
+| g-1.5-D | 3720 | 516 / 231665 / 453.9 | 287 / 1025289 / 3443.0 | 453 / 57916 / 125.5 | 404 / 9767 / 22.6 | 576 / 4214 / 7.1 |
+| g-2-D | 15360 | 2071 / 231665 / 111.9 | 1138 / 1008086 / 838.8 | 1812 / 57916 / 31.2 | 1612 / 8103 / 5.1 | 2318 / 4839 / 2.1 |
+| g-2.5-D | 46920 | 6441 / 231665 / 36.9 | 3526 / 1042492 / 296.2 | 5631 / 57916 / 10.4 | 5002 / 10081 / 2.0 | 7219 / 5004 / 0.7 |
+| g-3-D | 116640 | 15924 / 231665 / 14.8 | 8708 / 1042492 / 121.4 | 13918 / 57916 / 4.2 | 12361 / 10081 / 0.8 | 17853 / 5004 / 0.3 |
+| g-4-D | 491520 | 65688 / 231665 / 3.5 | 35899 / 1042492 / 29.1 | 57404 / 57916 / 1.0 | 50975 / 10081 / 0.2 | 73660 / 4839 / 0.1 |
+| g-5-D | 1500000 | 199798 / 231665 / 1.2 | 109170 / 1042492 / 9.5 | 174591 / 57916 / 0.3 | 155032 / 10081 / 0.1 | 224060 / 5004 / 0.0 |
+| g-6-D | 3732480 | 501951 / 231665 / 0.5 | 274261 / 1042492 / 3.8 | 438622 / 57916 / 0.1 | 389483 / 10081 / 0.0 | 562906 / 5004 / 0.0 |
+| drabina r3 (kontrola) R | 3600 | 598 / 231665 / 396.0 | 360 / 814104 / 2294.2 | 536 / 36611 / 84.6 | 486 / 6794 / 15.0 | 655 / 2758 / 4.8 |
+| g-1.5-R | 3720 | 817 / 231665 / 288.6 | 458 / 1042492 / 2166.9 | 719 / 57916 / 79.3 | 642 / 9767 / 14.3 | 911 / 4921 / 4.8 |
+| g-2-R | 15360 | 2841 / 231665 / 81.1 | 1564 / 1025289 / 659.4 | 2488 / 57916 / 23.1 | 2212 / 10081 / 4.2 | 3179 / 5004 / 1.5 |
+| g-2.5-R | 46920 | 8069 / 231665 / 28.2 | 4419 / 1042492 / 228.4 | 7056 / 57916 / 7.9 | 6268 / 10081 / 1.6 | 9043 / 5004 / 0.5 |
+| g-3-R | 116640 | 18921 / 231665 / 12.2 | 10349 / 1042492 / 98.8 | 16539 / 57916 / 3.4 | 14689 / 10081 / 0.7 | 21213 / 5004 / 0.2 |
+| g-4-R | 491520 | 81357 / 231665 / 2.9 | 44465 / 1042492 / 23.7 | 71098 / 57916 / 0.8 | 63137 / 10081 / 0.2 | 91230 / 5004 / 0.1 |
+
+### Krzywa wartości firmy (mediana z kadłubami i statkami)
+
+| g × paliwo | d400: mediana wartości z kadłubem (mln), × start | d1200: mediana wartości z kadłubem (mln), × start | d2400: mediana wartości z kadłubem (mln), × start | d3600: mediana wartości z kadłubem (mln), × start | d4800: mediana wartości z kadłubem (mln), × start |
+|---|---|---|---|---|---|
+| drabina r3 (kontrola) D | 82.9 (×12) | 191.5 (×28) | 521.7 (×77) | 1208.0 (×178) | 3765.5 (×554) |
+| g-1.5-D | 166.0 (×24) | 316.4 (×47) | 1395.5 (×205) | 12277.0 (×1805) | 102632.5 (×15093) |
+| g-2-D | 158.6 (×23) | 305.0 (×45) | 1728.7 (×254) | 16130.2 (×2372) | 154669.2 (×22745) |
+| g-2.5-D | 184.9 (×27) | 393.5 (×58) | 9444.6 (×1389) | 97847.2 (×14389) | 460081.9 (×67659) |
+| g-3-D | 176.1 (×26) | 503.3 (×74) | 18787.3 (×2763) | 228702.4 (×33633) | 838808.3 (×123354) |
+| g-4-D | 172.2 (×25) | 613.0 (×90) | 43105.7 (×6339) | 449260.6 (×66068) | 1448490.1 (×213013) |
+| g-5-D | 193.7 (×28) | 975.9 (×144) | 99583.4 (×14645) | 820080.2 (×120600) | 2412474.4 (×354776) |
+| g-6-D | 184.0 (×27) | 606.4 (×89) | 94709.3 (×13928) | 1261050.6 (×185449) | 3290172.2 (×483849) |
+| drabina r3 (kontrola) R | 126.7 (×19) | 361.1 (×53) | 727.1 (×107) | 1415.0 (×208) | 3709.5 (×546) |
+| g-1.5-R | 193.7 (×28) | 490.8 (×72) | 6674.1 (×981) | 24859.6 (×3656) | 115339.5 (×16962) |
+| g-2-R | 185.1 (×27) | 1188.9 (×175) | 10299.6 (×1515) | 82739.4 (×12168) | 321536.6 (×47285) |
+| g-2.5-R | 303.2 (×45) | 1494.8 (×220) | 31143.7 (×4580) | 236864.0 (×34833) | 831707.5 (×122310) |
+| g-3-R | 239.6 (×35) | 1682.3 (×247) | 42410.2 (×6237) | 357169.1 (×52525) | 1151157.2 (×169288) |
+| g-4-R | 290.9 (×43) | 3989.4 (×587) | 112914.9 (×16605) | 778409.0 (×114472) | 2445439.2 (×359623) |
+
+### Tabela kadłubów: drabina rundy 3 (kontrola), paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 851 | 1 | 2 | 3 / 0 | 0 | 2 / 100 | 4 / 480 | 0.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 1277 | 1 | 2 | 4 / 0 | 0 | 3 / 150 | 7 / 840 | 15.5 | 835 | 2.12 / 1.14 / 0.60 | 150 / 150 | 19.5 mln (2.0–44.7), 160 | — |
+| 2 | 1915 | 2 | 4 | 6 / 0 | 0 | 4.5 / 225 | 9 / 1080 | 67.8 | 1248 | 2.83 / 1.64 / 0.89 | 225 / 225 | 22.1 mln (4.3–82.1), 153 | — |
+| 3 | 2872 | 3 | 6 | 8 / 0 | 0 | 6.76 / 338 | 14 / 1680 | 41.1 | 1891 | 2.81 / 1.60 / 0.86 | 338 / 338 | 28.4 mln (4.6–206.1), 140 | — |
+| 4 | 4308 | 5 | 10 | 11 / 0 | 0 | 10.12 / 506 | 20 / 2400 | 47.2 | 2850 | 3.11 / 1.81 / 0.99 | 506 / 506 | 76.5 mln (3.1–592.9), 105 | — |
+| 5 | 6462 | 7 | 14 | 16 / 0 | 0 | 15.18 / 759 | 30 / 3600 | 206.3 | 4225 | 2.93 / 1.70 / 0.93 | 759 / 759 | 155.9 mln (3.0–1251.8), 77 | — |
+
+### Tabela kadłubów: g = 1.5, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 1630 | 2 | 4 | 5 / 100 | 163 | 2 / 100 | 6 / 720 | 5.0 | 941 | 4.01 / 2.37 / 1.30 | 100 / 100 | 20.1 mln (2.0–49.5), 152 | kajuty |
+| 2 | 2370 | 3 | 6 | 7 / 140 | 237 | 2 / 100 | 9 / 1080 | 0.0 | 1387 | 4.21 / 2.44 / 1.33 | 100 / 100 | 38.5 mln (2.3–73.6), 147 | kajuty |
+| 3 | 3390 | 4 | 8 | 9 / 180 | 339 | 2 / 100 | 14 / 1680 | 7.0 | 1996 | 3.99 / 2.21 / 1.17 | 100 / 100 | 34.7 mln (2.5–226.1), 144 | — |
+| 4 | 4690 | 5 | 10 | 12 / 240 | 469 | 2 / 100 | 21 / 2520 | 6.0 | 2766 | 3.64 / 1.94 / 1.00 | 100 / 100 | 111.3 mln (10.4–1525.1), 144 | — |
+| 5 | 6710 | 7 | 14 | 16 / 320 | 671 | 2 / 100 | 31 / 3720 | 2.0 | 3977 | 3.59 / 1.87 / 0.96 | 100 / 100 | 370.1 mln (82.8–3394.8), 140 | — |
+
+### Tabela kadłubów: g = 2, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 1900 | 2 | 4 | 5 / 100 | 190 | 2 / 100 | 8 / 960 | 8.0 | 1100 | 3.48 / 1.93 / 1.02 | 100 / 100 | 17.4 mln (1.9–48.8), 160 | — |
+| 2 | 3650 | 4 | 8 | 9 / 180 | 365 | 2 / 100 | 16 / 1920 | 1.0 | 2151 | 3.71 / 2.00 / 1.04 | 100 / 100 | 37.4 mln (5.4–85.8), 160 | — |
+| 3 | 6850 | 7 | 14 | 16 / 320 | 685 | 2 / 100 | 32 / 3840 | 8.0 | 4058 | 3.52 / 1.83 / 0.93 | 100 / 100 | 50.3 mln (4.0–248.1), 159 | — |
+| 4 | 13550 | 14 | 28 | 31 / 620 | 1355 | 2 / 100 | 64 / 7680 | 1.0 | 8067 | 3.58 / 1.84 / 0.94 | 100 / 100 | 196.8 mln (42.5–1307.5), 156 | — |
+| 5 | 26970 | 28 | 56 | 61 / 1220 | 2697 | 2 / 100 | 128 / 15360 | 5.0 | 16092 | 3.61 / 1.85 / 0.94 | 100 / 100 | 816.4 mln (54.6–5216.3), 149 | — |
+
+### Tabela kadłubów: g = 2.5, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 2510 | 3 | 6 | 7 / 140 | 251 | 2 / 100 | 10 / 1200 | 6.0 | 1468 | 3.99 / 2.26 / 1.21 | 100 / 100 | 17.8 mln (1.9–48.7), 160 | bak |
+| 2 | 5570 | 6 | 12 | 14 / 280 | 557 | 2 / 100 | 25 / 3000 | 7.0 | 3293 | 3.69 / 1.96 / 1.01 | 100 / 100 | 47.4 mln (11.3–99.1), 160 | — |
+| 3 | 13420 | 14 | 28 | 31 / 620 | 1342 | 2 / 100 | 63 / 7560 | 4.0 | 7989 | 3.61 / 1.87 / 0.95 | 100 / 100 | 94.0 mln (9.3–357.5), 160 | — |
+| 4 | 32950 | 34 | 68 | 75 / 1500 | 3295 | 2 / 100 | 157 / 18840 | 1.0 | 19662 | 3.59 / 1.84 / 0.93 | 100 / 100 | 375.1 mln (48.4–2203.3), 158 | — |
+| 5 | 81610 | 84 | 168 | 183 / 3660 | 8161 | 2 / 100 | 391 / 46920 | 5.0 | 48754 | 3.59 / 1.83 / 0.93 | 100 / 100 | 1715.2 mln (207.6–5197.5), 153 | — |
+
+### Tabela kadłubów: g = 3, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 2770 | 3 | 6 | 7 / 140 | 277 | 2 / 100 | 12 / 1440 | 0.0 | 1624 | 3.63 / 1.98 / 1.04 | 100 / 100 | 19.0 mln (1.9–49.5), 160 | — |
+| 2 | 7720 | 8 | 16 | 18 / 360 | 772 | 2 / 100 | 36 / 4320 | 0.0 | 4582 | 3.57 / 1.86 / 0.95 | 100 / 100 | 37.4 mln (9.0–115.4), 153 | — |
+| 3 | 22900 | 24 | 48 | 52 / 1040 | 2290 | 2 / 100 | 108 / 12960 | 6.0 | 13662 | 3.64 / 1.88 / 0.95 | 100 / 100 | 89.9 mln (13.4–957.6), 152 | — |
+| 4 | 67770 | 70 | 140 | 152 / 3040 | 6777 | 2 / 100 | 324 / 38880 | 3.0 | 40485 | 3.60 / 1.84 / 0.93 | 100 / 100 | 496.5 mln (26.7–4886.7), 152 | — |
+| 5 | 202390 | 208 | 416 | 452 / 9040 | 20239 | 2 / 100 | 972 / 116640 | 3.0 | 120960 | 3.59 / 1.83 / 0.92 | 100 / 100 | 3244.6 mln (237.4–10874.7), 152 | — |
+
+### Tabela kadłubów: g = 4, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 3650 | 4 | 8 | 9 / 180 | 365 | 2 / 100 | 16 / 1920 | 1.0 | 2151 | 3.71 / 2.00 / 1.04 | 100 / 100 | 20.7 mln (1.9–51.2), 155 | — |
+| 2 | 13550 | 14 | 28 | 31 / 620 | 1355 | 2 / 100 | 64 / 7680 | 1.0 | 8067 | 3.58 / 1.84 / 0.94 | 100 / 100 | 46.1 mln (10.6–194.3), 152 | — |
+| 3 | 53480 | 55 | 110 | 120 / 2400 | 5348 | 2 / 100 | 256 / 30720 | 7.0 | 31936 | 3.58 / 1.83 / 0.92 | 100 / 100 | 301.8 mln (24.7–856.6), 152 | — |
+| 4 | 213170 | 219 | 438 | 476 / 9520 | 21317 | 2 / 100 | 1024 / 122880 | 4.0 | 127403 | 3.59 / 1.83 / 0.92 | 100 / 100 | 2177.4 mln (267.2–22413.8), 152 | — |
+| 5 | 851620 | 874 | 1748 | 1899 / 37980 | 85162 | 2 / 100 | 4096 / 491520 | 4.0 | 509069 | 3.58 / 1.82 / 0.92 | 100 / 100 | 7467.3 mln (743.8–22708.1), 151 | — |
+
+### Tabela kadłubów: g = 5, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 4530 | 5 | 10 | 11 / 220 | 453 | 2 / 100 | 20 / 2400 | 2.0 | 2679 | 3.76 / 2.02 / 1.05 | 100 / 100 | 17.4 mln (1.9–49.5), 160 | — |
+| 2 | 21140 | 22 | 44 | 48 / 960 | 2114 | 2 / 100 | 100 / 12000 | 4.0 | 12607 | 3.62 / 1.86 / 0.94 | 100 / 100 | 54.0 mln (7.1–180.8), 160 | — |
+| 3 | 104180 | 107 | 214 | 233 / 4660 | 10418 | 2 / 100 | 500 / 60000 | 5.0 | 62245 | 3.58 / 1.83 / 0.92 | 100 / 100 | 760.3 mln (79.2–2984.8), 160 | — |
+| 4 | 519700 | 533 | 1066 | 1159 / 23180 | 51970 | 2 / 100 | 2500 / 300000 | 7.0 | 310638 | 3.58 / 1.82 / 0.92 | 100 / 100 | 4061.9 mln (396.9–7268.8), 160 | — |
+| 5 | 2597610 | 2664 | 5328 | 5790 / 115800 | 259761 | 2 / 100 | 12500 / 1500000 | 5.0 | 1552804 | 3.58 / 1.82 / 0.92 | 100 / 100 | 14114.5 mln (1296.5–45634.1), 159 | — |
+
+### Tabela kadłubów: g = 6, paliwo D (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 100 / 100 | — | — |
+| 1 | 5410 | 6 | 12 | 13 / 260 | 541 | 2 / 100 | 24 / 2880 | 3.0 | 3206 | 3.79 / 2.03 / 1.05 | 100 / 100 | 22.2 mln (1.9–50.4), 156 | — |
+| 2 | 30160 | 31 | 62 | 68 / 1360 | 3016 | 2 / 100 | 144 / 17280 | 3.0 | 17995 | 3.58 / 1.83 / 0.93 | 100 / 100 | 36.9 mln (11.5–315.7), 155 | — |
+| 3 | 179950 | 185 | 370 | 402 / 8040 | 17995 | 2 / 100 | 864 / 103680 | 0.0 | 107546 | 3.59 / 1.83 / 0.92 | 100 / 100 | 562.8 mln (100.2–2735.8), 152 | — |
+| 4 | 1077420 | 1105 | 2210 | 2402 / 48040 | 107742 | 2 / 100 | 5184 / 622080 | 3.0 | 644042 | 3.58 / 1.82 / 0.92 | 100 / 100 | 4134.7 mln (160.1–14727.5), 152 | — |
+| 5 | 6463510 | 6629 | 13258 | 14406 / 288120 | 646351 | 2 / 100 | 31104 / 3732480 | 0.0 | 3863830 | 3.58 / 1.82 / 0.92 | 100 / 100 | 10151.4 mln (1300.1–39185.6), 149 | — |
+
+### Tabela kadłubów: drabina rundy 3 (kontrola), paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 851 | 1 | 2 | 3 / 0 | 0 | 2 / 100 | 4 / 480 | 0.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 1277 | 1 | 2 | 4 / 0 | 0 | 3 / 150 | 7 / 840 | 15.5 | 835 | 2.12 / 1.14 / 0.60 | 86 / 45 | 20.5 mln (1.3–42.0), 155 | — |
+| 2 | 1915 | 2 | 4 | 6 / 0 | 0 | 4.5 / 225 | 9 / 1080 | 67.8 | 1248 | 2.83 / 1.64 / 0.89 | 173 / 96 | 17.9 mln (1.7–51.1), 142 | — |
+| 3 | 2872 | 3 | 6 | 8 / 0 | 0 | 6.76 / 338 | 14 / 1680 | 41.1 | 1891 | 2.81 / 1.60 / 0.86 | 258 / 142 | 48.9 mln (5.9–297.9), 121 | — |
+| 4 | 4308 | 5 | 10 | 11 / 0 | 0 | 10.12 / 506 | 20 / 2400 | 47.2 | 2850 | 3.11 / 1.81 / 0.99 | 427 / 240 | 68.5 mln (7.8–621.7), 93 | — |
+| 5 | 6462 | 7 | 14 | 16 / 0 | 0 | 15.18 / 759 | 30 / 3600 | 206.3 | 4225 | 2.93 / 1.70 / 0.93 | 604 / 338 | 139.1 mln (13.9–1496.2), 75 | — |
+
+### Tabela kadłubów: g = 1.5, paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 1630 | 2 | 4 | 5 / 100 | 163 | 2 / 100 | 6 / 720 | 5.0 | 941 | 4.01 / 2.37 / 1.30 | 105 / 61 | 20.1 mln (1.3–42.9), 147 | kajuty |
+| 2 | 2370 | 3 | 6 | 7 / 140 | 237 | 2 / 100 | 9 / 1080 | 0.0 | 1387 | 4.21 / 2.44 / 1.33 | 109 / 62 | 24.4 mln (1.7–249.6), 140 | kajuty |
+| 3 | 3390 | 4 | 8 | 9 / 180 | 339 | 2 / 100 | 14 / 1680 | 7.0 | 1996 | 3.99 / 2.21 / 1.17 | 102 / 56 | 24.4 mln (4.7–427.5), 136 | — |
+| 4 | 4690 | 5 | 10 | 12 / 240 | 469 | 2 / 100 | 21 / 2520 | 6.0 | 2766 | 3.64 / 1.94 / 1.00 | 93 / 49 | 106.1 mln (7.7–482.8), 136 | — |
+| 5 | 6770 | 7 | 14 | 16 / 320 | 677 | 3 / 150 | 31 / 3720 | 6.0 | 3996 | 3.53 / 1.86 / 0.95 | 135 / 70 | 263.2 mln (46.9–1731.4), 126 | — |
+
+### Tabela kadłubów: g = 2, paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 1900 | 2 | 4 | 5 / 100 | 190 | 2 / 100 | 8 / 960 | 8.0 | 1100 | 3.48 / 1.93 / 1.02 | 91 / 49 | 19.4 mln (1.3–49.2), 152 | — |
+| 2 | 3650 | 4 | 8 | 9 / 180 | 365 | 2 / 100 | 16 / 1920 | 1.0 | 2151 | 3.71 / 2.00 / 1.04 | 95 / 51 | 36.7 mln (2.4–214.1), 145 | — |
+| 3 | 7220 | 8 | 16 | 17 / 340 | 722 | 3 / 150 | 32 / 3840 | 0.0 | 4277 | 3.77 / 2.02 / 1.05 | 144 / 76 | 50.3 mln (7.0–310.2), 139 | — |
+| 4 | 13610 | 14 | 28 | 31 / 620 | 1361 | 3 / 150 | 64 / 7680 | 5.0 | 8086 | 3.55 / 1.84 / 0.93 | 134 / 69 | 459.0 mln (41.0–2359.9), 138 | — |
+| 5 | 27020 | 28 | 56 | 61 / 1220 | 2702 | 3 / 150 | 128 / 15360 | 0.0 | 16108 | 3.60 / 1.85 / 0.94 | 135 / 70 | 557.4 mln (174.1–2635.4), 135 | — |
+
+### Tabela kadłubów: g = 2.5, paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 2510 | 3 | 6 | 7 / 140 | 251 | 2 / 100 | 10 / 1200 | 6.0 | 1468 | 3.99 / 2.26 / 1.21 | 103 / 58 | 22.8 mln (1.4–48.9), 155 | bak |
+| 2 | 5570 | 6 | 12 | 14 / 280 | 557 | 2 / 100 | 25 / 3000 | 7.0 | 3293 | 3.69 / 1.96 / 1.01 | 94 / 49 | 31.6 mln (5.4–367.1), 152 | — |
+| 3 | 13480 | 14 | 28 | 31 / 620 | 1348 | 3 / 150 | 63 / 7560 | 8.0 | 8008 | 3.58 / 1.86 / 0.95 | 136 / 70 | 54.0 mln (13.1–446.4), 149 | — |
+| 4 | 33010 | 34 | 68 | 75 / 1500 | 3301 | 3 / 150 | 157 / 18840 | 5.0 | 19681 | 3.58 / 1.84 / 0.93 | 135 / 69 | 276.6 mln (27.8–1602.0), 148 | — |
+| 5 | 81660 | 84 | 168 | 183 / 3660 | 8166 | 3 / 150 | 391 / 46920 | 0.0 | 48770 | 3.59 / 1.83 / 0.92 | 135 / 69 | 782.8 mln (103.9–8603.7), 147 | — |
+
+### Tabela kadłubów: g = 3, paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 2770 | 3 | 6 | 7 / 140 | 277 | 2 / 100 | 12 / 1440 | 0.0 | 1624 | 3.63 / 1.98 / 1.04 | 94 / 50 | 16.3 mln (1.2–50.4), 160 | — |
+| 2 | 7780 | 8 | 16 | 18 / 360 | 778 | 3 / 150 | 36 / 4320 | 4.0 | 4601 | 3.52 / 1.84 / 0.94 | 134 / 70 | 45.0 mln (3.8–297.8), 160 | — |
+| 3 | 22950 | 24 | 48 | 52 / 1040 | 2295 | 3 / 150 | 108 / 12960 | 1.0 | 13678 | 3.62 / 1.87 / 0.95 | 137 / 70 | 199.6 mln (20.7–832.4), 160 | — |
+| 4 | 67830 | 70 | 140 | 152 / 3040 | 6783 | 3 / 150 | 324 / 38880 | 7.0 | 40505 | 3.60 / 1.84 / 0.93 | 135 / 69 | 696.9 mln (136.6–5386.7), 160 | — |
+| 5 | 202450 | 208 | 416 | 452 / 9040 | 20245 | 3 / 150 | 972 / 116640 | 7.0 | 120979 | 3.59 / 1.83 / 0.92 | 135 / 69 | 3274.0 mln (571.4–11224.2), 157 | — |
+
+### Tabela kadłubów: g = 4, paliwo R (20 ziaren)
+
+| Szczebel | obrys (m³) | reaktory | dysze | kajuty (osoby / m³) | konstrukcja (m³) | bak (zbiorniki / m³) | ładownia (moduły / m³) | luz (m³) | masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | zasięg pusty / z ładunkiem ρ 1,0 (pc) | cena szczebla: mediana (10–90%), zakupów | krok wymuszający obrys |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 1000 | 1 | 2 | 2 / 40 | 100 | 2 / 100 | 4 / 480 | 9.0 | 566 | 3.14 / 1.82 / 0.99 | 85 / 48 | — | — |
+| 1 | 3650 | 4 | 8 | 9 / 180 | 365 | 2 / 100 | 16 / 1920 | 1.0 | 2151 | 3.71 / 2.00 / 1.04 | 95 / 51 | 28.0 mln (1.4–49.2), 156 | — |
+| 2 | 13610 | 14 | 28 | 31 / 620 | 1361 | 3 / 150 | 64 / 7680 | 5.0 | 8086 | 3.55 / 1.84 / 0.93 | 134 / 69 | 93.8 mln (5.5–480.7), 150 | — |
+| 3 | 53530 | 55 | 110 | 120 / 2400 | 5353 | 3 / 150 | 256 / 30720 | 2.0 | 31952 | 3.58 / 1.83 / 0.92 | 134 / 69 | 196.9 mln (46.2–1648.6), 147 | — |
+| 4 | 213230 | 219 | 438 | 476 / 9520 | 21323 | 3 / 150 | 1024 / 122880 | 8.0 | 127422 | 3.58 / 1.83 / 0.92 | 134 / 68 | 1586.8 mln (52.5–5261.4), 147 | — |
+| 5 | 851680 | 874 | 1748 | 1899 / 37980 | 85168 | 3 / 150 | 4096 / 491520 | 8.0 | 509088 | 3.58 / 1.82 / 0.92 | 134 / 68 | 7250.9 mln (2026.7–18035.7), 147 | — |
+
+## Odpowiedzi
+
+103. **Jakie g daje galaktykę (a) i (b) w oknie 3 600–4 400 dób.** **W R dają ją g = 2,5 (ładownia szczebli 1–5: 1 200 / 3 000 / 7 560 / 18 840 / 46 920 m³; mediana 4 161 dób) i g = 4 (1 920 / 7 680 / 30 720 / 122 880 / 491 520 m³; 4 287); w D nie daje jej żadne g od 1,5 do 6 — najbliżej są g = 6 (4 436) i g = 2,5 (4 504), oba tuż za oknem — bo D spóźnia się o kilkaset dób względem R (tanie długie loty rozpraszają flotę, firma T4 przychodzi ok. 400–800 dób później).** Szczegóły: *R*: **g = 2,5** (mediana 4 161 dób, 40% ziaren do doby 4 000, 10–90%: 3 795 – > 4 800) i **g = 4** (4 287, 40%); g = 3 tuż za oknem (4 401, 30%), g = 1,5 i 2 poza horyzontem (15% ziaren do 4 000, mediana > 4 800) — czyli ładownia szczebla 1 rzędu 1 200–1 900 m³ i szczebla 5 rzędu 47–490 tys. m³; różnice między g = 2,5, 3 i 4 (4 161 / 4 401 / 4 287) mieszczą się w szumie 20 ziaren (rozrzut 10–90% to ponad 1 000 dób), więc R ma okno dla g ≈ 2,5–4, a g ≤ 2 jest za małe. *D*: **żadne g nie wchodzi w okno medianą**: g = 2,5, 3 i 5 dają 4 504 / 4 615 / 4 611 (10–20% ziaren do 4 000, „za późno”), g = 1,5, 2 i 4 medianę poza horyzontem (5–10%), g = 6 daje 4 436 (20%), czyli 36 dób za oknem — przy rozrzucie 10–90% 3 820 – > 4 800 to nie jest rozróżnialne od okna, ale mediana go nie trafia. Przyczyna jest ta sama, co w rundzie 3 (90): tanie długie loty rozpraszają flotę, D zaczyna kontrakty później (firma T4 w 770–1 220 dób zamiast 350–430 w R przy g ≥ 2,5) i do doby 4 000 dostarcza średnio 19–24 z 27 kontraktów (mediana 21–25; R przy g ≥ 2,5: średnio 23–24, mediana 26). W obu wariantach do doby 4 000 brakuje zwykle 1–4 kontraktów z 27; najpóźniejsze są — jak w rundzie 3 (96) — receptury T4 wymagające wypraw 500+ pc po towary dalekich ras (czasu kontraktu nie rozdzielałem po tierach). O oknie nie decyduje pojemność ładowni: udział ładowni floty zajętej przez kontrakty to 11–15% przy każdym g, a czas kontraktu w dobach statku (start misji → dostawa końcowa) 180–270 dób (10–90%: 26–560) niezależnie od g; różnicę między g ≤ 2 a g ≥ 2,5 w R wyjaśnia najprawdopodobniej gotówka, nie wielkość dostaw — firma T4 (8 statków) przychodzi w 350–430 dób zamiast 720–800 i więcej misji idzie równolegle — ale nie izolowałem tego osobnym eksperymentem. **Kontrola**: drabina rundy 3 z tym samym botem i `k` daje 0% galaktyki do 4 000 w R i D (mediana > 4 800), 11–12 kontraktów do 4 000 i 3,0 cywilizacje na T4 po 4 800 dobach — to drabina z procedury (szybsza z ładunkiem: ≥ 1,82 pc/dobę przy ρ = 1 wobec 1,14–1,81 na szczeblach rundy 3, 4–137× większa ładownia na szczeblu 5 przy g = 2–4) odblokowuje 27 kontraktów, nie zmiany bota. Czułość: jedynka lżejsza o 144 t (druga siatka, `findings.md`) przesuwała galaktykę o ok. 800 dób wcześniej przy tym samym g (g = 2 w oknie, g ≥ 2,5 za wcześnie) — o oknie decyduje prędkość z ładunkiem, nie sama ładownia, więc liczby kontrolne kanonu (jedynka + 4 moduły = 566 t) trzeba trzymać dokładnie. Bankructwa: 0–5% (R g = 1,5 i 2: jedno ziarno), 0% w D i w kontroli D (kontrola R 10%).
+104. **Tabela kadłubów dla g = 2,5 (do przepisania do kanonu).** Wybieram g = 2,5, bo to najmniejsze g z galaktyką w oknie w R, najmniejsze kadłuby (szczebel 5: 81 660 m³ wobec 851 680 m³ przy g = 4) i rynek, który jeszcze wchłania flotę (105). Wiersze z procedury (wejście: ładownia 480 × 2,5^N → moduły w górę: 10 / 25 / 63 / 157 / 391); obrys = najmniejszy, w którym po krokach 2–5 zostaje ta ładownia; prędkości z pełnym bakiem; cena = mediana zakupów bota w R. Wariant R i D różnią się tylko bakiem od szczebla 3 (R 3 zbiorniki, D 2) i obrysem o 50–60 m³:
+
+| Szczebel | Obrys (m³) | Napęd: reaktory × 271 m³ (dysze) | Kajuty: osoby × 20 m³ | Konstrukcja 10% (m³) | Bak R / D (zbiorniki × 50 m³) | Ładownia: moduły × 120 m³ | Luz (m³) | Masa sucha (t) | v pusty / ρ 1,0 / minerały (pc/dobę) | Zasięg R pusty / ρ 1,0 (pc); D 100 / 100 | Cena (mln kr, mediana w R) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 (jedynka) | 1 000 | 1 × 271 (2) | 2 × 20 = 40 | 100 | 2 × 50 = 100 / 100 | 4 × 120 = 480 | 9 | 566 | 3,14 / 1,82 / 0,99 | 85 / 48 | — |
+| 1 | 2 510 | 3 × 271 = 813 (6) | 7 × 20 = 140 | 251 | 100 / 100 | 10 × 120 = 1 200 | 6 | 1 468 | 3,99 / 2,26 / 1,21 | 103 / 58 | 22,8 |
+| 2 | 5 570 | 6 × 271 = 1 626 (12) | 14 × 20 = 280 | 557 | 100 / 100 | 25 × 120 = 3 000 | 7 | 3 293 | 3,69 / 1,96 / 1,01 | 94 / 49 | 31,6 |
+| 3 | 13 480 (D 13 420) | 14 × 271 = 3 794 (28) | 31 × 20 = 620 | 1 348 (D 1 342) | 150 / 100 | 63 × 120 = 7 560 | 8 (D 4) | 8 008 (D 7 989) | 3,58 / 1,86 / 0,95 | 136 / 70 | 54,0 |
+| 4 | 33 010 (D 32 950) | 34 × 271 = 9 214 (68) | 75 × 20 = 1 500 | 3 301 (D 3 295) | 150 / 100 | 157 × 120 = 18 840 | 5 (D 1) | 19 681 (D 19 662) | 3,58 / 1,84 / 0,93 | 135 / 69 | 276,6 |
+| 5 | 81 660 (D 81 610) | 84 × 271 = 22 764 (168) | 183 × 20 = 3 660 | 8 166 (D 8 161) | 150 / 100 | 391 × 120 = 46 920 | 0 (D 5) | 48 770 (D 48 754) | 3,59 / 1,83 / 0,92 | 135 / 69 | 782,8 |
+
+   Obsada: kokpit 1 + 1 na reaktor + 1 na rozpoczęte 4 moduły (jedynka z tabeli kanonu: 2 osoby zamiast 3 z formuły — do decyzji projektanta, 98). Masa: konstrukcja × 3,2199 t/m³ + 100 t na reaktor + 36 t na moduł. Ta sama procedura dla g = 4 (druga wartość w oknie): N1 3 650 m³ / 4 reaktory / 16 modułów (1 920 m³), N5 851 680 m³ / 874 reaktory / 1 899 osób / 4 096 modułów (491 520 m³), masa 509 088 t — tabela niżej („g = 4, paliwo R”).
+105. **Czy przy g = 2,5 firma i kadłub zostają w oknie.** Nie — oba uciekają. *Firma T4* (8 statków, `progFirmy` ×1) w R w medianie 352 dób (10–90%: 181–1 340; 95% ziaren do 4 000), w D 896 (436–1 692); przy g = 1,5–2 w R 717–802, w D 1 140–1 222 dób, przy g = 3–4 w R 395–430, w D (g = 3–6) 769–956 — większa ładownia to więcej gotówki na kurs, a progi firmy liczą gotówkę. *Szczebel 5* w R w 1 822 dób (1 236–3 111; 95% do 4 000), w D 2 176 (1 536–2 913), przy każdym g w R 1 820–2 050, w D 2 120–2 980 (g = 6: 2 116); czeka na stocznię T4 (`tierSzczebla` jak w rundzie 3), a pierwsza cywilizacja T4 przychodzi w 1 150–1 290 dób w R (g ≥ 2; kontrola 2 744) i 1 250–1 560 w D (kontrola 1 840), bo kontrakty idą bez przestojów. W oknie szczebel 5 zostaje tylko w kontroli (drabina rundy 3: 4 070 R / 4 303 D), choć firma T4 jest tam w 1 205 / 1 773 dób (przyczyny wolnych zakupów kadłubów w kontroli nie badałem). Co by trzymało firmę i kadłub w oknie przy g = 2,5: progi mniej zależne od gotówki — w rundzie 3 `progFirmy` ×5 przesuwało firmę T4 z 1 451 na 3 403 dób, ×25 poza horyzont; tu firma T4 jest czterokrotnie wcześniej, więc potrzeba by mnożnika rzędu ×20–50 (ekstrapolacja, nie mierzyłem), a dla kadłuba wyższego `tierSzczebla` albo ceny liczonej z obrysu, nie z zysku na kurs (cena z zysku na kurs rośnie z zamożnością, ale szczebel 5 kosztuje mediana 783 mln, gdy firma jest warta dziesiątki miliardów — zakup nie jest barierą). Pojemność rynku (tabela; stosunek = konsumpcja stolic ÷ dostawy 8 statków szczebla 5 z pełnymi ładowniami jednego towaru, więc < 1 znaczy, że flota przerosłaby rynek stolic): przy g = 2,5 w R 28 (żywność), 228 (minerały), 7,9 (rozpuszczalniki), 1,6 (materiały wybuchowe) i **0,5 (elektronika)**; przy g = 4 2,9 / 24 / 0,8 / 0,2 / 0,1; w D przy g = 6 już 0,5 także w żywności. Od g ≥ 2,5 flota końcowa przerasta rynek stolic w towarach T2+, ale bot nie wozi ośmioma statkami jednego towaru; w praktyce granicą pozostaje podaż (zapas towarów deficytowych = 0), jak w rundzie 3 (96). Krzywa wartości: g = 2,5 R ×45 w dobie 400, ×220 w 1 200, ×4 580 w 2 400, ×34 800 w 3 600, ×122 000 w 4 800 — bez nowych sufitów i NaN (jak w rundzie 3).
+106. **Który krok procedury rośnie najszybciej ze szczeblem.** **Względem jedynki najszybciej rosną kajuty (×30,5 na szczeblu 5 przy g = 2), tuż za nimi napęd (×28), bak prawie wcale (×1,5); ładownia rośnie szybciej niż każdy z nich (×32), więc udział napędu i kajut w obrysie nieco maleje, a miejsca zyskuje ładownia (kolejność przy g = 3: ładownia ×243, kajuty ×226, napęd ×208, bak ×1,5).** *Napęd* zajmuje najwięcej miejsca: przy każdym g zajmuje ok. 28% obrysu na każdym szczeblu (jedynka 27,1%), bo prędkość referencyjna wymaga ciągu proporcjonalnego do masy, a masa rośnie z ładownią; rośnie więc prawie liniowo z ładownią (×28 przy ładowni ×32 dla g = 2 na szczeblu 5; 1 reaktor na 4,0–4,7 modułu wobec 4 w jedynce — odrobinę wolniej, bo udział konstrukcji i baku w masie na moduł maleje przy wielkich kadłubach). *Kajuty* (×30,5 przy ładowni ×32): obsada liczy reaktory i moduły, a jedynka ma 2 osoby zamiast 3 z formuły, więc udział kajut rośnie z 4,0% do 4,5% obrysu. *Bak* prawie nie rośnie (×1,0 w D, ×1,5 w R od szczebla 2–3): zasięg w D nie zależy od masy, a w R zależy od prędkości i udziału paliwa w masie; prędkość w stanie referencyjnym jest zbliżona do jedynki (1,8–2,3 pc/dobę), więc wystarcza 1–1,5 baku jedynki — udział baku spada z 10% do 0,18% (g = 2,5) i 0,02% (g = 4). Dlatego udział ładowni rośnie z 48% (jedynka) do 55–58% obrysu, obrys na moduł maleje z 250 do 208–218 m³, a krok wymuszający obrys większy niż proporcjonalny pojawia się tylko przy małych g na niskich szczeblach (g = 1,5: kajuty na N1–N2; g = 2,5: bak na N1 w R); wszędzie indziej minimalny obrys jest mniejszy od proporcjonalnego.
+
