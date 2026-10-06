@@ -1,0 +1,25 @@
+{
+  "name": "galaxytrader-petla",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "bot": "tsx bot/bot.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "smoke:runda3": "tsx scripts/smoke-runda3.ts",
+    "progresja": "tsx bot/progresja.ts",
+    "runda3": "tsx bot/runda3.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "playwright": "^1.63.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.0"
+  }
+}
