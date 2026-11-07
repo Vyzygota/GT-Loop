@@ -1,0 +1,171 @@
+{
+  "kurs": 10,
+  "towary": {
+    "Food": {
+      "basePrice": 315,
+      "gestosc": 0.7
+    },
+    "Minerals": {
+      "basePrice": 600,
+      "gestosc": 3.0
+    },
+    "Solvents": {
+      "basePrice": 1629,
+      "gestosc": 1.1
+    },
+    "Explosives": {
+      "basePrice": 6276,
+      "gestosc": 1.5
+    },
+    "Electronics": {
+      "basePrice": 61307,
+      "gestosc": 0.4
+    },
+    "Fuel": {
+      "basePrice": 1000,
+      "gestosc": 1.0
+    }
+  },
+  "ladownia": 480,
+  "maxMasaLadunku": 1440,
+  "bak": 100,
+  "kosztPaliwaNaParsek": 1,
+  "predkoscNominalna": 4,
+  "skokPodstawowy": 20,
+  "startingCredits": 6800000,
+  "tradeSpread": 0.3,
+  "StockPressureMin": 0.45,
+  "StockPressureMax": 2.5,
+  "StockPriceWeight": 0.45,
+  "StockRatioFloor": 0.02,
+  "normaZapasu": 30,
+  "skillFloor": 0.8,
+  "skillCeiling": 1.25,
+  "placa": {
+    "pilot": 800,
+    "nawigator": 400,
+    "handlowiec": 500
+  },
+  "miejscaZalogi": 4,
+  "promienGalaktyki": 1257,
+  "DeadCoreFraction": 0.3,
+  "gradientZdatnosci": {
+    "od": 0.3,
+    "do": 0.467
+  },
+  "habitableZoneInner": 0.467,
+  "habitableZoneOuter": 0.6,
+  "SectorCount": 7,
+  "ukladyZamieszkiwalne": 464,
+  "terytoriumZPopulacji": {
+    "staly": 3,
+    "naDekade": 2.2
+  },
+  "zasiegLacznosci": 182,
+  "cywilizacje": {
+    "ai": {
+      "nazwa": "AI",
+      "otwartosc": 1.66,
+      "ssr": 0.09
+    },
+    "corrath": {
+      "nazwa": "Corrath",
+      "otwartosc": 0.77,
+      "ssr": 0.46
+    },
+    "duhari": {
+      "nazwa": "Duhari",
+      "otwartosc": 0.46,
+      "ssr": 1.7
+    },
+    "ludzie": {
+      "nazwa": "Ludzie",
+      "otwartosc": 0.26,
+      "ssr": 1.25
+    },
+    "orak": {
+      "nazwa": "Orak",
+      "otwartosc": 0.04,
+      "ssr": 0.02
+    },
+    "planta": {
+      "nazwa": "Planta",
+      "otwartosc": 0.85,
+      "ssr": 0.54
+    },
+    "szkarni": {
+      "nazwa": "Szkarni",
+      "otwartosc": 0.72,
+      "ssr": 0.43
+    },
+    "velhari": {
+      "nazwa": "Velhari",
+      "otwartosc": 1.18,
+      "ssr": 0.56
+    },
+    "vreth": {
+      "nazwa": "Vreth",
+      "otwartosc": 0.5,
+      "ssr": 1.2
+    }
+  },
+  "TierCount": 4,
+  "tierZalogi": {
+    "progiXP": [
+      0,
+      500,
+      1500,
+      9999
+    ],
+    "placaKrNaDobe": [
+      [
+        120,
+        180
+      ],
+      [
+        280,
+        450
+      ],
+      [
+        580,
+        900
+      ],
+      [
+        1100,
+        1800
+      ]
+    ]
+  },
+  "drabinaKadlubow": {
+    "szczebli": 6,
+    "status": "proponowane"
+  },
+  "statek": {
+    "ciagDyszyTf": 230,
+    "dyszNaReaktor": 2,
+    "masaJedynkiSuchaT": 421.99,
+    "stalaPredkosci": 0.8812,
+    "spalanieRM3NaDobe": 4,
+    "dawkaDM3NaPc": 1,
+    "objetoscReaktoraM3": 271
+  },
+  "SectorMinTier": [
+    1,
+    2,
+    1,
+    1,
+    2,
+    3,
+    1
+  ],
+  "kadlub": {
+    "obrysJedynkiM3": 1000,
+    "kajutaNaOsobeM3": 20,
+    "osobyJedynki": 2,
+    "konstrukcjaUlamekObrysu": 0.1,
+    "zbiornikM3": 50,
+    "zbiornikiJedynki": 2,
+    "modulLadowniM3": 120,
+    "modulyJedynki": 4
+  }
+}
